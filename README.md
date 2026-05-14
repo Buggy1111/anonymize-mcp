@@ -1,6 +1,6 @@
 # ufal-mcp
 
-MCP server pro NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) zaměřené na **česká právní data**.
+MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) pro zpracování **českých právních textů**.
 
 ## Co umí
 
@@ -29,7 +29,7 @@ python3 -m venv .venv
 claude mcp add ufal -s user -- /home/buggy1111/dev/mcp-servers/ufal-mcp/.venv/bin/ufal-mcp
 ```
 
-Poté restart Claude Code — tools budou dostupné jako `mcp__ufal__anonymize`, `mcp__ufal__extract_entities`, `mcp__ufal__check_readability`.
+Poté Claude Code restartuj — nástroje budou dostupné jako `mcp__ufal__anonymize`, `mcp__ufal__extract_entities`, `mcp__ufal__check_readability`.
 
 ## Použití
 
@@ -39,13 +39,13 @@ V Claude Code stačí napsat například:
 
 > Vytáhni z dokumentu všechny osoby, soudy a č.j. — chystám matter intake pro `/litigation-legal:matter-intake`.
 
-> Projeď moje podání přes PONK — kolik větu má příliš dlouhých?
+> Projeď moje podání přes PONK — kolik vět má příliš dlouhých?
 
 ## Bezpečnost
 
 - **Vše posíláš na externí server ÚFAL** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`)
 - ÚFAL loguje: čas, velikost dat, konfigurace serveru, IP. **Obsah neloguje** (přes POST).
-- Pro plně privátní variantu lze rozšířit o lokální self-host (UDPipe + NameTag mají downloadable modely).
+- Pro plně privátní variantu lze rozšířit o lokální self-host (UDPipe + NameTag mají modely ke stažení).
 
 ## Použité API
 
