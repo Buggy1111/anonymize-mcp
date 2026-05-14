@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "MCP server pro ÚFAL MFF UK NLP nástroje pro česká právní data (NameTag, MasKIT, PONK)"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Michal Bugy", email = "michalbugy12@gmail.com" }]
+authors = [{ name = "Michal Bürgermeister", email = "michalbugy12@gmail.com" }]
 license = { text = "MIT" }
 dependencies = [
     "mcp>=1.2.0",
