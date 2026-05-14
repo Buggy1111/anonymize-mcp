@@ -12,141 +12,21 @@ bez explicitního písemného svolení autorů.
 
 from __future__ import annotations
 
-import re
 from typing import Any, Literal
 
-import httpx
 from mcp.server.fastmcp import FastMCP
 
-MASKIT_URL = "https://quest.ms.mff.cuni.cz/maskit/api/process"
-NAMETAG_URL = "https://lindat.mff.cuni.cz/services/nametag/api/recognize"
-PONK_URL = "https://quest.ms.mff.cuni.cz/ponk/api/process"
-UDPIPE_URL = "https://lindat.mff.cuni.cz/services/udpipe/api/process"
-
-HTTP_TIMEOUT = 60.0
+from . import maskit as _maskit
+from . import nametag as _nametag
+from . import ponk as _ponk
+from . import udpipe as _udpipe
 
 mcp = FastMCP("ufal")
 
 
-async def _post_form(url: str, data: dict[str, str]) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        response = await client.post(url, data=data)
-        response.raise_for_status()
-        return response.json()
-
-
-# ---------- NameTag ---------------------------------------------------------
-
-# CNEC 2.0 entity type → human label (česky)
-NAMETAG_LABELS: dict[str, str] = {
-    "P": "osoba",
-    "pf": "křestní jméno",
-    "ps": "příjmení",
-    "T": "datum/čas",
-    "td": "den",
-    "tm": "měsíc",
-    "ty": "rok",
-    "th": "hodina",
-    "A": "číslo",
-    "ah": "hodnota",
-    "at": "telefon",
-    "az": "PSČ",
-    "C": "bibliografie",
-    "G": "geografická entita",
-    "gu": "město/obec",
-    "gs": "ulice/náměstí",
-    "gc": "stát/země",
-    "gr": "region",
-    "I": "instituce",
-    "io": "úřad/instituce",
-    "if": "firma/společnost",
-    "ic": "kulturní/vědecká instituce",
-    "M": "média",
-    "O": "objekt",
-    "om": "měna",
-    "or": "produkt",
-    "N": "číselný výraz",
-    "no": "pořadí",
-}
-
-
-def _parse_conll(conll: str) -> list[dict[str, Any]]:
-    """Zploští CoNLL výstup NameTag do seznamu entit."""
-    entities: list[dict[str, Any]] = []
-    current: dict[str, Any] | None = None
-    for raw_line in conll.splitlines():
-        line = raw_line.strip()
-        if not line:
-            if current:
-                entities.append(current)
-                current = None
-            continue
-        parts = line.split("\t")
-        if len(parts) != 2:
-            continue
-        token, tags = parts
-        # tags can be like "B-P|B-pf" nebo "I-P|I-pf" nebo "O"
-        if tags == "O":
-            if current:
-                entities.append(current)
-                current = None
-            continue
-        labels = [t for t in tags.split("|") if t]
-        starts = [lab.split("-", 1)[1] for lab in labels if lab.startswith("B-")]
-        if starts:
-            if current:
-                entities.append(current)
-            primary = starts[0]
-            current = {
-                "type": primary,
-                "label": NAMETAG_LABELS.get(primary, primary),
-                "tokens": [token],
-                "nested": [t for t in starts[1:]],
-            }
-        else:
-            if current is None:
-                # I- bez předchozího B- — vytvoř best-effort entitu
-                inside = [lab.split("-", 1)[1] for lab in labels if lab.startswith("I-")]
-                primary = inside[0] if inside else "?"
-                current = {
-                    "type": primary,
-                    "label": NAMETAG_LABELS.get(primary, primary),
-                    "tokens": [token],
-                    "nested": [],
-                }
-            else:
-                current["tokens"].append(token)
-    if current:
-        entities.append(current)
-    for ent in entities:
-        ent["text"] = _smart_join(ent["tokens"])
-    return entities
-
-
-# Tokeny které se nelepí mezerou *před* (následují bez mezery)
-_NO_SPACE_BEFORE = frozenset({".", ",", ";", ":", "!", "?", ")", "]", "}", "%", "/"})
-# Tokeny po kterých nesmí být mezera (následující token bez mezery)
-_NO_SPACE_AFTER = frozenset({"(", "[", "{", "/"})
-
-
-def _smart_join(tokens: list[str]) -> str:
-    """Slepí tokeny s rozumným spacing — bez mezer před interpunkcí."""
-    if not tokens:
-        return ""
-    parts = [tokens[0]]
-    for i in range(1, len(tokens)):
-        tok = tokens[i]
-        prev = tokens[i - 1]
-        if tok in _NO_SPACE_BEFORE or prev in _NO_SPACE_AFTER:
-            parts.append(tok)
-        else:
-            parts.append(" " + tok)
-    return "".join(parts)
-
-
 @mcp.tool()
 async def extract_entities(text: str) -> dict[str, Any]:
-    """Rozpozná pojmenované entity v českém (nebo jiném podporovaném) textu pomocí NameTag 3.
+    """Rozpozná pojmenované entity v českém textu pomocí NameTag 3.
 
     Vrací strukturovaný seznam entit s typem (osoba, instituce, datum, firma, geo…)
     a původním textem. Hodí se pro matter intake — kdo, kdy, kde, jaké instituce.
@@ -155,279 +35,9 @@ async def extract_entities(text: str) -> dict[str, Any]:
         text: Vstupní text k analýze (UTF-8). Optimalizováno pro češtinu.
 
     Returns:
-        Slovník s ``entities`` (list) a ``model`` (verze).
+        Slovník s ``entities`` (list), ``model`` (verze), ``count``.
     """
-    if not text.strip():
-        return {"entities": [], "model": None, "note": "empty input"}
-    data = await _post_form(NAMETAG_URL, {"data": text, "output": "conll"})
-    entities = _parse_conll(data.get("result", ""))
-    return {
-        "entities": entities,
-        "model": data.get("model"),
-        "count": len(entities),
-    }
-
-
-# ---------- MasKIT ----------------------------------------------------------
-
-_MASKIT_PLACEHOLDER = re.compile(r"([^\s_\[\]]+)_\[([^\]]+)\]")
-
-
-def _parse_maskit(result: str) -> tuple[str, list[dict[str, Any]]]:
-    """Z MasKIT výstupu vytáhne čistý anonymizovaný text + mapping originál→placeholder.
-
-    Pro každý replacement zachytíme i ``raw_context_before`` (50 znaků před
-    placeholderem v raw výstupu), což pak pomůže pre-context type inference.
-    """
-    replacements: list[dict[str, Any]] = []
-    anonymized_parts: list[str] = []
-    last_end = 0
-    for match in _MASKIT_PLACEHOLDER.finditer(result):
-        anonymized_parts.append(result[last_end : match.start()])
-        placeholder, original = match.group(1), match.group(2)
-        anonymized_parts.append(placeholder)
-        # Kontext 50 znaků před placeholderem (v původním raw výstupu)
-        ctx_start = max(0, match.start() - 50)
-        replacements.append({
-            "original": original,
-            "placeholder": placeholder,
-            "_raw_context_before": result[ctx_start : match.start()],
-        })
-        last_end = match.end()
-    anonymized_parts.append(result[last_end:])
-    return "".join(anonymized_parts), replacements
-
-
-# Strukturované MasKIT placeholdery — typ jednoznačně určený podle vzoru
-_PLACEHOLDER_PATTERN_TYPES: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"^FABBR\d+$"), "firma/společnost"),
-    (re.compile(r"^IABBR\d+$"), "úřad/instituce"),
-    (re.compile(r"^AABBR\d+$"), "úřad/instituce"),
-    (re.compile(r"^UABBR\d+$"), "URL/web"),
-    (re.compile(r"^EABBR\d+$"), "e-mail"),
-    (re.compile(r"^Uni[A-ZÁ-Ž][A-Za-zÁ-ž]*$"), "úřad/instituce"),
-    (re.compile(r"^CZ\d+$"), "DIČ"),
-    (re.compile(r"^[A-Z]{3}\s\d{4}$"), "SPZ"),
-]
-
-# Pre-context: slovo PŘED placeholderem často určuje typ (PSČ 12345, IČO ...)
-_PRE_CONTEXT_TYPES: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"PSČ\s*$", re.IGNORECASE), "PSČ"),
-    (re.compile(r"IČO?:?\s*$", re.IGNORECASE), "IČO"),
-    (re.compile(r"DIČ:?\s*$", re.IGNORECASE), "DIČ"),
-    (re.compile(r"č\.\s*j\.\s*$", re.IGNORECASE), "číslo jednací"),
-    (re.compile(r"č\.j\.\s*$", re.IGNORECASE), "číslo jednací"),
-    (re.compile(r"sp\.\s*zn\.\s*:?\s*$", re.IGNORECASE), "spisová značka"),
-    (re.compile(r"\b(telefon|tel\.?|mobil)\s*:?\s*$", re.IGNORECASE), "telefon"),
-    (re.compile(r"\bnarozen[áy]?\s*$", re.IGNORECASE), "datum narození"),
-    (re.compile(r"\brodné\s+číslo:?\s*$", re.IGNORECASE), "rodné číslo"),
-    (re.compile(r"\bSPZ:?\s*$", re.IGNORECASE), "SPZ"),
-    (re.compile(r"\b(e-?mail|email)\s*:?\s*$", re.IGNORECASE), "e-mail"),
-    (re.compile(r"\b(web|stránka|URL|http[s]?:?)\s*:?\s*$", re.IGNORECASE), "URL/web"),
-    (re.compile(r"\bulic[ei]\s*$|\bul\.\s*$", re.IGNORECASE), "ulice/náměstí"),
-    (re.compile(r"\bměst[oě]\s*$", re.IGNORECASE), "město/obec"),
-    (re.compile(r"\b(pan|paní|p\.)\s*$", re.IGNORECASE), "osoba"),
-    (re.compile(r"\b(soud|soudce)\s+v\s+$", re.IGNORECASE), "město/obec"),
-    (re.compile(r"\bbytem\s*$", re.IGNORECASE), "ulice/náměstí"),
-]
-
-
-def _infer_type(rep: dict[str, Any], nametag_type: str | None = None) -> str | None:
-    """Vícevrstvá inference typu náhrady.
-
-    Pořadí pokusů:
-    1. Strukturovaný placeholder pattern (FABBR\\d+, Uni*, CZ\\d+, …) — deterministický
-    2. Pre-context heuristika (slovo před placeholderem v raw výstupu)
-    3. NameTag classification (předaná argumentem)
-    4. Fallback podle obsahu (čísla, krátké tokeny)
-    """
-    placeholder = rep["placeholder"]
-    original = rep["original"]
-    ctx_before = rep.get("_raw_context_before", "")
-
-    # 1. Strukturovaný placeholder
-    for pattern, type_name in _PLACEHOLDER_PATTERN_TYPES:
-        if pattern.match(placeholder):
-            return type_name
-
-    # 2. Pre-context
-    for pattern, type_name in _PRE_CONTEXT_TYPES:
-        if pattern.search(ctx_before):
-            return type_name
-
-    # 3. NameTag
-    if nametag_type:
-        return nametag_type
-
-    # 4. Fallback dle obsahu
-    stripped = original.strip()
-    if stripped.isdigit():
-        if len(stripped) == 8:
-            return "IČO (předpoklad)"
-        if len(stripped) == 5:
-            return "PSČ (předpoklad)"
-        if len(stripped) == 10:
-            return "rodné číslo (předpoklad)"
-        return "číslo"
-    if re.match(r"^\d+\.\d+(\.\d+)?$", stripped):
-        return "datum"
-    if re.match(r"^[A-Za-zÁ-ž]+$", stripped) and len(stripped) <= 4:
-        return "zkratka/krátký token"
-    return "neznámé"
-
-
-async def _classify_with_nametag(originals: list[str]) -> dict[str, str]:
-    """Pro každý originál se zeptej NameTag na typ entity (osoba/firma/instituce…)."""
-    if not originals:
-        return {}
-    # Joinujeme do jednoho requestu oddělené tečkou — šetří round-tripy
-    sep = "\n"
-    joined = sep.join(originals)
-    data = await _post_form(NAMETAG_URL, {"data": joined, "output": "conll"})
-    entities = _parse_conll(data.get("result", ""))
-    # Mapuj typy podle nejlepší shody textu
-    mapping: dict[str, str] = {}
-    for orig in originals:
-        norm_orig = re.sub(r"\s+", " ", orig).strip().lower()
-        best: str | None = None
-        for ent in entities:
-            if re.sub(r"\s+", " ", ent["text"]).strip().lower() in norm_orig or norm_orig in re.sub(r"\s+", " ", ent["text"]).strip().lower():
-                best = ent["label"]
-                break
-        if best:
-            mapping[orig] = best
-    return mapping
-
-
-# Český business-form suffix uvnitř MasKIT placeholderu (může indikovat fragmentaci)
-_BUSINESS_SUFFIX_RE = re.compile(
-    r"\b(s\.\s*r\.\s*o|sr\.o|a\.\s*s|spol|k\.\s*s|v\.\s*o\.\s*s|z\.\s*s|o\.\s*p\.\s*s)\b",
-    re.IGNORECASE,
-)
-# Placeholder typu firma/instituce/atd. následovaný slovem bez mezery → fragment zůstal venku
-_FRAGMENT_AFTER_PLACEHOLDER_RE = re.compile(
-    r"\b([FIA]ABBR\d+)([A-Za-zÁ-ž]+)",
-)
-
-
-def _detect_fragmentation(raw: str, original_text: str) -> list[str]:
-    """Detekuje známé MasKIT problémy v anonymizaci.
-
-    1. Business suffix (s.r.o./a.s./spol.) byl v originále, ale skončil uvnitř
-       placeholderu nebo zůstal nepokrytý → název firmy fragmentován.
-    2. Placeholder typu FABBR/IABBR/AABBR slepený se slovem bez mezery → část
-       firmy/instituce zůstala venku.
-    """
-    warnings: list[str] = []
-
-    # (2) Placeholder + slovo bez mezery
-    for m in _FRAGMENT_AFTER_PLACEHOLDER_RE.finditer(raw):
-        warnings.append(
-            f"Pravděpodobná fragmentace: placeholder '{m.group(1)}' "
-            f"je slepený se slovem '{m.group(2)}' — část názvu firmy/instituce "
-            f"zůstala neanonymizovaná."
-        )
-
-    # (1) Business suffix se přesunul ven z [...] (porovnáme original vs raw)
-    orig_suffixes = {m.group(0).lower().replace(" ", "") for m in _BUSINESS_SUFFIX_RE.finditer(original_text)}
-    if orig_suffixes:
-        # Vytáhni text mimo placeholdery z raw výstupu
-        outside = re.sub(r"_\[[^\]]+\]", "", raw)
-        outside_suffixes = {m.group(0).lower().replace(" ", "") for m in _BUSINESS_SUFFIX_RE.finditer(outside)}
-        leftover = orig_suffixes & outside_suffixes
-        if leftover:
-            warnings.append(
-                f"Business suffixy zůstaly nepokryté anonymizací: {sorted(leftover)} — "
-                f"MasKIT pravděpodobně neidentifikoval celý název právnické osoby."
-            )
-
-    return warnings
-
-
-# Placeholder konfigurace pro wrapper pre-processing (strict mode)
-_STRICT_PLACEHOLDER_PREFIX = {
-    "if": "FIRMA",
-    "io": "INSTITUCE",
-    "ic": "INSTITUCE",
-}
-_STRICT_LABEL = {
-    "if": "firma/společnost",
-    "io": "úřad/instituce",
-    "ic": "kulturní/vědecká instituce",
-}
-
-# Sentinel token. MasKIT zpracovává běžná slova/zkratky — podtržítka a hashtag
-# trojice ho spolehlivě donutí token přeskočit (testováno na komplexních textech).
-def _make_sentinel(idx: int) -> str:
-    return f"__ANON{idx:04d}__"
-
-
-_SENTINEL_RE = re.compile(r"__ANON(\d{4})__")
-
-
-async def _pre_anonymize_orgs(text: str) -> tuple[str, list[dict[str, Any]]]:
-    """Pre-pass: NameTag najde firmy/úřady/instituce v originálu a nahradí je sentinely.
-
-    Vrací upravený text (sentinely místo entit) a seznam wrapper replacementů.
-    Sentinely MasKIT v dalším kroku nechá být (nevypadají jak osobní data).
-    Po MasKIT pass se sentinely přepíšou na finální placeholdery (FIRMA1, INSTITUCE1, …).
-    """
-    full_data = await _post_form(NAMETAG_URL, {"data": text, "output": "conll"})
-    full_entities = _parse_conll(full_data.get("result", ""))
-
-    # Seřaď nejdelší → nejkratší aby se "Nejvyšší správní soud" anonymizoval před "Nejvyšší"
-    org_entities = sorted(
-        (e for e in full_entities if e["type"] in _STRICT_PLACEHOLDER_PREFIX),
-        key=lambda e: len(e["text"]),
-        reverse=True,
-    )
-
-    replacements: list[dict[str, Any]] = []
-    counters: dict[str, int] = {}
-    sentinel_idx = 0
-
-    # NameTag tokenizace může vložit mezery kolem interpunkce. Zkusíme více variant
-    # textu entity než to vzdáme.
-    for ent in org_entities:
-        ent_text = ent["text"]
-        variants = [
-            ent_text,
-            ent_text.replace(" .", "."),       # "s. r. o ." → "s. r. o."
-            ent_text.replace(" . ", ". "),     # "s . r . o ." → "s. r. o."
-            re.sub(r"\s+", " ", ent_text),
-            re.sub(r"\s*\.\s*", ".", ent_text),  # collapse all dot-spaces
-            re.sub(r"\s*,\s*", ", ", ent_text),  # normalize comma spaces
-        ]
-        replaced_variant = None
-        for v in variants:
-            if v in text:
-                replaced_variant = v
-                break
-        if replaced_variant is None:
-            continue
-
-        prefix = _STRICT_PLACEHOLDER_PREFIX[ent["type"]]
-        counters[prefix] = counters.get(prefix, 0) + 1
-        sentinel_idx += 1
-        sentinel = _make_sentinel(sentinel_idx)
-
-        text = text.replace(replaced_variant, sentinel, 1)
-        replacements.append({
-            "_sentinel": sentinel,
-            "original": ent_text,
-            "placeholder": f"{prefix}{counters[prefix]}",
-            "type": _STRICT_LABEL[ent["type"]],
-            "source": "wrapper",
-        })
-
-    return text, replacements
-
-
-def _restore_sentinels(text: str, wrapper_reps: list[dict[str, Any]]) -> str:
-    """Po MasKIT přepíše sentinely na finální placeholdery."""
-    for rep in wrapper_reps:
-        text = text.replace(rep["_sentinel"], rep["placeholder"])
-    return text
+    return await _nametag.recognize(text)
 
 
 @mcp.tool()
@@ -444,9 +54,9 @@ async def anonymize(
     URL, ulice, města, PSČ, firmy, instituce, IČO, DIČ, rodná čísla, data narození,
     čísla jednací, SPZ.
 
-    **Strict mode (default)** doplňuje upstream MasKIT mezery — po jeho průchodu
-    zavolá NameTag a vlastními placeholdery (`FIRMA1`, `INSTITUCE1`, ...) anonymizuje
-    všechny rozpoznané firmy/úřady/instituce, které MasKIT vynechal nebo fragmentoval.
+    **Strict mode (default)** doplňuje upstream MasKIT mezery — pre-pass přes NameTag
+    najde firmy/úřady/instituce v originálu a vlastními placeholdery (`FIRMA1`,
+    `INSTITUCE1`, …) anonymizuje vše, co MasKIT vynechá nebo fragmentuje.
 
     Args:
         text: Vstupní text (čeština).
@@ -455,237 +65,21 @@ async def anonymize(
             pokud má text dál opustit důvěrné prostředí, mapping vypni!
         classify_types: Pro každý replacement zavolá NameTag a doplní typ entity.
             Default ``True``.
-        strict: Po MasKIT pass projde NameTag entitami (firmy, úřady, instituce)
-            a vlastními placeholdery doplní vše, co MasKIT vynechal. Cílem je 0 warnings.
-            Default ``True``. Vypni (``False``) pokud chceš čistý MasKIT výstup
-            (např. pro debugging nebo srovnání s referencí).
+        strict: Wrapper pre-pass anonymizuje firmy/úřady/instituce, které MasKIT
+            vynechává. Default ``True``. Vypni pro čistý MasKIT-only výstup.
 
     Returns:
-        ``anonymized`` (čistý text bez placeholderů),
-        ``raw`` (raw MasKIT výstup s ``placeholder_[original]``),
-        ``replacements`` (list mappings — každý má ``original``, ``placeholder``,
-        ``type``, ``source`` ``"maskit"`` nebo ``"wrapper"``),
-        ``warnings`` (detekované problémy — strict mode řeší automaticky, warnings se sníží).
+        ``anonymized`` (čistý text), ``raw`` (MasKIT raw), ``replacements`` (list
+        s ``original``, ``placeholder``, ``type``, ``source``), ``warnings``,
+        ``sources`` ({maskit: N, wrapper: M}).
     """
-    if not text.strip():
-        return {"anonymized": "", "raw": "", "replacements": [], "warnings": []}
-
-    # STRICT PRE-PASS: nahraď firmy/úřady/instituce sentinely PŘED MasKIT zavoláním.
-    # MasKIT pak řeší jen jména, telefony, IČO atd. — sentinely si nevšimne.
-    wrapper_reps: list[dict[str, Any]] = []
-    text_for_maskit = text
-    if strict and output == "txt":
-        text_for_maskit, wrapper_reps = await _pre_anonymize_orgs(text)
-
-    data = await _post_form(
-        MASKIT_URL,
-        {"text": text_for_maskit, "input": "txt", "output": output},
+    return await _maskit.anonymize_text(
+        text,
+        output=output,
+        keep_mapping=keep_mapping,
+        classify_types=classify_types,
+        strict=strict,
     )
-    raw = data.get("result", "")
-    if output == "txt":
-        anonymized, replacements = _parse_maskit(raw)
-    else:
-        anonymized, replacements = raw, []
-
-    for r in replacements:
-        r["source"] = "maskit"
-
-    # Po MasKIT přepiš sentinely na finální placeholdery (FIRMA1, INSTITUCE1, …)
-    if wrapper_reps:
-        anonymized = _restore_sentinels(anonymized, wrapper_reps)
-        raw = _restore_sentinels(raw, wrapper_reps)
-        # Smaž interní _sentinel pole, přidej wrapper replacements do hlavního seznamu
-        for wr in wrapper_reps:
-            wr.pop("_sentinel", None)
-            replacements.append(wr)
-
-    warnings = _detect_fragmentation(raw, text) if output == "txt" else []
-
-    if classify_types and replacements:
-        # Klasifikuj jen MasKIT replacements (wrapper už typ má)
-        maskit_reps = [r for r in replacements if r.get("source") == "maskit"]
-        if maskit_reps:
-            originals = [r["original"] for r in maskit_reps]
-            nametag_types = await _classify_with_nametag(originals)
-            for r in maskit_reps:
-                r["type"] = _infer_type(r, nametag_types.get(r["original"]))
-
-    # Smaž interní pomocné pole (vystavujeme jen čistý API)
-    for r in replacements:
-        r.pop("_raw_context_before", None)
-        r.pop("_sentinel", None)
-
-    out: dict[str, Any] = {
-        "anonymized": anonymized,
-        "raw": raw,
-        "warnings": warnings,
-    }
-    if keep_mapping:
-        out["replacements"] = replacements
-        out["count"] = len(replacements)
-        out["sources"] = {
-            "maskit": sum(1 for r in replacements if r.get("source") == "maskit"),
-            "wrapper": sum(1 for r in replacements if r.get("source") == "wrapper"),
-        }
-    return out
-
-
-# ---------- PONK ------------------------------------------------------------
-
-
-_PONK_METRIC_RE = re.compile(
-    r'<span[^>]*data-tooltip="([^"]+)"[^>]*>\s*-\s*([^:<]+):\s*([^<]+)</span>',
-    re.IGNORECASE | re.DOTALL,
-)
-_PONK_COUNTS_RE = re.compile(
-    r"number of sentences:\s*(\d+),\s*tokens:\s*(\d+)",
-    re.IGNORECASE,
-)
-_PONK_VERSION_RE = re.compile(r"PONK\s*<span[^>]*>([^<]+)</span>", re.IGNORECASE)
-_PONK_TIME_RE = re.compile(r"Processing time:\s*([\d.]+)\s*s", re.IGNORECASE)
-
-
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip()
-
-
-def _parse_ponk_stats(stats_html: str) -> dict[str, Any]:
-    """Z PONK stats HTML vytáhne metriky čitelnosti, counts a verzi.
-
-    Vrací: ``metrics`` (label → {value, tooltip}), ``counts`` (sentences, tokens),
-    ``processing_time_s``, ``version``.
-    """
-    metrics: dict[str, dict[str, str]] = {}
-    for tooltip, label, value in _PONK_METRIC_RE.findall(stats_html):
-        metrics[_clean(label)] = {
-            "value": _clean(value),
-            "tooltip": _clean(tooltip.replace("<br>", " ").replace("<br/>", " ")),
-        }
-    counts: dict[str, int] = {}
-    if (m := _PONK_COUNTS_RE.search(stats_html)):
-        counts = {"sentences": int(m.group(1)), "tokens": int(m.group(2))}
-    version = None
-    if (m := _PONK_VERSION_RE.search(stats_html)):
-        version = _clean(m.group(1))
-    processing_time_s = None
-    if (m := _PONK_TIME_RE.search(stats_html)):
-        processing_time_s = float(m.group(1))
-    return {
-        "metrics": metrics,
-        "counts": counts,
-        "processing_time_s": processing_time_s,
-        "version": version,
-    }
-
-
-@mcp.tool()
-async def check_readability(
-    text: str,
-    input_format: Literal["txt", "md", "docx"] = "txt",
-) -> dict[str, Any]:
-    """Analyzuje čitelnost českého textu pomocí PONK.
-
-    PONK byl navržen pro úřední komunikaci s občany — najde dlouhé věty,
-    pasivum a právnické fráze, které ztěžují porozumění. Užitečné pro kontrolu
-    vlastních podání před odesláním na soud.
-
-    Args:
-        text: Vstupní text.
-        input_format: ``txt`` (default), ``md``, ``docx`` (jako base64? viz API).
-
-    Returns:
-        ``highlighted_html`` (text s vyznačenými problémy),
-        ``stats`` (slovník metrik),
-        ``version``.
-    """
-    if not text.strip():
-        return {"highlighted_html": "", "stats": {}, "version": None}
-    data = await _post_form(
-        PONK_URL,
-        {"text": text, "input": input_format, "output": "html"},
-    )
-    parsed = _parse_ponk_stats(data.get("stats", ""))
-    return {
-        "highlighted_html": data.get("result", ""),
-        "metrics": parsed["metrics"],
-        "counts": parsed["counts"],
-        "processing_time_s": parsed["processing_time_s"],
-        "version": parsed["version"],
-    }
-
-
-# ---------- UDPipe ----------------------------------------------------------
-
-
-def _parse_conllu(conllu: str) -> list[list[dict[str, Any]]]:
-    """Parsuje CoNLL-U výstup UDPipe na seznam vět, kde každá věta = list tokenů."""
-    sentences: list[list[dict[str, Any]]] = []
-    current: list[dict[str, Any]] = []
-    for raw in conllu.splitlines():
-        line = raw.rstrip()
-        if not line:
-            if current:
-                sentences.append(current)
-                current = []
-            continue
-        if line.startswith("#"):
-            continue
-        parts = line.split("\t")
-        if len(parts) < 10:
-            continue
-        # přeskoč multi-word tokens (1-2) a empty nodes (1.1)
-        if "-" in parts[0] or "." in parts[0]:
-            continue
-        feats = {}
-        if parts[5] != "_":
-            for kv in parts[5].split("|"):
-                if "=" in kv:
-                    k, v = kv.split("=", 1)
-                    feats[k] = v
-        current.append({
-            "id": int(parts[0]),
-            "form": parts[1],
-            "lemma": parts[2],
-            "upos": parts[3],
-            "xpos": parts[4] if parts[4] != "_" else None,
-            "feats": feats,
-            "head": int(parts[6]) if parts[6] != "_" else None,
-            "deprel": parts[7] if parts[7] != "_" else None,
-        })
-    if current:
-        sentences.append(current)
-    return sentences
-
-
-# Slovenské markery pro auto-detection. Jen slova která v češtině NEEXISTUJÍ
-# (jiný tvar/pravopis), aby se nedetekoval CZ jako SK.
-_SLOVAK_MARKERS = re.compile(
-    r"\b(som|sme|sú|nie\s+je|"          # SK být (CZ jsem/jsme/jsou)
-    r"môj|moja|moje|môjho|môjmu|"        # SK přivlastň. (CZ můj/moje)
-    r"vďaka|ďakujem|ďakuje|"            # SK díky
-    r"prepáčte|"                         # SK promiňte
-    r"vo\b|"                             # SK ve (před souhláskou — CZ má vždy "ve")
-    r"pracujem|pracuje[sš]\b|pracujú|"   # SK 1.os/3.pl pracovat (CZ pracuji/pracuješ/pracují)
-    r"som\s+(otcom|matkou|synom|dcérou)|" # SK instr. zájmena
-    r"súd|sudkyňa|sudca|"                # SK soud (CZ soud/soudkyně)
-    r"žiada[mšte]?\b|"                   # SK žádat (CZ žádám/žádáš)
-    r"povedať|robiť|nájsť|nakupovať|"    # SK infinitivy končící -ať/-iť/-yť (CZ -at/-it)
-    r"hovorím|hovorí[sš]\b|"             # SK mluvit
-    r"môže[mš]?\b|môžem\b|"              # SK moci (CZ mohu/můžeš)
-    r"musím\b|musí[sš]\b|"               # SK musím (často SK)
-    r"chcem\b|chce[sš]\b|"               # SK chci (CZ chci/chceš)
-    r"ktor[áéýou][a-ž]*|"                # SK který/která (CZ který/která — pozor, overlap!)
-    r"pretože\b|"                        # SK protože (CZ protože identical → vyřaď)
-    r"tiež\b|aj\b|"                      # SK také/i (CZ taky)
-    r"ďakuj\w*|prosí\w*\s+vás)",         # SK děkovat/prosit
-    re.IGNORECASE,
-)
-
-
-def _looks_slovak(text: str) -> bool:
-    """Heuristika: text vypadá slovensky, pokud obsahuje ≥2 jednoznačné SK markery."""
-    matches = len(_SLOVAK_MARKERS.findall(text))
-    return matches >= 2
 
 
 @mcp.tool()
@@ -708,55 +102,34 @@ async def analyze_morphology(
     Args:
         text: Vstupní text.
         model: UDPipe model alias. ``auto`` (default) detekuje SK/CZ podle obsahu.
-            Konkrétní jména: ``czech``, ``slovak``, ``english``, … (viz UDPipe docs).
         include_parse: True = vrátí závislostní parse (head, deprel) pro každý token.
 
     Returns:
-        ``sentences`` (list vět = list tokenů), ``model`` (skutečně použitý model),
-        ``token_count``, ``sentence_count``, ``detected_language`` (jen u auto).
+        ``sentences``, ``model``, ``token_count``, ``sentence_count``,
+        ``detected_language`` (jen u auto).
     """
-    if not text.strip():
-        return {"sentences": [], "model": None, "token_count": 0, "sentence_count": 0}
-
-    detected = None
-    actual_model = model
-    if model == "auto":
-        if _looks_slovak(text):
-            actual_model = "slovak"
-            detected = "slovak"
-        else:
-            actual_model = "czech"
-            detected = "czech"
-
-    data = await _post_form(
-        UDPIPE_URL,
-        {
-            "data": text,
-            "model": actual_model,
-            "tokenizer": "",
-            "tagger": "",
-            "parser": "" if include_parse else "none",
-            "output": "conllu",
-        },
-    )
-    sentences = _parse_conllu(data.get("result", ""))
-    if not include_parse:
-        for sent in sentences:
-            for tok in sent:
-                tok.pop("head", None)
-                tok.pop("deprel", None)
-    out: dict[str, Any] = {
-        "sentences": sentences,
-        "model": data.get("model"),
-        "sentence_count": len(sentences),
-        "token_count": sum(len(s) for s in sentences),
-    }
-    if detected:
-        out["detected_language"] = detected
-    return out
+    return await _udpipe.analyze(text, model=model, include_parse=include_parse)
 
 
-# ---------- Entry point -----------------------------------------------------
+@mcp.tool()
+async def check_readability(
+    text: str,
+    input_format: Literal["txt", "md", "docx"] = "txt",
+) -> dict[str, Any]:
+    """Analyzuje čitelnost českého textu pomocí PONK.
+
+    PONK byl navržen pro úřední komunikaci s občany — najde dlouhé věty, pasivum
+    a právnické fráze, které ztěžují porozumění.
+
+    Args:
+        text: Vstupní text.
+        input_format: ``txt`` (default), ``md``, ``docx``.
+
+    Returns:
+        ``highlighted_html``, ``metrics`` (label → {value, tooltip}), ``counts``,
+        ``processing_time_s``, ``version``.
+    """
+    return await _ponk.check(text, input_format=input_format)
 
 
 def main() -> None:
