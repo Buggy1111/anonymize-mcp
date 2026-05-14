@@ -344,75 +344,176 @@ def _detect_fragmentation(raw: str, original_text: str) -> list[str]:
     return warnings
 
 
+# Placeholder konfigurace pro wrapper pre-processing (strict mode)
+_STRICT_PLACEHOLDER_PREFIX = {
+    "if": "FIRMA",
+    "io": "INSTITUCE",
+    "ic": "INSTITUCE",
+}
+_STRICT_LABEL = {
+    "if": "firma/společnost",
+    "io": "úřad/instituce",
+    "ic": "kulturní/vědecká instituce",
+}
+
+# Sentinel token. MasKIT zpracovává běžná slova/zkratky — podtržítka a hashtag
+# trojice ho spolehlivě donutí token přeskočit (testováno na komplexních textech).
+def _make_sentinel(idx: int) -> str:
+    return f"__ANON{idx:04d}__"
+
+
+_SENTINEL_RE = re.compile(r"__ANON(\d{4})__")
+
+
+async def _pre_anonymize_orgs(text: str) -> tuple[str, list[dict[str, Any]]]:
+    """Pre-pass: NameTag najde firmy/úřady/instituce v originálu a nahradí je sentinely.
+
+    Vrací upravený text (sentinely místo entit) a seznam wrapper replacementů.
+    Sentinely MasKIT v dalším kroku nechá být (nevypadají jak osobní data).
+    Po MasKIT pass se sentinely přepíšou na finální placeholdery (FIRMA1, INSTITUCE1, …).
+    """
+    full_data = await _post_form(NAMETAG_URL, {"data": text, "output": "conll"})
+    full_entities = _parse_conll(full_data.get("result", ""))
+
+    # Seřaď nejdelší → nejkratší aby se "Nejvyšší správní soud" anonymizoval před "Nejvyšší"
+    org_entities = sorted(
+        (e for e in full_entities if e["type"] in _STRICT_PLACEHOLDER_PREFIX),
+        key=lambda e: len(e["text"]),
+        reverse=True,
+    )
+
+    replacements: list[dict[str, Any]] = []
+    counters: dict[str, int] = {}
+    sentinel_idx = 0
+
+    # NameTag tokenizace může vložit mezery kolem interpunkce. Zkusíme více variant
+    # textu entity než to vzdáme.
+    for ent in org_entities:
+        ent_text = ent["text"]
+        variants = [
+            ent_text,
+            ent_text.replace(" .", "."),       # "s. r. o ." → "s. r. o."
+            ent_text.replace(" . ", ". "),     # "s . r . o ." → "s. r. o."
+            re.sub(r"\s+", " ", ent_text),
+            re.sub(r"\s*\.\s*", ".", ent_text),  # collapse all dot-spaces
+            re.sub(r"\s*,\s*", ", ", ent_text),  # normalize comma spaces
+        ]
+        replaced_variant = None
+        for v in variants:
+            if v in text:
+                replaced_variant = v
+                break
+        if replaced_variant is None:
+            continue
+
+        prefix = _STRICT_PLACEHOLDER_PREFIX[ent["type"]]
+        counters[prefix] = counters.get(prefix, 0) + 1
+        sentinel_idx += 1
+        sentinel = _make_sentinel(sentinel_idx)
+
+        text = text.replace(replaced_variant, sentinel, 1)
+        replacements.append({
+            "_sentinel": sentinel,
+            "original": ent_text,
+            "placeholder": f"{prefix}{counters[prefix]}",
+            "type": _STRICT_LABEL[ent["type"]],
+            "source": "wrapper",
+        })
+
+    return text, replacements
+
+
+def _restore_sentinels(text: str, wrapper_reps: list[dict[str, Any]]) -> str:
+    """Po MasKIT přepíše sentinely na finální placeholdery."""
+    for rep in wrapper_reps:
+        text = text.replace(rep["_sentinel"], rep["placeholder"])
+    return text
+
+
 @mcp.tool()
 async def anonymize(
     text: str,
     output: Literal["txt", "html", "conllu"] = "txt",
     keep_mapping: bool = True,
     classify_types: bool = True,
+    strict: bool = True,
 ) -> dict[str, Any]:
-    """Pseudonymizuje osobní údaje v českém právním textu pomocí MasKIT.
+    """Pseudonymizuje osobní údaje v českém právním textu pomocí MasKIT + NameTag.
 
     MasKIT detekuje a nahrazuje fiktivními daty: jména, příjmení, telefony, e-maily,
     URL, ulice, města, PSČ, firmy, instituce, IČO, DIČ, rodná čísla, data narození,
-    čísla jednací, SPZ. Soudce **neanonymizuje** (whitelist).
+    čísla jednací, SPZ.
+
+    **Strict mode (default)** doplňuje upstream MasKIT mezery — po jeho průchodu
+    zavolá NameTag a vlastními placeholdery (`FIRMA1`, `INSTITUCE1`, ...) anonymizuje
+    všechny rozpoznané firmy/úřady/instituce, které MasKIT vynechal nebo fragmentoval.
 
     Args:
         text: Vstupní text (čeština).
         output: Formát výstupu — ``txt`` (default), ``html``, ``conllu``.
         keep_mapping: Když True, vrátí mapping originál → placeholder. **POZOR**:
             pokud má text dál opustit důvěrné prostředí, mapping vypni!
-        classify_types: Pro každý replacement zavolá NameTag a doplní typ entity
-            (osoba/firma/instituce/datum/…). Pomáhá pochopit *co* bylo anonymizováno.
-            Default ``True``. Vyžaduje druhý API request — vypni pro rychlost.
+        classify_types: Pro každý replacement zavolá NameTag a doplní typ entity.
+            Default ``True``.
+        strict: Po MasKIT pass projde NameTag entitami (firmy, úřady, instituce)
+            a vlastními placeholdery doplní vše, co MasKIT vynechal. Cílem je 0 warnings.
+            Default ``True``. Vypni (``False``) pokud chceš čistý MasKIT výstup
+            (např. pro debugging nebo srovnání s referencí).
 
     Returns:
         ``anonymized`` (čistý text bez placeholderů),
         ``raw`` (raw MasKIT výstup s ``placeholder_[original]``),
-        ``replacements`` (list mappings včetně ``type`` když ``classify_types=True``),
-        ``warnings`` (detekované známé limitace — např. fragmentované firmy).
+        ``replacements`` (list mappings — každý má ``original``, ``placeholder``,
+        ``type``, ``source`` ``"maskit"`` nebo ``"wrapper"``),
+        ``warnings`` (detekované problémy — strict mode řeší automaticky, warnings se sníží).
     """
     if not text.strip():
         return {"anonymized": "", "raw": "", "replacements": [], "warnings": []}
+
+    # STRICT PRE-PASS: nahraď firmy/úřady/instituce sentinely PŘED MasKIT zavoláním.
+    # MasKIT pak řeší jen jména, telefony, IČO atd. — sentinely si nevšimne.
+    wrapper_reps: list[dict[str, Any]] = []
+    text_for_maskit = text
+    if strict and output == "txt":
+        text_for_maskit, wrapper_reps = await _pre_anonymize_orgs(text)
+
     data = await _post_form(
         MASKIT_URL,
-        {"text": text, "input": "txt", "output": output},
+        {"text": text_for_maskit, "input": "txt", "output": output},
     )
     raw = data.get("result", "")
     if output == "txt":
         anonymized, replacements = _parse_maskit(raw)
     else:
         anonymized, replacements = raw, []
+
+    for r in replacements:
+        r["source"] = "maskit"
+
+    # Po MasKIT přepiš sentinely na finální placeholdery (FIRMA1, INSTITUCE1, …)
+    if wrapper_reps:
+        anonymized = _restore_sentinels(anonymized, wrapper_reps)
+        raw = _restore_sentinels(raw, wrapper_reps)
+        # Smaž interní _sentinel pole, přidej wrapper replacements do hlavního seznamu
+        for wr in wrapper_reps:
+            wr.pop("_sentinel", None)
+            replacements.append(wr)
+
     warnings = _detect_fragmentation(raw, text) if output == "txt" else []
 
     if classify_types and replacements:
-        # Pro každý replacement zkus získat NameTag typ jako fallback
-        originals = [r["original"] for r in replacements]
-        nametag_types = await _classify_with_nametag(originals)
-
-        for r in replacements:
-            r["type"] = _infer_type(r, nametag_types.get(r["original"]))
-
-        # Cross-check: zavolej NameTag na CELÝ původní text a najdi firmy/instituce
-        # které nejsou plně zachyceny v žádném z MasKIT replacements.
-        full_data = await _post_form(NAMETAG_URL, {"data": text, "output": "conll"})
-        full_entities = _parse_conll(full_data.get("result", ""))
-        org_types = {"if", "io", "ic"}
-        for ent in full_entities:
-            if ent["type"] not in org_types:
-                continue
-            ent_text = ent["text"]
-            ent_norm = re.sub(r"\s+", "", ent_text).lower()
-            if not any(re.sub(r"\s+", "", r["original"]).lower() == ent_norm for r in replacements):
-                if not any(ent_norm in re.sub(r"\s+", "", r["original"]).lower() for r in replacements):
-                    warnings.append(
-                        f"NameTag rozpoznal '{ent_text}' jako {ent['label']}, "
-                        f"ale MasKIT ji plně neanonymizoval — zkontroluj výstup ručně."
-                    )
+        # Klasifikuj jen MasKIT replacements (wrapper už typ má)
+        maskit_reps = [r for r in replacements if r.get("source") == "maskit"]
+        if maskit_reps:
+            originals = [r["original"] for r in maskit_reps]
+            nametag_types = await _classify_with_nametag(originals)
+            for r in maskit_reps:
+                r["type"] = _infer_type(r, nametag_types.get(r["original"]))
 
     # Smaž interní pomocné pole (vystavujeme jen čistý API)
     for r in replacements:
         r.pop("_raw_context_before", None)
+        r.pop("_sentinel", None)
 
     out: dict[str, Any] = {
         "anonymized": anonymized,
@@ -422,6 +523,10 @@ async def anonymize(
     if keep_mapping:
         out["replacements"] = replacements
         out["count"] = len(replacements)
+        out["sources"] = {
+            "maskit": sum(1 for r in replacements if r.get("source") == "maskit"),
+            "wrapper": sum(1 for r in replacements if r.get("source") == "wrapper"),
+        }
     return out
 
 

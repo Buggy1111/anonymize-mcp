@@ -85,6 +85,7 @@ Wrapper sám funguje deterministicky, ale upstream API mají několik dokumentov
 | **Soudci se neanonymizují** | MasKIT záměrný whitelist | By-design — pokud potřebuješ anonymizovat soudce, použij `extract_entities` + manuální post-processing |
 | **Slovenské tvary** (`"Príkladovej"`, `"súd"`, `"sa"`) — nižší přesnost než čeština | NameTag i UDPipe trénované primárně na CZ | Funguje, ale očekávej občasné chyby morfologie a NER |
 | **Generické placeholdery v MasKIT** (`"FABBR1"`, `"IABBR1"`) bez typu entity | MasKIT API | Tool `anonymize` má `classify_types=True` (default) — **100 % náhrad** klasifikováno čtyřvrstvým fallbackem (placeholder pattern → pre-context → NameTag → fallback dle obsahu) |
+| **MasKIT systematicky neanonymizuje názvy státních institucí** (Nejvyšší soud, Ústavní soud, ministerstva, soudy obecně) | MasKIT design | `anonymize` má `strict=True` (default) — pre-pass přes NameTag najde firmy/úřady/instituce v originálu a sám je nahradí placeholdery `FIRMA1`, `INSTITUCE1`, … **ještě před** voláním MasKIT |
 | **Slovenský text** v UDPipe morfologii | NameTag nemá SK model, UDPipe ano | `analyze_morphology` má `model="auto"` (default) — auto-detect SK podle markerů (`som`, `vďaka`, `súd`, `ktorá`, `vo`…) a přepne na slovenský UDPipe model |
 | **NER nepokrývá**: ID karty, řidičáky, pasy, čísla účtů, datovky, spisové značky | MasKIT roadmap (future updates) | Tyto údaje dohledat ručně před odesláním do veřejného sdílení |
 
