@@ -74,6 +74,21 @@ V Claude Code stačí napsat například:
 - ÚFAL loguje: čas, velikost dat, konfigurace serveru, IP. **Obsah neloguje** (přes POST).
 - Pro plně privátní variantu lze rozšířit o lokální self-host (UDPipe + NameTag mají modely ke stažení).
 
+## Známé limitace
+
+Wrapper sám funguje deterministicky, ale upstream API mají několik dokumentovaných nedostatků. Pro každý je v této verzi přidaná detekce / warning:
+
+| Limitace | Příčina | Co s tím |
+|----------|---------|----------|
+| **Fragmentace názvů firem** (`"ZR Trade s.r.o."` → MasKIT zachytí jen `"ZR"` a `"s.r.o."`, slovo `"Trade"` zůstane neanonymizované) | MasKIT tokenizace | `anonymize` vrací `warnings` — NameTag cross-check najde celou entitu a upozorní, že MasKIT nepokryl celý název |
+| **Římské číslice v názvech soudů** (`"MS Bratislava II"` → `"II"` není anonymizováno) | MasKIT regex pattern | Detekováno warningem (viz výše) |
+| **Soudci se neanonymizují** | MasKIT záměrný whitelist | By-design — pokud potřebuješ anonymizovat soudce, použij `extract_entities` + manuální post-processing |
+| **Slovenské tvary** (`"Príkladovej"`, `"súd"`, `"sa"`) — nižší přesnost než čeština | NameTag i UDPipe trénované primárně na CZ | Funguje, ale očekávej občasné chyby morfologie a NER |
+| **Generické placeholdery v MasKIT** (`"FABBR1"`, `"IABBR1"`) bez typu entity | MasKIT API | Tool `anonymize` má `classify_types=True` (default) — pomocí NameTag doplní `type` field do každého replacementu |
+| **NER nepokrývá**: ID karty, řidičáky, pasy, čísla účtů, datovky, spisové značky | MasKIT roadmap (future updates) | Tyto údaje dohledat ručně před odesláním do veřejného sdílení |
+
+**Pro citlivá data**: vždy zkontroluj `warnings` v odpovědi `anonymize` a anonymizovaný výstup ručně před zveřejněním. Wrapper je nástroj na první průchod, ne náhrada za lidskou kontrolu.
+
 ## Použité API
 
 - `POST https://lindat.mff.cuni.cz/services/nametag/api/recognize`

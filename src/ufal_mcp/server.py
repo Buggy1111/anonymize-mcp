@@ -119,8 +119,29 @@ def _parse_conll(conll: str) -> list[dict[str, Any]]:
     if current:
         entities.append(current)
     for ent in entities:
-        ent["text"] = " ".join(ent["tokens"])
+        ent["text"] = _smart_join(ent["tokens"])
     return entities
+
+
+# Tokeny které se nelepí mezerou *před* (následují bez mezery)
+_NO_SPACE_BEFORE = frozenset({".", ",", ";", ":", "!", "?", ")", "]", "}", "%", "/"})
+# Tokeny po kterých nesmí být mezera (následující token bez mezery)
+_NO_SPACE_AFTER = frozenset({"(", "[", "{", "/"})
+
+
+def _smart_join(tokens: list[str]) -> str:
+    """Slepí tokeny s rozumným spacing — bez mezer před interpunkcí."""
+    if not tokens:
+        return ""
+    parts = [tokens[0]]
+    for i in range(1, len(tokens)):
+        tok = tokens[i]
+        prev = tokens[i - 1]
+        if tok in _NO_SPACE_BEFORE or prev in _NO_SPACE_AFTER:
+            parts.append(tok)
+        else:
+            parts.append(" " + tok)
+    return "".join(parts)
 
 
 @mcp.tool()
@@ -167,11 +188,80 @@ def _parse_maskit(result: str) -> tuple[str, list[dict[str, str]]]:
     return "".join(anonymized_parts), replacements
 
 
+async def _classify_with_nametag(originals: list[str]) -> dict[str, str]:
+    """Pro každý originál se zeptej NameTag na typ entity (osoba/firma/instituce…)."""
+    if not originals:
+        return {}
+    # Joinujeme do jednoho requestu oddělené tečkou — šetří round-tripy
+    sep = "\n"
+    joined = sep.join(originals)
+    data = await _post_form(NAMETAG_URL, {"data": joined, "output": "conll"})
+    entities = _parse_conll(data.get("result", ""))
+    # Mapuj typy podle nejlepší shody textu
+    mapping: dict[str, str] = {}
+    for orig in originals:
+        norm_orig = re.sub(r"\s+", " ", orig).strip().lower()
+        best: str | None = None
+        for ent in entities:
+            if re.sub(r"\s+", " ", ent["text"]).strip().lower() in norm_orig or norm_orig in re.sub(r"\s+", " ", ent["text"]).strip().lower():
+                best = ent["label"]
+                break
+        if best:
+            mapping[orig] = best
+    return mapping
+
+
+# Český business-form suffix uvnitř MasKIT placeholderu (může indikovat fragmentaci)
+_BUSINESS_SUFFIX_RE = re.compile(
+    r"\b(s\.\s*r\.\s*o|sr\.o|a\.\s*s|spol|k\.\s*s|v\.\s*o\.\s*s|z\.\s*s|o\.\s*p\.\s*s)\b",
+    re.IGNORECASE,
+)
+# Placeholder typu firma/instituce/atd. následovaný slovem bez mezery → fragment zůstal venku
+_FRAGMENT_AFTER_PLACEHOLDER_RE = re.compile(
+    r"\b([FIA]ABBR\d+)([A-Za-zÁ-ž]+)",
+)
+
+
+def _detect_fragmentation(raw: str, original_text: str) -> list[str]:
+    """Detekuje známé MasKIT problémy v anonymizaci.
+
+    1. Business suffix (s.r.o./a.s./spol.) byl v originále, ale skončil uvnitř
+       placeholderu nebo zůstal nepokrytý → název firmy fragmentován.
+    2. Placeholder typu FABBR/IABBR/AABBR slepený se slovem bez mezery → část
+       firmy/instituce zůstala venku.
+    """
+    warnings: list[str] = []
+
+    # (2) Placeholder + slovo bez mezery
+    for m in _FRAGMENT_AFTER_PLACEHOLDER_RE.finditer(raw):
+        warnings.append(
+            f"Pravděpodobná fragmentace: placeholder '{m.group(1)}' "
+            f"je slepený se slovem '{m.group(2)}' — část názvu firmy/instituce "
+            f"zůstala neanonymizovaná."
+        )
+
+    # (1) Business suffix se přesunul ven z [...] (porovnáme original vs raw)
+    orig_suffixes = {m.group(0).lower().replace(" ", "") for m in _BUSINESS_SUFFIX_RE.finditer(original_text)}
+    if orig_suffixes:
+        # Vytáhni text mimo placeholdery z raw výstupu
+        outside = re.sub(r"_\[[^\]]+\]", "", raw)
+        outside_suffixes = {m.group(0).lower().replace(" ", "") for m in _BUSINESS_SUFFIX_RE.finditer(outside)}
+        leftover = orig_suffixes & outside_suffixes
+        if leftover:
+            warnings.append(
+                f"Business suffixy zůstaly nepokryté anonymizací: {sorted(leftover)} — "
+                f"MasKIT pravděpodobně neidentifikoval celý název právnické osoby."
+            )
+
+    return warnings
+
+
 @mcp.tool()
 async def anonymize(
     text: str,
     output: Literal["txt", "html", "conllu"] = "txt",
     keep_mapping: bool = True,
+    classify_types: bool = True,
 ) -> dict[str, Any]:
     """Pseudonymizuje osobní údaje v českém právním textu pomocí MasKIT.
 
@@ -184,14 +274,18 @@ async def anonymize(
         output: Formát výstupu — ``txt`` (default), ``html``, ``conllu``.
         keep_mapping: Když True, vrátí mapping originál → placeholder. **POZOR**:
             pokud má text dál opustit důvěrné prostředí, mapping vypni!
+        classify_types: Pro každý replacement zavolá NameTag a doplní typ entity
+            (osoba/firma/instituce/datum/…). Pomáhá pochopit *co* bylo anonymizováno.
+            Default ``True``. Vyžaduje druhý API request — vypni pro rychlost.
 
     Returns:
         ``anonymized`` (čistý text bez placeholderů),
-        ``raw`` (raw MasKIT výstup s `placeholder_[original]`),
-        ``replacements`` (list mappings, jen když ``keep_mapping=True``).
+        ``raw`` (raw MasKIT výstup s ``placeholder_[original]``),
+        ``replacements`` (list mappings včetně ``type`` když ``classify_types=True``),
+        ``warnings`` (detekované známé limitace — např. fragmentované firmy).
     """
     if not text.strip():
-        return {"anonymized": "", "raw": "", "replacements": []}
+        return {"anonymized": "", "raw": "", "replacements": [], "warnings": []}
     data = await _post_form(
         MASKIT_URL,
         {"text": text, "input": "txt", "output": output},
@@ -201,7 +295,37 @@ async def anonymize(
         anonymized, replacements = _parse_maskit(raw)
     else:
         anonymized, replacements = raw, []
-    out: dict[str, Any] = {"anonymized": anonymized, "raw": raw}
+    warnings = _detect_fragmentation(raw, text) if output == "txt" else []
+
+    if classify_types and replacements:
+        originals = [r["original"] for r in replacements]
+        types = await _classify_with_nametag(originals)
+        for r in replacements:
+            if (typ := types.get(r["original"])):
+                r["type"] = typ
+
+        # Druhá detekce: zavolej NameTag na CELÝ původní text a najdi firmy/instituce
+        # které nejsou plně zachyceny v žádném z MasKIT replacements.
+        full_data = await _post_form(NAMETAG_URL, {"data": text, "output": "conll"})
+        full_entities = _parse_conll(full_data.get("result", ""))
+        org_types = {"if", "io", "ic"}
+        for ent in full_entities:
+            if ent["type"] not in org_types:
+                continue
+            ent_text = ent["text"]
+            ent_norm = re.sub(r"\s+", "", ent_text).lower()
+            if not any(re.sub(r"\s+", "", r["original"]).lower() == ent_norm for r in replacements):
+                if not any(ent_norm in re.sub(r"\s+", "", r["original"]).lower() for r in replacements):
+                    warnings.append(
+                        f"NameTag rozpoznal '{ent_text}' jako {ent['label']}, "
+                        f"ale MasKIT ji plně neanonymizoval — zkontroluj výstup ručně."
+                    )
+
+    out: dict[str, Any] = {
+        "anonymized": anonymized,
+        "raw": raw,
+        "warnings": warnings,
+    }
     if keep_mapping:
         out["replacements"] = replacements
         out["count"] = len(replacements)
