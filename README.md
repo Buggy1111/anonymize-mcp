@@ -32,24 +32,62 @@ cd ufal-mcp
 pip install -e .
 ```
 
-## Registrace v Claude Code
+## Registrace v MCP klientovi
 
-```bash
-claude mcp add ufal -s user -- ufal-mcp
-```
-
-Pokud máš binárku v jiném venv:
-
-```bash
-claude mcp add ufal -s user -- /cesta/k/.venv/bin/ufal-mcp
-```
-
-Poté Claude Code restartuj — nástroje budou dostupné jako:
+ufal-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport) — funguje s libovolným MCP klientem. Po registraci a restartu klienta máš k dispozici 4 nástroje:
 
 - `mcp__ufal__anonymize`
 - `mcp__ufal__extract_entities`
 - `mcp__ufal__analyze_morphology`
 - `mcp__ufal__check_readability`
+
+### Claude Code (terminál)
+
+```bash
+claude mcp add ufal -s user -- ufal-mcp
+```
+
+### Claude Desktop (Mac/Windows)
+
+Edituj `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
+nebo `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "ufal": {
+      "command": "ufal-mcp"
+    }
+  }
+}
+```
+
+### OpenAI Codex CLI
+
+Edituj `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.ufal]
+command = "ufal-mcp"
+```
+
+### Cursor
+
+Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ufal": {
+      "command": "ufal-mcp"
+    }
+  }
+}
+```
+
+### Windsurf, Cline, Zed, VS Code Copilot Agent
+
+Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "ufal-mcp"` (případně absolutní cesta `~/path/to/.venv/bin/ufal-mcp` pokud nemáš `ufal-mcp` v PATH).
 
 ## Použití
 
