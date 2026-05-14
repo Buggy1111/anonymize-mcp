@@ -1,8 +1,9 @@
-"""ÚFAL MCP server — anonymizace, NER a čitelnost českých právních textů.
+"""ÚFAL MCP server — anonymizace, NER, morfologie a čitelnost českých právních textů.
 
-Wrappuje 3 REST API:
+Wrappuje 4 REST API:
 - MasKIT  — pseudonymizace osobních údajů
 - NameTag — Czech NER
+- UDPipe  — tokenizace, lemmatizace, POS tagging, dependency parse
 - PONK    — analýza čitelnosti
 
 Modely jsou pod CC BY-NC-SA, takže výsledky **nesmí být použity komerčně**
@@ -20,6 +21,7 @@ from mcp.server.fastmcp import FastMCP
 MASKIT_URL = "https://quest.ms.mff.cuni.cz/maskit/api/process"
 NAMETAG_URL = "https://lindat.mff.cuni.cz/services/nametag/api/recognize"
 PONK_URL = "https://quest.ms.mff.cuni.cz/ponk/api/process"
+UDPIPE_URL = "https://lindat.mff.cuni.cz/services/udpipe/api/process"
 
 HTTP_TIMEOUT = 60.0
 
@@ -209,18 +211,49 @@ async def anonymize(
 # ---------- PONK ------------------------------------------------------------
 
 
-_PONK_STATS_RE = re.compile(
-    r"<th[^>]*>([^<]+)</th>\s*<td[^>]*>([^<]+)</td>",
+_PONK_METRIC_RE = re.compile(
+    r'<span[^>]*data-tooltip="([^"]+)"[^>]*>\s*-\s*([^:<]+):\s*([^<]+)</span>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PONK_COUNTS_RE = re.compile(
+    r"number of sentences:\s*(\d+),\s*tokens:\s*(\d+)",
     re.IGNORECASE,
 )
+_PONK_VERSION_RE = re.compile(r"PONK\s*<span[^>]*>([^<]+)</span>", re.IGNORECASE)
+_PONK_TIME_RE = re.compile(r"Processing time:\s*([\d.]+)\s*s", re.IGNORECASE)
 
 
-def _parse_ponk_stats(stats_html: str) -> dict[str, str]:
-    """Z PONK stats HTML vytáhne dvojice metrika→hodnota."""
-    result: dict[str, str] = {}
-    for label, value in _PONK_STATS_RE.findall(stats_html):
-        result[label.strip()] = value.strip()
-    return result
+def _clean(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _parse_ponk_stats(stats_html: str) -> dict[str, Any]:
+    """Z PONK stats HTML vytáhne metriky čitelnosti, counts a verzi.
+
+    Vrací: ``metrics`` (label → {value, tooltip}), ``counts`` (sentences, tokens),
+    ``processing_time_s``, ``version``.
+    """
+    metrics: dict[str, dict[str, str]] = {}
+    for tooltip, label, value in _PONK_METRIC_RE.findall(stats_html):
+        metrics[_clean(label)] = {
+            "value": _clean(value),
+            "tooltip": _clean(tooltip.replace("<br>", " ").replace("<br/>", " ")),
+        }
+    counts: dict[str, int] = {}
+    if (m := _PONK_COUNTS_RE.search(stats_html)):
+        counts = {"sentences": int(m.group(1)), "tokens": int(m.group(2))}
+    version = None
+    if (m := _PONK_VERSION_RE.search(stats_html)):
+        version = _clean(m.group(1))
+    processing_time_s = None
+    if (m := _PONK_TIME_RE.search(stats_html)):
+        processing_time_s = float(m.group(1))
+    return {
+        "metrics": metrics,
+        "counts": counts,
+        "processing_time_s": processing_time_s,
+        "version": version,
+    }
 
 
 @mcp.tool()
@@ -249,10 +282,109 @@ async def check_readability(
         PONK_URL,
         {"text": text, "input": input_format, "output": "html"},
     )
+    parsed = _parse_ponk_stats(data.get("stats", ""))
     return {
         "highlighted_html": data.get("result", ""),
-        "stats": _parse_ponk_stats(data.get("stats", "")),
-        "version": data.get("model"),
+        "metrics": parsed["metrics"],
+        "counts": parsed["counts"],
+        "processing_time_s": parsed["processing_time_s"],
+        "version": parsed["version"],
+    }
+
+
+# ---------- UDPipe ----------------------------------------------------------
+
+
+def _parse_conllu(conllu: str) -> list[list[dict[str, Any]]]:
+    """Parsuje CoNLL-U výstup UDPipe na seznam vět, kde každá věta = list tokenů."""
+    sentences: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    for raw in conllu.splitlines():
+        line = raw.rstrip()
+        if not line:
+            if current:
+                sentences.append(current)
+                current = []
+            continue
+        if line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 10:
+            continue
+        # přeskoč multi-word tokens (1-2) a empty nodes (1.1)
+        if "-" in parts[0] or "." in parts[0]:
+            continue
+        feats = {}
+        if parts[5] != "_":
+            for kv in parts[5].split("|"):
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    feats[k] = v
+        current.append({
+            "id": int(parts[0]),
+            "form": parts[1],
+            "lemma": parts[2],
+            "upos": parts[3],
+            "xpos": parts[4] if parts[4] != "_" else None,
+            "feats": feats,
+            "head": int(parts[6]) if parts[6] != "_" else None,
+            "deprel": parts[7] if parts[7] != "_" else None,
+        })
+    if current:
+        sentences.append(current)
+    return sentences
+
+
+@mcp.tool()
+async def analyze_morphology(
+    text: str,
+    model: str = "czech",
+    include_parse: bool = False,
+) -> dict[str, Any]:
+    """Tokenizuje, lemmatizuje a označuje slovní druhy pomocí UDPipe 2.
+
+    Pro každý token vrací **lemma** (základní tvar), **UPOS** (universal POS tag),
+    **morphological features** (pád, rod, číslo, čas...) a volitelně závislostní
+    parse (head + deprel).
+
+    Hodí se pro:
+    - Fulltextové vyhledávání v právních textech (lemma "soud" matchuje "soudu/soudem/soudy")
+    - Filtrování podle slovních druhů (jen substantiva, jen verba)
+    - Detekce pasivních konstrukcí (Voice=Pass)
+
+    Args:
+        text: Vstupní text. Optimalizováno pro češtinu.
+        model: UDPipe model alias (default ``czech``) — viz lindat.mff.cuni.cz/services/udpipe.
+        include_parse: True = vrátí závislostní parse (head, deprel) pro každý token.
+
+    Returns:
+        ``sentences`` (list vět = list tokenů), ``model`` (skutečně použitý model),
+        ``token_count``, ``sentence_count``.
+    """
+    if not text.strip():
+        return {"sentences": [], "model": None, "token_count": 0, "sentence_count": 0}
+    data = await _post_form(
+        UDPIPE_URL,
+        {
+            "data": text,
+            "model": model,
+            "tokenizer": "",
+            "tagger": "",
+            "parser": "" if include_parse else "none",
+            "output": "conllu",
+        },
+    )
+    sentences = _parse_conllu(data.get("result", ""))
+    if not include_parse:
+        for sent in sentences:
+            for tok in sent:
+                tok.pop("head", None)
+                tok.pop("deprel", None)
+    return {
+        "sentences": sentences,
+        "model": data.get("model"),
+        "sentence_count": len(sentences),
+        "token_count": sum(len(s) for s in sentences),
     }
 
 

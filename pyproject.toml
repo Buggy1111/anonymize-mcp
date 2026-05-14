@@ -1,15 +1,41 @@
 [project]
 name = "ufal-mcp"
-version = "0.1.0"
-description = "MCP server pro ÚFAL MFF UK NLP nástroje pro česká právní data (NameTag, MasKIT, PONK)"
+version = "0.2.0"
+description = "MCP server pro ÚFAL MFF UK NLP nástroje (NameTag, MasKIT, UDPipe, PONK) — česká právní AI"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Michal Bürgermeister", email = "michalbugy12@gmail.com" }]
 license = { text = "MIT" }
+keywords = [
+    "mcp", "model-context-protocol", "claude", "anthropic",
+    "czech", "nlp", "ner", "anonymization", "legal-tech", "ufal",
+    "nametag", "udpipe", "maskit", "ponk",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Legal Industry",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Czech",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
 dependencies = [
     "mcp>=1.2.0",
     "httpx>=0.27.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Buggy1111/ufal-mcp"
+Repository = "https://github.com/Buggy1111/ufal-mcp"
+Issues = "https://github.com/Buggy1111/ufal-mcp/issues"
+"ÚFAL MFF UK" = "https://ufal.mff.cuni.cz/"
 
 [project.scripts]
 ufal-mcp = "ufal_mcp.server:main"
@@ -20,3 +46,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ufal_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
