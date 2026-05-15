@@ -47,7 +47,9 @@ ufal-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio tra
 claude mcp add ufal -s user -- ufal-mcp
 ```
 
-### Claude Desktop (Mac/Windows)
+### Claude Desktop
+
+**Starší Claude Desktop** (Mac `.app` z anthropic.com, Windows `.exe` installer):
 
 Edituj `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac)
 nebo `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
@@ -62,7 +64,11 @@ nebo `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 }
 ```
 
-### OpenAI Codex CLI
+**Nová Claude Desktop** (Microsoft Store / appx package, "Cowork" UI): k 05/2026 podporuje pouze **remote MCP servery přes HTTP URL** (Settings → Connectors → Add custom connector). Lokální stdio MCP servery jako `ufal-mcp` zde **přidat nelze**. Workaround: použít Claude Code CLI nebo počkat, až Anthropic přidá stdio podporu i do nového UI.
+
+> Na Windows může být `ufal-mcp.exe` mimo PATH (typicky `C:\Python\Python3xx\Scripts\ufal-mcp.exe` nebo `%APPDATA%\Python\Python3xx\Scripts\ufal-mcp.exe`). V configu pak místo `"command": "ufal-mcp"` použij plnou cestu.
+
+### OpenAI Codex CLI _(struktura dle Codex docs, autorem netestováno)_
 
 Edituj `~/.codex/config.toml`:
 
@@ -71,7 +77,7 @@ Edituj `~/.codex/config.toml`:
 command = "ufal-mcp"
 ```
 
-### Cursor
+### Cursor _(autorem netestováno)_
 
 Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 
@@ -85,9 +91,11 @@ Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 }
 ```
 
-### Windsurf, Cline, Zed, VS Code Copilot Agent
+### Windsurf, Cline, Zed, VS Code Copilot Agent _(autorem netestováno)_
 
 Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "ufal-mcp"` (případně absolutní cesta `~/path/to/.venv/bin/ufal-mcp` pokud nemáš `ufal-mcp` v PATH).
+
+> Otestováno autorem: Claude Code (Linux/WSL2), Claude Desktop MS Store na Windows (neuspěšně — viz výše). Ostatní klienti používají standardní MCP stdio + JSON config, takže by teoreticky měli fungovat, ale nedostalo se to k otestování. Pull request s potvrzením vítaný.
 
 ## Použití
 
@@ -103,14 +111,28 @@ V Claude Code stačí napsat například:
 
 ## Licence
 
-- **Kód**: MIT
-- **Modely (přes API)**: CC BY-NC-SA — **NEKOMERČNÍ použití**. Pro placené nasazení potřebuješ explicitní písemné svolení autorů (Jana Straková, Milan Straka).
+Tento wrapper `ufal-mcp` má **MIT licenci** (viz `LICENSE`).
+
+Pod ním jsou ale čtyři samostatné ÚFAL nástroje, každý s vlastní licencí. Pro úplný obrázek:
+
+| Komponenta | Autoři | Licence software | Licence modelů |
+|------------|--------|------------------|----------------|
+| **NameTag 3** | Jana Straková, Milan Straka | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
+| **UDPipe** | Milan Straka, Jana Straková | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
+| **MasKIT** | Jiří Mírovský, Barbora Hladká | MPL 2.0 (commercial OK) | (rule-based, není separátní model) |
+| **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká | MPL 2.0 (commercial OK) | (rule-based + UDPipe pro tokenizaci → viz CC BY-NC-SA výše) |
+
+**Důležité**: tento wrapper nevolá lokální instalaci ÚFAL nástrojů, ale jejich **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Na použití API se vztahují podmínky LINDAT/CLARIAH-CZ a ÚFAL — krátce: bezplatné pro akademické a osobní použití, hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
+
+Pro placené (komerční) nasazení nebo vyšší zátěž doporučuji:
+1. Kontaktovat příslušné autory (viz tabulka výše) a `ufal@ufal.mff.cuni.cz`
+2. Zvážit **lokální self-host** (NameTag i UDPipe mají modely ke stažení) — pak se na tebe licence modelů (CC BY-NC-SA) vztahují přímo a víš přesně, co ti loguje co.
 
 ## Bezpečnost
 
-- **Vše posíláš na externí server ÚFAL** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`)
-- ÚFAL loguje: čas, velikost dat, konfigurace serveru, IP. **Obsah neloguje** (přes POST).
-- Pro plně privátní variantu lze rozšířit o lokální self-host (UDPipe + NameTag mají modely ke stažení).
+- **Vše posíláš na externí server ÚFAL** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`). Tento wrapper to nijak nešifruje ani neanonymizuje *před* odesláním — kromě toho, co dělá `anonymize` tool, pokud ho voláš.
+- Provoz typického HTTPS access logu na ÚFAL straně standardně eviduje minimálně čas, IP, velikost požadavku a konfigurační parametry. **K explicitnímu vyjádření ÚFAL ohledně loggingu obsahu POST body autor zatím nedohledal písemný zdroj** — chovej se proto, jako že obsah teoreticky logovat může, a před odesláním citlivých dat **nejdřív** projeď text přes `anonymize`.
+- Pro plně privátní zpracování doporučuji **lokální self-host**: NameTag i UDPipe mají modely ke stažení (CC BY-NC-SA → osobní/akademické použití OK), MasKIT a PONK mají MPL 2.0 source. Tento wrapper se zatím připojuje **jen** k veřejnému ÚFAL API; lokální backend není podporovaný (může přibýt v budoucnu).
 
 ## Známé limitace
 
