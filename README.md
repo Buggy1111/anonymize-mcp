@@ -120,7 +120,7 @@ Pod ním jsou ale čtyři samostatné ÚFAL nástroje, každý s vlastní licenc
 | **NameTag 3** | Jana Straková, Milan Straka | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
 | **UDPipe** | Milan Straka, Jana Straková | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
 | **MasKIT** | Jiří Mírovský, Barbora Hladká | MPL 2.0 (commercial OK) | (rule-based, není separátní model) |
-| **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká | MPL 2.0 (commercial OK) | (rule-based + UDPipe pro tokenizaci → viz CC BY-NC-SA výše) |
+| **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká + autoři podaplikací: Ivan Kraus, Arnold Stanovský, Jan Černý, Ivana Kvapilíková, Tomáš Polák, Silvie Cinková | MPL 2.0 (commercial OK) | (rule-based + UDPipe pro tokenizaci → viz CC BY-NC-SA výše) |
 
 **Důležité**: tento wrapper nevolá lokální instalaci ÚFAL nástrojů, ale jejich **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Na použití API se vztahují podmínky LINDAT/CLARIAH-CZ a ÚFAL — krátce: bezplatné pro akademické a osobní použití, hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
 
