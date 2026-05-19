@@ -1,4 +1,10 @@
-"""PONK — analýza čitelnosti českých právních textů."""
+"""PONK — analýza čitelnosti českých právních textů.
+
+PONK je dílo ÚFAL MFF UK. Autoři:
+- Jiří Mírovský, Silvie Cinková, Barbora Hladká
+- Autoři podaplikací: Ivan Kraus, Arnold Stanovský, Jan Černý,
+  Ivana Kvapilíková, Tomáš Polák, Silvie Cinková
+"""
 
 from __future__ import annotations
 
