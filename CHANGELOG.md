@@ -2,6 +2,55 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.3] — 2026-05-20
+
+### Real-world Jiříkův SK dokument odhalil 3 buggy
+
+Po prvním reálném testu na 1 stránce SK textu (Andrea Príkladová → Mestský súd Bratislava II) jsme našli 3 bugs v langdetect + jeden architekturní insight.
+
+### Opraveno
+
+**1) Vietnamština false positive na SK textech**
+- `_VIETNAMESE_CHARS` regex obsahoval `ô` (U+00F4) jako VI signál
+- ALE `ô` se používá i v slovenštině (`môj`, `môže`, `môjho`)
+- Fix: `_VIETNAMESE_CHARS` nyní jen jednoznačně VI chars (`ư/ơ/đ` + složeniny `ễ/ử/ự/ợ/ờ/ằ/ặ/ề`), NE `ô/â/ă/ê/ố`
+
+**2) Slovenian false positive na SK textech**
+- `_SLOVENIAN_HINT` měl hard-coded early return s `je|so|si|ki` — common Slavic
+- SK text "moja dcéra" + "som" + "si" matchovalo SL hint, vrátilo "slovenian"
+- Fix: odebrán `_SLOVENIAN_HINT` early return, SL pattern přepsán na distinktivní (`jaz/moj/Ljubljan/slovensk`)
+
+**3) Croatian/Serbian/Lithuanian/Portuguese false positives**
+- HR pattern obsahoval `je|sa|na|za` = velmi common Slavic, generoval 50+ score na SK textech
+- SR podobně s `je`
+- LT obsahoval `ne` — taky common
+- Fix: všechny tyto patterny přepsány na distinktivní slova (Zagreb/hrvatsk, Beograd/srpsk, Vilni/lietuv, …)
+
+### Architekturní insight
+
+**Pro CZ-mutual-intelligible jazyky (slovak) preferuj CZ CNEC nad multilingvální UNER**:
+- Test na Jiříkově SK textu: UNER multilingvální našel **4 entity**, CZ CNEC našel **24 entit**
+- SK je tak blízká češtině, že CNEC 2.0 (bohatý CZ tagset) ji zpracuje lépe než generic UNER
+- Změna v `nametag.resolve_model()`: když detect=slovak, použij CZ CNEC místo UNER
+- Stejně tak: detected_language vrací informativní `"slovak (using cz-cnec for better coverage)"`
+
+### Test results
+
+| Test | v0.7.2 | **v0.7.3** |
+|------|--------|------------|
+| Jiříkův SK dokument — detect | ❌ slovenian | ✅ slovak |
+| Jiříkův SK dokument — NER entit | 4 (UNER) | **24 (CZ CNEC)** |
+| 35-language regression | 100% | **100%** |
+| SK regression (Mestský súd…) | ✓ slovak | ✓ slovak |
+
+### Reálná data ze stress testu
+
+Vstup: vyjadrenie matky Andrei Príkladové → Mestský súd Bratislava II, sp. zn. 11Pc/99/2030, 2.3 KB SK text.
+
+NameTag entit (24 celkem): Andrea Príkladová, Vzorová 13, 82105 Bratislava, Mestský súd, II, Drieňová 5, 827 02, 25.03.2026, Bratislava (5×), Alexandra, CIPC (2×), ČR, atd.
+
+Anonymize v `placeholder_mode=True`: 11 wrapper-placeholder + 2 wrapper-strict + 1 wrapper-regex = 14 náhrad.
+
 ## [0.7.2] — 2026-05-20
 
 ### Robustness patch — production-grade safety net

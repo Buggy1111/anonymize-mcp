@@ -159,11 +159,23 @@ def detect_non_czech(text: str) -> bool:
 
 
 def resolve_model(model: str, text: str) -> tuple[str, str | None]:
-    """Přeloží `model` na konkrétní jméno + vrátí detekovaný jazyk pro auto."""
+    """Přeloží `model` na konkrétní jméno + vrátí detekovaný jazyk pro auto.
+
+    Pro CZ-podobné jazyky (slovak) preferujeme CZ CNEC 2.0 nad multilingvální UNER —
+    UNER je obecný, CNEC zná český + mutual-intelligible slovenský bohatý tagset
+    s víc entity typy. Reálný test (Jiříkův SK dokument): CNEC 24 entit vs UNER 4.
+    """
     if model == "auto":
-        if detect_non_czech(text):
-            return DEFAULT_MULTILINGUAL_MODEL, "non-czech"
-        return DEFAULT_CZ_MODEL, "czech"
+        # Použij sjednocenou detect_language pro lepší rozlišení (ne jen binární)
+        from .langdetect import detect_language
+        lang = detect_language(text)
+        if lang == "czech":
+            return DEFAULT_CZ_MODEL, "czech"
+        # SK je mutual-intelligible s CZ — CNEC 2.0 dává víc entit než UNER
+        if lang == "slovak":
+            return DEFAULT_CZ_MODEL, "slovak (using cz-cnec for better coverage)"
+        # Ostatní jazyky → multilingvální UNER
+        return DEFAULT_MULTILINGUAL_MODEL, lang
     if model in MODEL_ALIASES:
         return MODEL_ALIASES[model], None
     # raw model name (e.g. "nametag3-multilingual-uner-250203")
