@@ -1,11 +1,12 @@
-"""ÚFAL MCP server — multilingvální NER, anonymizace, morfologie, čitelnost a korektura.
+"""ÚFAL MCP server — multilingvální NER, anonymizace, překlad, morfologie, čitelnost a korektura.
 
-Wrappuje 5 REST API:
-- **NameTag 3** — NER pro CZ (bohatý CNEC 2.0 tagset) + 30+ dalších jazyků (UNER)
-- **MasKIT**   — pseudonymizace osobních údajů (CZ právní texty)
-- **UDPipe 2** — tokenizace, lemmatizace, POS tagging, dependency parse (CZ + SK + ~100 jazyků UD)
-- **PONK**     — analýza čitelnosti CZ textu
-- **Korektor** — CZ spell checker + auto-doplnění diakritiky
+Wrappuje 6 REST API:
+- **NameTag 3**        — NER pro CZ (bohatý CNEC 2.0 tagset) + 30+ dalších jazyků (UNER)
+- **MasKIT**           — pseudonymizace osobních údajů (CZ právní texty)
+- **UDPipe 2**         — tokenizace, lemmatizace, POS tagging, dependency parse
+- **PONK**             — analýza čitelnosti CZ textu
+- **Korektor**         — CZ spell checker + auto-doplnění diakritiky
+- **Charles Translator** — překlad mezi 8 jazyky (CZ/EN/FR/DE/PL/RU/UK/HI), 17 párů včetně doc módu
 
 Modely jsou pod CC BY-NC-SA, takže výsledky **nesmí být použity komerčně**
 bez explicitního písemného svolení autorů.
@@ -21,6 +22,7 @@ from . import korektor as _korektor
 from . import maskit as _maskit
 from . import nametag as _nametag
 from . import ponk as _ponk
+from . import translator as _translator
 from . import udpipe as _udpipe
 
 mcp = FastMCP("ufal")
@@ -176,6 +178,49 @@ async def correct_text(
         ``corrected`` (upravený text), ``model``, ``mode``, ``changed`` (bool).
     """
     return await _korektor.correct(text, mode=mode)
+
+
+@mcp.tool()
+async def translate_text(
+    text: str,
+    src: str = "cs",
+    tgt: str = "en",
+    document_mode: bool = False,
+) -> dict[str, Any]:
+    """Přeloží text přes Charles Translator (LINDAT) — 8 jazyků, 17 párů.
+
+    Podporované jazyky: ``cs`` (čeština), ``en``, ``fr``, ``de``, ``pl``,
+    ``ru``, ``uk`` (ukrajinština), ``hi`` (hindština).
+
+    Klíčové páry pro legal-tech:
+    - ``cs-en`` / ``en-cs`` — anglické sumáře, mezinárodní komunikace
+    - ``doc-cs-en`` / ``doc-en-cs`` (s ``document_mode=True``) — celé dokumenty
+      se zachovanou strukturou odstavců
+    - ``cs-uk`` / ``uk-cs`` — ukrajinští klienti / legal aid pro UA migranty
+    - ``cs-ru`` / ``ru-cs`` — ruskojazyční klienti
+
+    Pozor: SK ↔ CZ pár v Charles Translatoru chybí. Pro česko-slovenský
+    use case spoléháme na mutual intelligibility (CZ a SK jsou si podobné),
+    nebo lze pivotovat přes EN (CZ→EN→SK přes jiný nástroj).
+
+    Charles Translator umí vlastní jména zachovat v originále — užitečné
+    pro legal: *"Jiří Vzorek podal žalobu u Krajského soudu v Ostravě."*
+    → *"Jiří Vzorek filed a lawsuit at the Krajský soud v Ostrava."*
+
+    Args:
+        text: Text k překladu (UTF-8).
+        src: Zdrojový jazyk (default ``cs``).
+        tgt: Cílový jazyk (default ``en``).
+        document_mode: True pro doc mode (cs↔en only). Zachová strukturu.
+
+    Returns:
+        ``translated`` (přeložený text), ``src``, ``tgt``, ``pair``
+        (skutečně použitý model name), ``document_mode``, ``input_chars``,
+        ``output_chars``.
+    """
+    return await _translator.translate(
+        text, src=src, tgt=tgt, document_mode=document_mode
+    )
 
 
 def main() -> None:

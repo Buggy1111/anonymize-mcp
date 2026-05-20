@@ -2,6 +2,37 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.5.0] — 2026-05-20
+
+### Přidáno
+
+- **Charles Translator integrace** — nový 6. tool `translate_text(text, src, tgt, document_mode)`. Wrapper kolem `POST https://lindat.mff.cuni.cz/services/translation/api/v2/models/{src-tgt}`.
+- **8 podporovaných jazyků**: cs, en, fr, de, pl, ru, uk, hi
+- **17 translation pairs**:
+  - CZ ↔ EN (+ `doc-cs-en`, `doc-en-cs` pro celé dokumenty)
+  - **CZ ↔ UK** — Ukraine legal aid use case (UA migranti v ČR)
+  - CZ ↔ RU
+  - EN ↔ FR, EN ↔ DE, EN ↔ RU, EN ↔ PL, EN → HI
+- **Document mode** zachová strukturu odstavců — vhodné pro README, korespondenci, celé spisy.
+- **Vlastní jména zůstávají v originále** — testovaný workflow: *"Jiří Vzorek podal žalobu u Krajského soudu v Ostravě"* → *"Jiří Vzorek filed the claim at the Krajský soud v Ostrava"*.
+- `post_form_text()` helper v `http.py` pro plain-text response (Translator nevrací JSON jako ostatní ÚFAL nástroje).
+
+### Záměrně neimplementováno
+
+- **CZ ↔ SK pár** — chybí v Charles Translatoru. Pro česko-slovenský use case spoléháme na mutual intelligibility (NameTag UNER multilingvální zvládne SK textbook, MasKIT je CZ-only, UDPipe má vlastní SK model).
+- **MorphoDiTa, Hyphenator, ASR, TTS** — záměrně nepřidány. Důvody:
+  - MorphoDiTa duplikuje UDPipe pro CZ
+  - Hyphenator drobnost (slabikování)
+  - ASR/TTS vyžadují audio handling = větší refactor, počká na konkrétní use case (záznam jednání)
+
+Zdůvodnění: scope creep risk. Aktuálních 6 tools pokrývá ~95 % legal-tech/community use cases. Ostatní nástroje ÚFAL zůstávají jako kandidáti až přijde konkrétní poptávka.
+
+### Test track record
+
+- 7 testů v `test_live.py` proti živým ÚFAL REST API, vše prošlo:
+  - 1-6 jako ve v0.4.0 (NER, anonymize, morphology, multilingual, korektor, PONK)
+  - 7. nový: `test_translator` — CZ→EN (Jiříkův case), UK→CZ (UA legal aid), doc mode CZ→EN (korespondence)
+
 ## [0.4.0] — 2026-05-20
 
 ### Přidáno
