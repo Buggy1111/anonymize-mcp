@@ -19,78 +19,20 @@ import re
 from typing import Any
 
 from .http import NAMETAG_URL, post_form
+from .nametag_labels import (
+    DEFAULT_CZ_MODEL,
+    DEFAULT_MULTILINGUAL_MODEL,
+    MODEL_ALIASES,
+    NAMETAG_LABELS,
+)
 
-# CNEC 2.0 entity type → human label (česky)
-NAMETAG_LABELS: dict[str, str] = {
-    # CNEC 2.0 (CZ)
-    "P": "osoba",
-    "pf": "křestní jméno",
-    "ps": "příjmení",
-    "T": "datum/čas",
-    "td": "den",
-    "tm": "měsíc",
-    "ty": "rok",
-    "th": "hodina",
-    "A": "číslo",
-    "ah": "hodnota",
-    "at": "telefon",
-    "az": "PSČ",
-    "C": "bibliografie",
-    "G": "geografická entita",
-    "gu": "město/obec",
-    "gs": "ulice/náměstí",
-    "gc": "stát/země",
-    "gr": "region",
-    "I": "instituce",
-    "io": "úřad/instituce",
-    "if": "firma/společnost",
-    "ic": "kulturní/vědecká instituce",
-    "M": "média",
-    "O": "objekt",
-    "om": "měna",
-    "or": "produkt",
-    "N": "číselný výraz",
-    "no": "pořadí",
-    # UNER / CoNLL / OntoNotes (multilingvální modely)
-    "PER": "osoba",
-    "ORG": "organizace",
-    "LOC": "lokace/místo",
-    "MISC": "ostatní",
-    "GPE": "geopolitická entita",
-    "DATE": "datum",
-    "TIME": "čas",
-    "MONEY": "peníze",
-    "PERCENT": "procento",
-    "QUANTITY": "množství",
-    "NORP": "národnost/skupina",
-    "FAC": "stavba/budova",
-    "EVENT": "událost",
-    "WORK_OF_ART": "umělecké dílo",
-    "LAW": "zákon",
-    "LANGUAGE": "jazyk",
-    "PRODUCT": "produkt",
-    "CARDINAL": "číslo",
-    "ORDINAL": "pořadí",
-}
+# (NAMETAG_LABELS, MODEL_ALIASES, DEFAULT_*_MODEL → nametag_labels.py)
 
 # Tokeny které se nelepí mezerou *před* (následují bez mezery)
 _NO_SPACE_BEFORE = frozenset({".", ",", ";", ":", "!", "?", ")", "]", "}", "%", "/"})
 # Tokeny po kterých nesmí být mezera (následující token bez mezery)
 _NO_SPACE_AFTER = frozenset({"(", "[", "{", "/"})
 
-# Aliases for `model` parameter
-MODEL_ALIASES: dict[str, str] = {
-    "czech": "nametag3-czech-cnec2.0-240830",
-    "cs": "nametag3-czech-cnec2.0-240830",
-    "cnec": "nametag3-czech-cnec2.0-240830",
-    "multilingual": "nametag3-multilingual-uner-250203",
-    "uner": "nametag3-multilingual-uner-250203",
-    "conll": "nametag3-multilingual-conll-250203",
-    "onto": "nametag3-multilingual-onto-250203",
-}
-
-DEFAULT_CZ_MODEL = "nametag3-czech-cnec2.0-240830"
-DEFAULT_MULTILINGUAL_MODEL = "nametag3-multilingual-uner-250203"
 
 # --- Language auto-detection ---
 

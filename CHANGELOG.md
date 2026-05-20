@@ -2,6 +2,73 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.4] — 2026-05-20
+
+### NameTag fallback v anonymize + architekturní refactor
+
+Po druhém reálném testu (Jiříkův rukopis z 18.6.2023, emocionální mix CZ/SK)
+jsme zjistili klíčový limit: **MasKIT selže na non-úředních textech**
+(emocionální / rukopis / chat / messengery). NameTag fallback fixuje.
+
+### Přidáno
+
+**NameTag fallback v `placeholder_mode`** (`maskit_placeholders.nametag_fallback`)
+- Když MasKIT vrátí málo replacementů, spustí se NameTag na originálu
+- Pro každou entity (osoba/město/firma/instituce/měna…) co MasKIT vynechal:
+  → dedup přes PlaceholderRegistry → deterministic placeholder
+- Test na Jiříkově rukopisu: MasKIT 0 ⇒ wrapper-nametag-fallback 5 dalších náhrad
+- Source flag: ``"wrapper-nametag-fallback"``
+
+**Rozšířený `_TYPE_TO_PREFIX` mapping** (`maskit_constants`)
+- Přidány CNEC short codes: `i_/g_/p_` → INSTITUCE/MESTO/OSOBA
+- Přidány labely: měna → MENA, geografická entita → MESTO, geopolitická entita → STAT
+- Plus M (MEDIA), O (OBJEKT), om (MENA), or (PRODUKT)
+- Plus stavba/budova → STAVBA, událost → UDALOST, zákon → ZAKON
+
+### Architekturní refactor — max 400 řádků per soubor
+
+Michalova preference: žádný soubor přes 400 řádků. **Maskit.py 792 → 184**:
+
+```
+src/ufal_mcp/
+├── maskit.py              184  ← orchestrator (anonymize_text 8-step pipeline)
+├── maskit_constants.py     80  ← sentinely (PUA chars), _TYPE_TO_PREFIX
+├── maskit_patterns.py     162  ← regex pre-pass (FORMAT/CONTEXT PII + court)
+├── maskit_strict.py        80  ← NameTag pre-pass (firmy/úřady)
+├── maskit_stoplist.py      75  ← false positive filter (MasKIT halucinace)
+├── maskit_parsing.py      139  ← parse_maskit + infer_type + fragmentation
+├── maskit_placeholders.py 111  ← PlaceholderRegistry + nametag_fallback
+├── nametag_labels.py       76  ← NAMETAG_LABELS + MODEL_ALIASES (z nametag.py)
+├── nametag.py             352  ← recognize() + parse_conll + romance fix
+├── server.py              375  ← 6 MCP tools + validation wrap
+├── langdetect.py          323  ← unified detection (35 jazyků)
+├── ponk.py                245
+├── udpipe.py              221
+├── translator.py          117
+├── http.py                104  ← retry + logging + post_form/post_form_text
+├── validation.py           76  ← input size + PUA collision check
+├── korektor.py             65
+└── __init__.py              3
+```
+
+**Žádný soubor neporušuje 400 LOC limit.** Celkem 18 modulů, 2788 LOC.
+
+### Test results
+
+Jiříkův rukopis (1.8 KB SK/CZ emocionální text):
+- v0.7.3: 7 replacements (Hass/Bratislava/Kč/ČR ZŮSTALY neanonymizované)
+- **v0.7.4: 12 replacements** (Hass→OSOBA4, Bratislava→MESTO2, Mestkého súdu→INSTITUCE1, Kč→MENA1, ČR→STAT1)
+
+Existing tests (`test_live.py`): 6/6 prošlo, žádný regression.
+
+### Insight pro budoucí použití
+
+**Pro emocionální/non-úřední texty** (rukopisy klientů, chat, messengery, neformální dopisy):
+- MasKIT často vrátí 0 replacementů
+- NameTag fallback je teď klíčový (povoluje se přes `placeholder_mode=True`)
+- Pokud nepoužíváš `placeholder_mode`, anonymize bude na takových textech slabší
+- Pro production legal anonymizaci doporučuji **vždy `placeholder_mode=True`**
+
 ## [0.7.3] — 2026-05-20
 
 ### Real-world Jiříkův SK dokument odhalil 3 buggy
