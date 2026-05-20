@@ -10,3 +10,7 @@ dist/
 .ruff_cache/
 .DS_Store
 *.log
+
+# Working documents (not part of distribution)
+*.docx
+*:Zone.Identifier
