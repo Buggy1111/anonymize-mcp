@@ -2,6 +2,36 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.1] — 2026-05-20
+
+### Sjednocená detekce jazyka — 35/35 = 100%
+
+Po userově otázce *"máme to na všechny jazyky?"* jsme zjistili, že
+v0.7.0 měla UDPipe auto-detect jen 9/35 jazyků správně. Refaktor:
+
+- **Nový modul `langdetect.py`** — sdílená detekce mezi NameTag a UDPipe
+- **35 jazyků pokryto** s 3-vrstvou strategií:
+  1. Non-Latin skripty (UK, RU, ZH, JA, KO, AR, HE, HI, TH, EL)
+  2. Character signatures (VI ư/ê, ET õ, RO ț/ș, SCAND æ/ø/å, TR ı/ğ/ş)
+  3. Score-based markery pro latinkové jazyky (SK, HU, FI, LT, LV, PL,
+     RO, SL, HR, SR, NL, DE, PT, ES, IT, FR, DA, SV, NO, EN, CZ)
+- **CZ proxy** používá jen `ř/ě/ů` (unique pro CZ, ne š/č/ž které mají i SK/SL/HR)
+- **Skandinávie**: vybírá DA/NO/SV podle nejvyššího markeru skóre (ne posledního)
+
+### Test results
+
+| Test | Předtím | Nyní |
+|------|---------|------|
+| UDPipe auto-detect (35 jazyků) | 9/35 (26%) | **35/35 (100%)** |
+| NameTag NER (35 jazyků) | 34/35 (97%) | **35/35 (100%)** |
+
+### Pokryté jazyky
+
+🇨🇿 CZ · 🇸🇰 SK · 🇬🇧 EN · 🇩🇪 DE · 🇫🇷 FR · 🇮🇹 IT · 🇪🇸 ES · 🇵🇹 PT · 🇳🇱 NL · 🇵🇱 PL ·
+🇭🇺 HU · 🇺🇦 UK · 🇷🇺 RU · 🇷🇴 RO · 🇸🇮 SL · 🇧🇬 BG · 🇬🇷 EL · 🇭🇷 HR · 🇷🇸 SR ·
+🇫🇮 FI · 🇱🇹 LT · 🇱🇻 LV · 🇪🇪 ET · 🇩🇰 DA · 🇸🇪 SV · 🇳🇴 NO ·
+🇨🇳 ZH · 🇦🇪 AR · 🇹🇷 TR · 🇻🇳 VI · 🇮🇳 HI · 🇮🇱 HE · 🇯🇵 JA · 🇰🇷 KO · 🇹🇭 TH
+
 ## [0.7.0] — 2026-05-20
 
 ### 100% využití existujících API

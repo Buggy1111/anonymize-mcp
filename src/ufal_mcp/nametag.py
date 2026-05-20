@@ -151,35 +151,11 @@ _SLOVAK_MARKERS = re.compile(
 def detect_non_czech(text: str) -> bool:
     """Heuristika: True pokud text vypadá NEčesky.
 
-    Pozitivní indikátory NON-CZ:
-    - Cyrilice (UK, RU, BG, SR-cyr)
-    - Non-Latin skript (čínština, japonština, korejština, arabština, hebrejština, hindština, thajština)
-    - ≥2 slovenské distinktivní markery (súd, sudkyňa, narodená, …) — i s diakritikou
-    - Velký počet non-CZ markerů (≥3) BEZ české diakritiky
+    Používá sjednocenou ``langdetect.detect_language`` (sdílenou s UDPipe).
+    Vrátí False jen pokud detekovaný jazyk je `czech`.
     """
-    if _CYRILLIC_RE.search(text):
-        return True
-    if _NON_LATIN_RE.search(text):
-        return True
-
-    # Slovenština má spoustu CZ-shodných diakritik, ale i vlastní distinktivní slova.
-    # Pokud najdeme ≥2 slovenské markery, je to non-CZ i s českou-vypadající diakritikou.
-    sk_matches = len(_SLOVAK_MARKERS.findall(text))
-    if sk_matches >= 2:
-        return True
-
-    # Spočítej české diakritické znaky
-    cz_chars = sum(1 for c in text if c in _CZ_DIACRITICS)
-    text_len = max(len(text), 1)
-    cz_ratio = cz_chars / text_len
-
-    # Pokud >2% znaků jsou české diakritiky → CZ (a žádné SK markery nenašli výše)
-    if cz_ratio > 0.02:
-        return False
-
-    # Pokud má hodně non-CZ markerů a málo CZ diakritiky → NON-CZ
-    matches = len(_NONCZECH_HINTS.findall(text))
-    return matches >= 3
+    from .langdetect import is_non_czech
+    return is_non_czech(text)
 
 
 def resolve_model(model: str, text: str) -> tuple[str, str | None]:

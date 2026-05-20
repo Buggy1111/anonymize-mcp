@@ -189,7 +189,9 @@ async def analyze(
     detected = None
     actual_model = model
     if model == "auto":
-        actual_model = detect_language(text)
+        # Použij sjednocenou detekci (sdílenou s NameTag)
+        from .langdetect import detect_language as _unified_detect
+        actual_model = _unified_detect(text)
         detected = actual_model
 
     payload: dict[str, str] = {
