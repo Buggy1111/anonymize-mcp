@@ -5,16 +5,27 @@
 [![Python](https://img.shields.io/pypi/pyversions/ufal-mcp.svg)](https://pypi.org/project/ufal-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) pro zpracování **českých právních textů**.
+MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER (33+ jazyků)** + česká anonymizace, morfologie, čitelnost a korektura.
 
 ## Co umí
 
 | Tool | Backend | K čemu |
 |------|---------|--------|
+| `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | NER pro **CZ** (bohatý CNEC 2.0 tagset) + **30+ dalších jazyků** (UNER PER/ORG/LOC) s auto-detekcí |
 | `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | Pseudonymizace osobních údajů (jména, IČO, telefony, adresy, č.j., rodná čísla, data narození…) |
-| `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | Named Entity Recognition — osoby, instituce, firmy, geo, data |
-| `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse |
+| `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — auto-detect CZ/SK |
 | `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Analýza čitelnosti právních textů (ARI, Verb Distance, Activity, Lexical diversity) |
+| `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky (užitečné pro OCR výstupy, mobilní zprávy) |
+
+### Podporované jazyky NER (testováno na živém API 20.5.2026)
+
+**Plné pokrytí** (33+ jazyků, ✓ = ověřeno):
+- 🇨🇿 CZ (CNEC 2.0 nebo UNER) · 🇸🇰 SK · 🇬🇧 EN · 🇩🇪 DE · 🇫🇷 FR · 🇮🇹 IT · 🇪🇸 ES · 🇵🇹 PT · 🇳🇱 NL
+- 🇵🇱 PL · 🇭🇺 HU · 🇷🇴 RO · 🇸🇮 SL · 🇧🇬 BG · 🇬🇷 EL · 🇭🇷 HR · 🇷🇸 SR · 🇺🇦 UK · 🇷🇺 RU
+- 🇫🇮 FI · 🇱🇹 LT · 🇱🇻 LV · 🇪🇪 ET · 🇩🇰 DA · 🇸🇪 SV · 🇳🇴 NO (Bokmål + Nynorsk)
+- 🇨🇳 ZH · 🇦🇪 AR · 🇹🇷 TR · 🇻🇳 VI · 🇮🇳 HI · 🌍 Maghrebi mix
+
+Funguje cyrilice (UK, RU, BG, SR), latinka, čínské znaky, devanagari, hebrejské+arabské skripty. Drobné limity známé u JA/KO (particles), HE/TH (chudší coverage).
 
 ## Instalace
 
@@ -34,12 +45,13 @@ pip install -e .
 
 ## Registrace v MCP klientovi
 
-ufal-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport) — funguje s libovolným MCP klientem. Po registraci a restartu klienta máš k dispozici 4 nástroje:
+ufal-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport) — funguje s libovolným MCP klientem. Po registraci a restartu klienta máš k dispozici 5 nástrojů:
 
-- `mcp__ufal__anonymize`
-- `mcp__ufal__extract_entities`
-- `mcp__ufal__analyze_morphology`
-- `mcp__ufal__check_readability`
+- `mcp__ufal__extract_entities` — multilingvální NER
+- `mcp__ufal__anonymize` — pseudonymizace CZ
+- `mcp__ufal__analyze_morphology` — morfologie CZ/SK
+- `mcp__ufal__check_readability` — čitelnost CZ
+- `mcp__ufal__correct_text` — spell check + diakritika CZ
 
 ### Claude Code (terminál)
 
@@ -143,10 +155,11 @@ Wrapper sám funguje deterministicky, ale upstream API mají několik dokumentov
 | **Fragmentace názvů firem** (`"ZR Trade s.r.o."` → MasKIT zachytí jen `"ZR"` a `"s.r.o."`, slovo `"Trade"` zůstane neanonymizované) | MasKIT tokenizace | `anonymize` vrací `warnings` — NameTag cross-check najde celou entitu a upozorní, že MasKIT nepokryl celý název |
 | **Římské číslice v názvech soudů** (`"MS Bratislava II"` → `"II"` není anonymizováno) | MasKIT regex pattern | Detekováno warningem (viz výše) |
 | **Soudci se neanonymizují** | MasKIT záměrný whitelist | By-design — pokud potřebuješ anonymizovat soudce, použij `extract_entities` + manuální post-processing |
-| **Slovenské tvary** (`"Príkladovej"`, `"súd"`, `"sa"`) — nižší přesnost než čeština | NameTag i UDPipe trénované primárně na CZ | Funguje, ale očekávej občasné chyby morfologie a NER |
+| **Slovenské tvary** (`"Príkladovej"`, `"súd"`, `"sa"`) v CZ-only modelech | Default NameTag (`nametag3-czech-cnec2.0-240830`) a CZ UDPipe model jsou trénované jen na češtině | Pro NameTag použij multilingvální `nametag3-multilingual-uner-250203` — pokrývá CZ + SK + 11 dalších jazyků (UNER + cross-lingual transfer); pro UDPipe `analyze_morphology(model="auto")` přepne na SK model |
 | **Generické placeholdery v MasKIT** (`"FABBR1"`, `"IABBR1"`) bez typu entity | MasKIT API | Tool `anonymize` má `classify_types=True` (default) — **100 % náhrad** klasifikováno čtyřvrstvým fallbackem (placeholder pattern → pre-context → NameTag → fallback dle obsahu) |
 | **MasKIT systematicky neanonymizuje názvy státních institucí** (Nejvyšší soud, Ústavní soud, ministerstva, soudy obecně) | MasKIT design | `anonymize` má `strict=True` (default) — pre-pass přes NameTag najde firmy/úřady/instituce v originálu a sám je nahradí placeholdery `FIRMA1`, `INSTITUCE1`, … **ještě před** voláním MasKIT |
-| **Slovenský text** v UDPipe morfologii | NameTag nemá SK model, UDPipe ano | `analyze_morphology` má `model="auto"` (default) — auto-detect SK podle markerů (`som`, `vďaka`, `súd`, `ktorá`, `vo`…) a přepne na slovenský UDPipe model |
+| **Slovenský text** v UDPipe morfologii | Default UDPipe model je CZ; SK model existuje samostatně | `analyze_morphology` má `model="auto"` (default) — auto-detect SK podle markerů (`som`, `vďaka`, `súd`, `ktorá`, `vo`…) a přepne na slovenský UDPipe model |
+| **NER mimo češtinu** (slovenština, angličtina, němčina, polština, ukrajinština…) | Default model `nametag3-czech-cnec2.0-240830` je CZ-only | Volej `extract_entities(model="nametag3-multilingual-uner-250203")` — NameTag 3 multilingvální UNER pokrývá **13+ jazyků** (CZ, SK, EN, DE, ZH, HR, DA, NO, PT, SR, SV, UK + cross-lingual transfer). Roadmap: auto-detect non-CZ i v `extract_entities` |
 | **NER nepokrývá**: ID karty, řidičáky, pasy, čísla účtů, datovky, spisové značky | MasKIT roadmap (future updates) | Tyto údaje dohledat ručně před odesláním do veřejného sdílení |
 
 **Pro citlivá data**: vždy zkontroluj `warnings` v odpovědi `anonymize` a anonymizovaný výstup ručně před zveřejněním. Wrapper je nástroj na první průchod, ne náhrada za lidskou kontrolu.

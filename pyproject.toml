@@ -1,7 +1,7 @@
 [project]
 name = "ufal-mcp"
-version = "0.3.3"
-description = "MCP server pro ÚFAL MFF UK NLP nástroje (NameTag, MasKIT, UDPipe, PONK) — česká právní AI"
+version = "0.4.0"
+description = "MCP server pro ÚFAL MFF UK NLP nástroje (NameTag, MasKIT, UDPipe, PONK) — multilingvální NER (33+ jazyků) + česká anonymizace"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Michal Bürgermeister", email = "michalbugy12@gmail.com" }]
