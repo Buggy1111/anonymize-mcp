@@ -67,31 +67,57 @@ async def anonymize(
     keep_mapping: bool = True,
     classify_types: bool = True,
     strict: bool = True,
+    placeholder_mode: bool = False,
+    regex_pre_pass: bool = True,
+    stop_list_filter: bool = True,
 ) -> dict[str, Any]:
-    """Pseudonymizuje osobní údaje v českém právním textu pomocí MasKIT + NameTag.
+    """Production-grade pseudonymizace českých právních textů (v0.6.0).
 
-    MasKIT detekuje a nahrazuje fiktivními daty: jména, příjmení, telefony, e-maily,
-    URL, ulice, města, PSČ, firmy, instituce, IČO, DIČ, rodná čísla, data narození,
-    čísla jednací, SPZ.
+    Pipeline (8 kroků):
 
-    **Strict mode (default)** doplňuje upstream MasKIT mezery — pre-pass přes NameTag
-    najde firmy/úřady/instituce v originálu a vlastními placeholdery (`FIRMA1`,
-    `INSTITUCE1`, …) anonymizuje vše, co MasKIT vynechá nebo fragmentuje.
+    1. **Regex pre-pass** (`regex_pre_pass=True`) — strukturovaná PII
+       (telefon, IČO, RČ, č.j., sp. zn., e-mail, URL, PSČ, SPZ, IBAN, DIČ,
+       OP, datovka) se anonymizuje **PŘED** MasKITem, aby nebyly fragmentovány.
+       Telefon "777 123 456" se anonymizuje **celý** jako jeden blok TELEFON1.
+
+    2. **Strict wrapper pre-pass** (`strict=True`) — NameTag najde
+       firmy/úřady/instituce, které MasKIT vynechává nebo fragmentuje,
+       a anonymizuje je sentinely → FIRMA1, INSTITUCE1.
+
+    3. **MasKIT** — pseudonymizace zbývajících PII (jména, adresy, ...).
+
+    4. **Stop-list filter** (`stop_list_filter=True`) — MasKIT občas
+       chybně nahrazuje běžná slova ("stát" → "UniAgentury", "sporu" →
+       "Pardubic"). Wrapper detekuje a vrátí originál, přidá warning.
+
+    5. **Restore sentinely** → finální placeholdery (TELEFON1, FIRMA1, ...).
+
+    6. **Fragmentation warnings** — detekce známých MasKIT problémů.
+
+    7. **Type classification** — NameTag dohledá typ entity pro každou náhradu.
+
+    8. **Placeholder mode** (`placeholder_mode=True`) — místo MasKIT náhodných
+       fake names (`Jan Novák`) použij deterministické `OSOBA1`, `OSOBA2`...,
+       `MESTO1`, `ULICE1`, ... S dedupingem: Jiří × 15× v textu → OSOBA1 × 15×.
+       **Reprodukovatelné** (stejný vstup → stejný výstup) a **auditovatelné**.
 
     Args:
         text: Vstupní text (čeština).
         output: Formát výstupu — ``txt`` (default), ``html``, ``conllu``.
-        keep_mapping: Když True, vrátí mapping originál → placeholder. **POZOR**:
-            pokud má text dál opustit důvěrné prostředí, mapping vypni!
-        classify_types: Pro každý replacement zavolá NameTag a doplní typ entity.
-            Default ``True``.
-        strict: Wrapper pre-pass anonymizuje firmy/úřady/instituce, které MasKIT
-            vynechává. Default ``True``. Vypni pro čistý MasKIT-only výstup.
+        keep_mapping: Když True, vrátí mapping. **POZOR**: pokud má text
+            dál opustit důvěrné prostředí, mapping vypni!
+        classify_types: NameTag dohledá typ entity. Default ``True``.
+        strict: Wrapper pre-pass na firmy/úřady. Default ``True``.
+        placeholder_mode: ⭐ **NEW v0.6.0** — deterministic placeholdery
+            místo MasKIT fake names. Pro reprodukovatelnost a auditovatelnost.
+        regex_pre_pass: Default ``True``. Strukturovaná PII regexem PŘED MasKITem.
+        stop_list_filter: Default ``True``. Rollback MasKIT false positives.
 
     Returns:
-        ``anonymized`` (čistý text), ``raw`` (MasKIT raw), ``replacements`` (list
-        s ``original``, ``placeholder``, ``type``, ``source``), ``warnings``,
-        ``sources`` ({maskit: N, wrapper: M}).
+        ``anonymized`` (čistý text), ``raw`` (MasKIT raw), ``replacements``
+        (list s ``original``, ``placeholder``, ``type``, ``source``),
+        ``warnings``, ``sources`` ({maskit, wrapper-regex, wrapper-strict,
+        wrapper-placeholder}).
     """
     return await _maskit.anonymize_text(
         text,
@@ -99,6 +125,9 @@ async def anonymize(
         keep_mapping=keep_mapping,
         classify_types=classify_types,
         strict=strict,
+        placeholder_mode=placeholder_mode,
+        regex_pre_pass_enabled=regex_pre_pass,
+        stop_list_filter=stop_list_filter,
     )
 
 

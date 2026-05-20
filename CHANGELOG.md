@@ -2,6 +2,85 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.6.0] — 2026-05-20
+
+### Production-grade anonymizace
+
+**Motivace**: Po reálném testu v0.5.0 na Jiříkově spisu (návrh na zastavení řízení o výživné, 14 KB, 365 řádků) jsme našli několik problémů upstream MasKITu:
+- MasKIT halucinoval na běžných slovech: "stát" → "UniAgentury", "sporu" → "Pardubic", "materiální" → "Zlín", "obyvatel" → "Pavla"
+- Fragmentace telefonu: "777 18 18 10" → "123 18 18 10" (jen první 3 cifry nahrazeny)
+- Fragmentace adres: "Opavě 01 Opava" → "Praze" (sloučení PSČ a města)
+- Pro reprodukovatelnost: MasKIT používá random fake names ("Jiří" → "Jan" teď, "Petr" příště)
+
+### Přidáno
+
+**Regex pre-pass** — strukturovaná PII se anonymizuje **PŘED** voláním MasKITu (`regex_pre_pass=True`, default):
+- E-mail, URL — format-based detection
+- Telefon — 3 formáty: `+420 777 123 456`, `777 18 18 10` (3+2+2+2), `777-123-456`
+- Rodné číslo (`123456/7890`), DIČ (`CZ12345678`), IBAN, SPZ (`1A1 1234`)
+- Kontextové: IČO (s prefix `IČO:`), PSČ (s prefix `PSČ:`), č.j. (`č.j. 25 C 123/2026`), sp.zn. (`sp. zn. 11Pc/99/2030`, plus alternativní `spisová značka:`), občanský průkaz, datová schránka
+- **Court regex** — chytá celé jméno soudu včetně lokality: "Krajský soud v Ostravě", "Mestský súd Bratislava II", "Ústavní soud České republiky", "Najvyšší súd SR". Funguje na 12+ typů soudů (Krajský, Okresní, Mestský, Najvyšší, Nejvyšší, Ústavní, Vrchní, Obecní, Obvodný, Špecializovaný)
+
+**Stop-list filter** (`stop_list_filter=True`, default) — post-processing rollback MasKIT false positives:
+- Detekuje 50+ známých CZ slov co MasKIT chybně označuje jako entity (`stát`, `republika`, `spor`, `materiální`, `obyvatel`, `vláda`, `úřad`, měsíce, právní termíny)
+- Pokud MasKIT nahradil → wrapper vrátí originál do anonymized textu + emit warning
+- **Test na Jiříkově spisu: chytil 4 z 4 viditelných halucinací** ("státu", "sporu", "materiální", "obyvatel")
+
+**Placeholder mode** (`placeholder_mode=True`, opt-in) — deterministic placeholdery místo MasKIT random fake names:
+- "Jiří Vzorek" → vždy `OSOBA1 OSOBA2` (ne náhodně "Jan Novák")
+- Konzistentní deduplikace: pokud se "Alexandra Príkladová" objeví 5× v textu (matka i dcera), 2× dostane `OSOBA7 OSOBA8` + 2× `OSOBA9 OSOBA8` (sdílené příjmení)
+- Prefixy: OSOBA, ULICE, MESTO, FIRMA, INSTITUCE, EMAIL, TELEFON, ICO, PSC, RC, CJ, SPZN, OP, DATOVKA, IBAN, SPZ, DIC
+- **Reprodukovatelné** (stejný vstup → stejný výstup, pro audit/peer review)
+- **Auditovatelné** (1:1 mapping v `replacements`)
+- **Transparentní** (žádné geografické absurdnosti jako "Liberec, Slovenská republika")
+
+### Architektura
+
+8-krokový pipeline v `anonymize_text()`:
+1. **Regex pre-pass** — strukturovaná PII → PUA sentinely (`..`)
+2. **Strict pre-pass** — NameTag firmy/úřady/instituce → PUA sentinely (`..`)
+3. **MasKIT** — pseudonymizace zbývajících PII (jména, adresy)
+4. **Stop-list filter** — rollback MasKIT false positives
+5. **Restore sentinely** — → finální placeholdery (TELEFON1, FIRMA1, …)
+6. **Fragmentation warnings** — detekce známých MasKIT problémů
+7. **Type classification** — NameTag classify
+8. **Placeholder mode** (opt-in) — rebuild anonymized z raw MasKIT output přes positional pattern matching (vyhne se `string.replace` problému kdy krátký placeholder `B` nahrazoval `B` v každém slově)
+
+### Sentinely
+
+PUA znaky z Unicode Private Use Area (U+E100-E2FF) — jednoznakové sentinely, žádné digits/text uvnitř. Testováno:
+- ❌ `__PIIPRE__` — MasKIT zpracoval "PRE" jako prefix
+- ❌ `ZxZ` patterns — velká písmena tokenizovaná
+- ❌ `§§§` — MasKIT § rozkládá
+- ❌ `xqxqxq{idx}xqxqxq` — MasKIT detekoval jako kód/e-mail
+- ❌ PUA + digit ID — digits uvnitř tokenizovány
+- ✅ Single PUA char — MasKIT slovník neobsahuje, prochází
+
+### Test track record na Jiříkově spisu (14 KB, 365 řádků)
+
+| Tool | Předtím (v0.5.0) | Nyní (v0.6.0) |
+|---|---|---|
+| Telefon `777 18 18 10` | jen 3 cifry nahrazeny | celý `TELEFON1` ✓ |
+| Adresa "Opavě 01 Opava" | "Praze" (fragmentace) | "INSTITUCE1 + MESTO1" ✓ |
+| Halucinace "sporu→Pardubic" | undetected | flagged + rollback ✓ |
+| "Jiří" placeholders | random fake name | deterministic `OSOBA3` ✓ |
+| Bydliště corrupted | "OSOBA11ydliště" | "Bydliště" intact ✓ |
+
+### Změněno
+
+- `extract_entities` parametry: `model`, `fix_romance` (nezměněno z v0.5.0)
+- `anonymize` parametry: **nové** `placeholder_mode`, `regex_pre_pass`, `stop_list_filter` — všechny default safe
+- `_STRICT_SENTINEL_TEMPLATE` smazán, nahrazen `make_strict_sentinel()` function
+- `_PII_SENTINEL_TEMPLATE` smazán, nahrazen `make_pii_sentinel()` function
+
+### Zachováno z v0.5.0
+
+- Multilingvální NER (33+ jazyků přes UNER)
+- Charles Translator (6. tool, 8 jazyků, 17 párů)
+- Korektor (5. tool)
+- PT/ES "de Place" postprocessing
+- SK auto-detect přes markery
+
 ## [0.5.0] — 2026-05-20
 
 ### Přidáno
