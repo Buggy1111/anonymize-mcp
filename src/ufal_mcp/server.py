@@ -33,6 +33,8 @@ async def extract_entities(
     text: str,
     model: str = "auto",
     fix_romance: bool = True,
+    include_xml: bool = False,
+    include_vertical: bool = False,
 ) -> dict[str, Any]:
     """Rozpozná pojmenované entity pomocí NameTag 3 — CZ i 30+ dalších jazyků.
 
@@ -51,13 +53,25 @@ async def extract_entities(
         fix_romance: Default True. Pro PT/ES texty oprava typického
             UNER bugu, kdy se "X de Place" zaeviduje celé jako PER —
             wrapper rozdělí na PER + LOC a generuje warning.
+        include_xml: Default ``False``. Inline XML s ``<ne type="...">`` tagy
+            pro HTML highlighting (extra API call).
+        include_vertical: Default ``False``. Tabulkový formát ``id\\ttype\\ttext``
+            (extra API call).
 
     Returns:
         ``entities`` (list s ``type``, ``label``, ``text``, ``tokens``,
         ``nested``), ``model``, ``count``, ``warnings``,
-        ``detected_language`` (jen u ``auto``).
+        ``detected_language`` (jen u ``auto``),
+        ``xml`` (jen pokud ``include_xml``),
+        ``vertical`` (jen pokud ``include_vertical``).
     """
-    return await _nametag.recognize(text, model=model, fix_romance=fix_romance)
+    return await _nametag.recognize(
+        text,
+        model=model,
+        fix_romance=fix_romance,
+        include_xml=include_xml,
+        include_vertical=include_vertical,
+    )
 
 
 @mcp.tool()
@@ -136,49 +150,96 @@ async def analyze_morphology(
     text: str,
     model: str = "auto",
     include_parse: bool = False,
+    include_ranges: bool = False,
 ) -> dict[str, Any]:
     """Tokenizuje, lemmatizuje a označuje slovní druhy pomocí UDPipe 2.
 
     Pro každý token vrací **lemma** (základní tvar), **UPOS** (universal POS tag),
     **morphological features** (pád, rod, číslo, čas...) a volitelně závislostní
-    parse (head + deprel).
+    parse (head + deprel) nebo character ranges (offsety do originálu).
+
+    UDPipe 2 podporuje **961 modelů** pro téměř všechny jazyky světa.
+    Auto-detect (default) rozezná: czech, slovak, ukrainian, russian, polish,
+    german, english, french (via heuristics).
 
     Hodí se pro:
     - Fulltextové vyhledávání v právních textech (lemma "soud" matchuje "soudu/soudem/soudy")
     - Filtrování podle slovních druhů (jen substantiva, jen verba)
     - Detekce pasivních konstrukcí (Voice=Pass)
+    - Vícejazyčné dokumenty (UA legal aid, EN smlouvy, DE Klage…)
 
     Args:
         text: Vstupní text.
-        model: UDPipe model alias. ``auto`` (default) detekuje SK/CZ podle obsahu.
-        include_parse: True = vrátí závislostní parse (head, deprel) pro každý token.
+        model: UDPipe model alias. ``auto`` (default) detekuje jazyk podle markerů.
+            Explicit: ``czech``, ``slovak``, ``english``, ``ukrainian``, ``russian``,
+            ``polish``, ``german``, ``french``, atd. — 961 modelů celkem.
+        include_parse: True = vrátí závislostní parse (head, deprel).
+        include_ranges: True = vrátí ``token_range`` (char offsets do originálu).
+            Užitečné pro inline highlighting nebo mapování token → text position.
 
     Returns:
         ``sentences``, ``model``, ``token_count``, ``sentence_count``,
         ``detected_language`` (jen u auto).
     """
-    return await _udpipe.analyze(text, model=model, include_parse=include_parse)
+    return await _udpipe.analyze(
+        text,
+        model=model,
+        include_parse=include_parse,
+        include_ranges=include_ranges,
+    )
 
 
 @mcp.tool()
 async def check_readability(
     text: str,
     input_format: Literal["txt", "md", "docx"] = "txt",
+    include_rules: bool = True,
+    include_lexical_surprise: bool = True,
+    include_speech_acts: bool = True,
+    include_highlighted_html: bool = False,
 ) -> dict[str, Any]:
-    """Analyzuje čitelnost českého textu pomocí PONK.
+    """Analyzuje čitelnost českého textu pomocí PONK — 4 feature sety (v0.7.0).
 
-    PONK byl navržen pro úřední komunikaci s občany — najde dlouhé věty, pasivum
-    a právnické fráze, které ztěžují porozumění.
+    PONK byl navržen pro úřední komunikaci s občany. V0.7.0 wrapper vystavuje
+    všechny 4 jeho feature sety, ne jen metriky:
+
+    1. **Overall metrics** — ARI (years of education needed), Verb Distance,
+       Activity, Lexical diversity. (Always returned.)
+
+    2. **Grammatical rules** (``include_rules=True``) — list pravidel které se
+       v textu aktivovala. Každé pravidlo má český název a popis. Aktuálně PONK
+       detekuje: Nedostatek sloves, Přemíra podstatných jmen, Dlouhé věty,
+       Sloveso příliš daleko v klauzi, ...
+
+    3. **Lexical surprise** (``include_lexical_surprise=True``) — distribuce
+       sémantické překvapivosti slov (1=běžné, 16=velmi vzácné/odborné).
+       Vrátí summary: kolik slov je common / surprising / very_surprising.
+
+    4. **Speech acts** (``include_speech_acts=True``) — typy vět (Situace,
+       Kontext, Postup, Proces, Podmínky, Doporučení, Odkazy, Prameny).
 
     Args:
         text: Vstupní text.
         input_format: ``txt`` (default), ``md``, ``docx``.
+        include_rules: Default ``True``. List aktivovaných gramatických pravidel.
+        include_lexical_surprise: Default ``True``. Distribuce vzácnosti slov.
+        include_speech_acts: Default ``True``. Typy vět/řečové akty.
+        include_highlighted_html: Default ``False`` (úspora bandwidthu — HTML
+            má 100+ KB). Zapni pro vizualizační report/PDF.
 
     Returns:
-        ``highlighted_html``, ``metrics`` (label → {value, tooltip}), ``counts``,
-        ``processing_time_s``, ``version``.
+        ``metrics``, ``counts``, ``version``, ``processing_time_s``,
+        + volitelné ``rules`` (list), ``lexical_surprise`` (dict),
+        ``speech_acts`` (dict), ``highlighted_html`` (str).
     """
-    return await _ponk.check(text, input_format=input_format)
+    return await _ponk.check(
+        text,
+        input_format=input_format,
+        include_rules=include_rules,
+        include_lexical_surprise=include_lexical_surprise,
+        include_speech_acts=include_speech_acts,
+        include_highlighted_html=include_highlighted_html,
+    )
 
 
 @mcp.tool()

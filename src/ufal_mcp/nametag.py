@@ -322,6 +322,8 @@ async def recognize(
     text: str,
     model: str = "auto",
     fix_romance: bool = True,
+    include_xml: bool = False,
+    include_vertical: bool = False,
 ) -> dict[str, Any]:
     """Volá NameTag REST API a vrací parsované entity.
 
@@ -333,6 +335,11 @@ async def recognize(
             ``multilingual`` (UNER PER/ORG/LOC), nebo plné jméno modelu.
         fix_romance: Pokud True (default), opraví PT/ES pattern "X de Place"
             v PER entitách rozdělením na PER + LOC. Generuje warning.
+        include_xml: Default ``False``. Vrátí navíc ``xml`` field — inline
+            XML s vnořenými ``<ne type="...">`` tagy. Použitelné pro inline
+            HTML highlighting v UI/PDF reportech.
+        include_vertical: Default ``False``. Vrátí navíc ``vertical`` field —
+            tabulkový formát "entity_id\\ttype\\ttext" pro snadnou statistiku.
 
     Returns:
         Slovník s klíči:
@@ -342,11 +349,15 @@ async def recognize(
         - ``count`` — počet entit.
         - ``detected_language`` — pouze pro ``model="auto"`` (``czech`` nebo ``non-czech``).
         - ``warnings`` — list warnings (např. z PT/ES postprocessingu).
+        - ``xml`` (jen pokud ``include_xml``) — inline XML s NE tagy.
+        - ``vertical`` (jen pokud ``include_vertical``) — tabulkový formát.
     """
     if not text.strip():
         return {"entities": [], "model": None, "count": 0, "warnings": []}
 
     actual_model, detected = resolve_model(model, text)
+
+    # Always fetch conll for parsed entities
     payload: dict[str, str] = {"data": text, "output": "conll"}
     if actual_model:
         payload["model"] = actual_model
@@ -367,6 +378,20 @@ async def recognize(
     }
     if detected:
         out["detected_language"] = detected
+
+    # Optional rich outputs — extra API calls (caller opts in)
+    if include_xml:
+        xml_payload = dict(payload)
+        xml_payload["output"] = "xml"
+        xml_data = await post_form(NAMETAG_URL, xml_payload)
+        out["xml"] = xml_data.get("result", "")
+
+    if include_vertical:
+        vert_payload = dict(payload)
+        vert_payload["output"] = "vertical"
+        vert_data = await post_form(NAMETAG_URL, vert_payload)
+        out["vertical"] = vert_data.get("result", "")
+
     return out
 
 

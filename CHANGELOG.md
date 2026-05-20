@@ -2,6 +2,68 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.0] — 2026-05-20
+
+### 100% využití existujících API
+
+Po analýze ÚFAL API jsme zjistili že některé feature sety zůstávaly nevyužité. v0.7.0 vystavuje **veškerou funkcionalitu** 6 nástrojů (bez přidávání nových — viz mimo scope níže).
+
+### PONK — 3 nové feature sety
+
+Aktuálně PONK API vrací 4 oddělené feature sety, dříve jsme parsovali jen 1 (metrics).
+Nyní `check_readability` vrací všechny 4:
+
+1. **`metrics`** (zachováno) — ARI, Verb Distance, Activity, Lexical diversity
+2. **`rules`** (nové) — list aktivovaných gramatických pravidel s českým popisem
+   - "Příliš dlouhé věty" — *"Rozdělte větu/souvětí do více vět/souvětí. Srov. Šamánková & Kubíková (2022, s. 51), Šváb (2021, s. 17–18)."*
+   - "Přísudek daleko ve větě" — *"Pokud tím neporušíte plynulost textu, umistěte přísudek blíž k začátku věty."*
+   - "Přemíra podstatných jmen", "Nedostatek sloves", a další
+3. **`lexical_surprise`** (nové) — distribuce sémantické překvapivosti slov (1=běžné, 16=velmi vzácné), summary buckets (common/surprising/very_surprising)
+4. **`speech_acts`** (nové) — typy vět/řečové akty: 01_Situace, 02_Kontext, 03_Postup, 04_Proces, 05_Podmínky, 06_Doporučení, 07_Odkazy, 08_Prameny
+
+Nové parametry: `include_rules`, `include_lexical_surprise`, `include_speech_acts`, `include_highlighted_html` (default False, úspora bandwidthu — HTML 100+ KB).
+
+**Use case**: pro Jiříkův spis bys místo jen "ARI=10.93" dostal konkrétní list pravidel + akční rady.
+
+### NameTag — XML a vertical output formats
+
+Nové parametry `include_xml` a `include_vertical` na `extract_entities`:
+- `xml` — inline `<sentence><ne type="...">` tagy, perfektní pro HTML highlighting v PDF/UI
+- `vertical` — tabulkový formát `entity_id\\ttype\\ttext` pro statistiku
+
+Default = ne (extra API call).
+
+### UDPipe — auto-detect 8 jazyků + token ranges
+
+**Auto-detect rozšířen** z CZ/SK na 8 jazyků:
+- czech, slovak (CZ-podobné, distinktivní markery)
+- ukrainian (specifické znaky `іїєґ`), russian (cyrilice fallback)
+- polish, german, english, french (markery slov + threshold 2)
+
+**Test**: 8/8 jazyků správně detekováno na sample větách (Hans Müller → german, Иван Петров → russian, Олександр Петренко → ukrainian, atd.)
+
+**Token ranges** — nový `include_ranges` parametr → token dostane `token_range: [start, end]` (char offsets do originálu). Pro inline highlighting.
+
+Pozn.: UDPipe podporuje **961 modelů** (téměř všechny jazyky světa) — explicit `model=` zadání plně podporováno.
+
+### Záměrně NEpřidáno (scope creep mitigation)
+
+Po probádání ekosystému jsme vědomě VYNECHALI:
+- **MorphoDiTa** — duplikuje UDPipe pro CZ, žádný unique value pro legal-tech
+- **Hyphenator** — slabikování, edge case
+- **ASR/TTS/Speech** — všechny vrací HTTP 301 (jen browser UI, ne API)
+- **MasKIT CoNLL-U output** — akademický overkill, txt + html stačí
+- **Charles Translator alignment** — neexistuje
+
+Identitu udržujeme ostrou — 6 tools, každý 100% využit.
+
+### Backward compat
+
+- Všechny nové parametry mají `False` default → existující kód funguje beze změny
+- `check_readability` rich output je default `True` (kromě HTML kvůli bandwidthu)
+- `extract_entities` XML/vertical jsou opt-in (extra API calls)
+- `analyze_morphology` auto-detect zachován + jen rozšířen
+
 ## [0.6.0] — 2026-05-20
 
 ### Production-grade anonymizace
