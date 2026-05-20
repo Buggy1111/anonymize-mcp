@@ -16,7 +16,19 @@ HTTP_TIMEOUT = 60.0
 
 async def post_form(url: str, data: dict[str, str]) -> dict[str, Any]:
     """POST x-www-form-urlencoded → JSON response."""
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
         response = await client.post(url, data=data)
         response.raise_for_status()
         return response.json()
+
+
+async def post_form_text(url: str, data: dict[str, str]) -> str:
+    """POST x-www-form-urlencoded → plain text response.
+
+    Použito pro Charles Translator, který vrací přeložený text přímo,
+    ne JSON.
+    """
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
+        response = await client.post(url, data=data)
+        response.raise_for_status()
+        return response.text
