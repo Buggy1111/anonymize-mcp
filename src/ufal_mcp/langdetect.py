@@ -75,10 +75,11 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"Tallinn\w*|Tartu\w*|Eesti\w*)\b",
         re.IGNORECASE,
     ), 2),
-    # LT — litevština
+    # LT — litevština (jen distinktivní, ne "ne" — common v SK/HR)
     ("lithuanian", re.compile(
-        r"\b(yra|esu|esi|esame|esate|ne|taip|ar|kad|kuris|kuri|"
-        r"pateik\w+|ieškin\w+|apylinkės\s+teism\w+)",
+        r"\b(yra|esu|esi|esame|esate|taip|kad|kuris|kuri|"
+        r"pateik\w+|ieškin\w+|apylinkės|apylinkę|teism\w+|"
+        r"Vilni\w*|Kauno|lietuv\w+)\b",
         re.IGNORECASE,
     ), 2),
     # LV — lotyština
@@ -103,28 +104,29 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"prin|pentru|pe|de|cu|în|al|ale)",
         re.IGNORECASE,
     ), 3),
-    # SL — slovinština
+    # SL — slovinština: jen distinktivní slova, NE common Slavic
+    # (sdílím s SK/CZ/HR/SR: je, so, si, za, na, v, z, s — vyřadit)
     ("slovenian", re.compile(
-        r"\b(je|so|sem|si|smo|ste|ni|ki|kar|kakor|"
+        r"\b(jaz|moj|moja|moje|tukaj|kakor|kar|"
         r"vlož\w+|tožb\w+|sodišč\w+|"
-        r"za|na|v|z|s|pred|po|brez)",
+        r"Ljubljan\w*|Mariborsk\w*|slovensk\w*)\b",
         re.IGNORECASE,
-    ), 4),
-    # HR — chorvatština (latinka, podobné SR)
+    ), 2),
+    # HR — chorvatština (jen distinktivní slova, ne common Slavic je/sa/na/za)
     ("croatian", re.compile(
-        r"\b(je|su|jesam|jesi|jesmo|jeste|nije|"
-        r"podni\w+|tužb\w+|sud\w+|"
-        r"što|koji|koja|koje|zatim|već|ipak|"
-        r"za|na|u|sa|kod|kroz)",
+        r"\b(jesam|jesi|jesmo|jeste|nije|nećemo|"
+        r"podni\w+|tužb\w+|"
+        r"što|kojeg|kojem|zatim|već\b|ipak|"
+        r"Zagreb\w*|Hrvatsk\w*|hrvatsk\w*)\b",
         re.IGNORECASE,
-    ), 4),
-    # SR — srbština (latinka varianta)
+    ), 2),
+    # SR — srbština (jen distinktivní)
     ("serbian", re.compile(
-        r"\b(je|su|jesam|jesi|jesmo|jeste|nije|"
-        r"podne\w+|tužb\w+|sud\w+|"
-        r"šta|koji|koja|koje|već|ipak)",
+        r"\b(jesam|jesi|jesmo|jeste|nije|nećemo|"
+        r"podne\w+|tužb\w+|šta|kojeg|kojem|već\b|ipak|"
+        r"Beograd\w*|Srbij\w*|srpsk\w*)\b",
         re.IGNORECASE,
-    ), 4),
+    ), 2),
     # NL — nizozemština
     ("dutch", re.compile(
         r"\b(de|het|een|en|of|maar|niet|is|zijn|was|waren|"
@@ -219,7 +221,10 @@ UDPIPE_ALIASES: dict[str, str] = {
 }
 
 
-_VIETNAMESE_CHARS = re.compile(r"[đêôơưĂÂĐÊÔƠƯ]|ư\b|ễ|ử|ợ|ờ|ằ|ặ|ề|ố|ộ|ụ|ự")
+# Vietnamština: jen JEDNOZNAČNÉ VI chars (ne ô/â/ă/ê/ố — ty sdílí SK/CZ/HR/atd.)
+# Slovak má "môj"/"môže" (U+00F4), takže ô nesmí být VI signál.
+# Distinktivní pro VI: ư/ơ/đ (s tail-háčkem), plus složeniny ễ/ử/ự/ợ/ờ/ằ/ặ/ề
+_VIETNAMESE_CHARS = re.compile(r"[ươĐƠƯ]|ễ|ử|ự|ợ|ờ|ằ|ặ|ề|đ")
 _TURKISH_CHARS = re.compile(r"[ıİşŞğĞçÇ][\w']*\b|\b\w*[ıİşŞğĞ]\w*\b")
 _ROMANIAN_CHARS = re.compile(r"[ăâțșȘȚ]")
 _SCANDINAVIAN_CHARS = re.compile(r"[æøåÆØÅ]")
@@ -302,10 +307,7 @@ def detect_language(text: str) -> str:
     if cz_unique >= 1:
         scores["czech"] = max(scores.get("czech", 0), cz_unique * 3)
 
-    # Slovinština: pokud má SI markery (je/so/sodišč/vlož) ale CZ unique chars 0 → SL
-    if scores.get("czech", 0) == 0 and len(_SLOVENIAN_HINT.findall(text)) >= 3:
-        return "slovenian"
-
+    # Score-based winner (highest score nad threshold)
     if scores:
         return max(scores, key=lambda l: scores[l])
 
