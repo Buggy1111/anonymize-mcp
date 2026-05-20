@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/ufal-mcp.svg)](https://pypi.org/project/ufal-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER (33+ jazyků)** + česká anonymizace, morfologie, čitelnost a korektura.
+MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, česká production-grade anonymizace, překlad CZ↔EN/UK/RU + EN↔FR/DE/PL/HI, čitelnost a korektura.
 
 ## Co umí
 
