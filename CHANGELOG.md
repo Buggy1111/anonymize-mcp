@@ -2,6 +2,79 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.2] — 2026-05-20
+
+### Robustness patch — production-grade safety net
+
+Po self-audit byly identifikovány 3 risk areas. Tato verze je řeší před tím
+než to najde někdo jiný (komunita / ÚFAL ředitelka před Po 25.5. Zoom).
+
+### Přidáno
+
+**Input validation** (`validation.py`, NEW)
+- `validate_input(text)` — předpolí before každý API call
+- **Hard cap 500 KB**: pokud user pošle větší text → `ValidationError`
+  s vysvětlením "rozděl na části" (chrání ÚFAL servery + naše timeouty)
+- **Soft warn 100 KB**: text projde + warning v output
+- **PUA collision detection**: pokud user text obsahuje znaky U+E100-E2FF,
+  které kolidují s wrapper sentinely v `maskit.placeholder_mode`, znaky
+  se odstraní + warning v output (jinak by anonymizace produkovala
+  corrupted output)
+- **Empty input check**: prázdný text → `ValidationError` (jasná chyba
+  místo silently empty response)
+
+**HTTP retry + exponential backoff** (`http.py` refaktor)
+- `_post_with_retry()` — interní wrapper okolo httpx
+- **3 retries** s backoff 1s → 2s → 4s
+- **Retry triggers**: timeouts, connection errors, RemoteProtocolError,
+  HTTP 429/502/503/504 (transient server issues)
+- **NO retry pro 4xx** (client errors — fail immediately)
+- Logování každého retry attempt na WARNING level
+
+**Logging setup** (`server.py`)
+- `logging.basicConfig` na INFO level (configurable via `UFAL_MCP_LOG_LEVEL`
+  env var: DEBUG/INFO/WARNING/ERROR)
+- Logger `ufal_mcp` se logguje na stderr (visible v Claude Code logs)
+- Každý tool call loguje: input size (DEBUG), validation warnings (WARNING),
+  validation errors (ERROR)
+- HTTP module logguje: retry attempts (WARNING), retry success (INFO),
+  final failures (ERROR)
+
+### Změněno
+
+- Všech **6 tools** (`extract_entities`, `anonymize`, `analyze_morphology`,
+  `check_readability`, `correct_text`, `translate_text`) nyní volá
+  `_prepare_input()` před API call — validation + cleaning + logging
+- Validation warnings se přidávají do `warnings` field v každém output
+  (transparentně viditelné v response)
+
+### Audit findings — fixed in this release
+
+| # | Risk | Severity | Fix |
+|---|------|----------|-----|
+| 1 | Žádný input size limit | 🟠 vyšší | `validate_input()` hard cap 500 KB |
+| 2 | Žádný HTTP retry | 🟠 vyšší | `_post_with_retry()` 3× s exponential backoff |
+| 3 | Žádné logging | 🟡 stř. | `logging.basicConfig` + per-tool tracking |
+| 4 | PUA collision risk | 🟢 nízké | Pre-check + strip + warning |
+| 5 | Empty input → tichá chyba | 🟢 nízké | Explicit `ValidationError` |
+
+### Audit findings — záměrně NEopraveno
+
+- **Žádné unit testy** — covered by integration smoke tests, full unit
+  test suite počká až po Jiříkově víkendovém stress testu (real-world
+  feedback informuje co je třeba testovat)
+- **Žádný caching** — performance optimization, ne correctness; počká až
+  bude reálný load (zatím interní use)
+
+### Konkurence audit (verified 20.5.2026)
+
+- ❌ **MCP Registry** (`registry.modelcontextprotocol.io`): 0 výsledků
+  pro "ufal", "czech nlp", "anonymization czech"
+- ❌ **GitHub**: nejbližší repos (`tivaliy/mcp-nlp`, `TCoder920x/open-legal-compliance-mcp`,
+  `agentic-ops/legal-mcp`) jsou generic — žádný nepokrývá Czech NLP +
+  ÚFAL ekosystém + production anonymizace + MCP intersection
+- ✅ **ufal-mcp je unique v tom intersection** — first/only ke 20.5.2026
+
 ## [0.7.1] — 2026-05-20
 
 ### Sjednocená detekce jazyka — 35/35 = 100%

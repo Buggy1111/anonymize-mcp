@@ -14,6 +14,7 @@ bez explicitního písemného svolení autorů.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -24,6 +25,35 @@ from . import nametag as _nametag
 from . import ponk as _ponk
 from . import translator as _translator
 from . import udpipe as _udpipe
+from .validation import ValidationError, validate_input
+
+# Setup logging — default INFO to stderr (visible v Claude Code logs).
+# Uživatel může přepsat přes UFAL_MCP_LOG_LEVEL env var.
+import os
+_log_level = os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=_log_level,
+    format="%(asctime)s [%(levelname)s] ufal-mcp: %(message)s",
+)
+logger = logging.getLogger("ufal_mcp")
+
+
+def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:
+    """Validate + clean input + emit warning logs.
+
+    Returns: (cleaned_text, warnings_list)
+    Raises: ValidationError pokud text je invalid (empty / příliš velký).
+    """
+    try:
+        cleaned, warnings = validate_input(text)
+    except ValidationError as e:
+        logger.error("%s validation failed: %s", tool_name, e)
+        raise
+    for w in warnings:
+        logger.warning("%s input: %s", tool_name, w)
+    logger.debug("%s called with %d bytes input", tool_name, len(cleaned.encode("utf-8")))
+    return cleaned, warnings
+
 
 mcp = FastMCP("ufal")
 
@@ -65,13 +95,17 @@ async def extract_entities(
         ``xml`` (jen pokud ``include_xml``),
         ``vertical`` (jen pokud ``include_vertical``).
     """
-    return await _nametag.recognize(
+    text, _warns = _prepare_input(text, "extract_entities")
+    result = await _nametag.recognize(
         text,
         model=model,
         fix_romance=fix_romance,
         include_xml=include_xml,
         include_vertical=include_vertical,
     )
+    if _warns:
+        result.setdefault("warnings", []).extend(_warns)
+    return result
 
 
 @mcp.tool()
@@ -133,7 +167,8 @@ async def anonymize(
         ``warnings``, ``sources`` ({maskit, wrapper-regex, wrapper-strict,
         wrapper-placeholder}).
     """
-    return await _maskit.anonymize_text(
+    text, _warns = _prepare_input(text, "anonymize")
+    result = await _maskit.anonymize_text(
         text,
         output=output,
         keep_mapping=keep_mapping,
@@ -143,6 +178,9 @@ async def anonymize(
         regex_pre_pass_enabled=regex_pre_pass,
         stop_list_filter=stop_list_filter,
     )
+    if _warns:
+        result.setdefault("warnings", []).extend(_warns)
+    return result
 
 
 @mcp.tool()
@@ -181,12 +219,16 @@ async def analyze_morphology(
         ``sentences``, ``model``, ``token_count``, ``sentence_count``,
         ``detected_language`` (jen u auto).
     """
-    return await _udpipe.analyze(
+    text, _warns = _prepare_input(text, "analyze_morphology")
+    result = await _udpipe.analyze(
         text,
         model=model,
         include_parse=include_parse,
         include_ranges=include_ranges,
     )
+    if _warns:
+        result["warnings"] = _warns
+    return result
 
 
 @mcp.tool()
@@ -232,7 +274,8 @@ async def check_readability(
         + volitelné ``rules`` (list), ``lexical_surprise`` (dict),
         ``speech_acts`` (dict), ``highlighted_html`` (str).
     """
-    return await _ponk.check(
+    text, _warns = _prepare_input(text, "check_readability")
+    result = await _ponk.check(
         text,
         input_format=input_format,
         include_rules=include_rules,
@@ -240,6 +283,9 @@ async def check_readability(
         include_speech_acts=include_speech_acts,
         include_highlighted_html=include_highlighted_html,
     )
+    if _warns:
+        result["warnings"] = _warns
+    return result
 
 
 @mcp.tool()
@@ -267,7 +313,11 @@ async def correct_text(
     Returns:
         ``corrected`` (upravený text), ``model``, ``mode``, ``changed`` (bool).
     """
-    return await _korektor.correct(text, mode=mode)
+    text, _warns = _prepare_input(text, "correct_text")
+    result = await _korektor.correct(text, mode=mode)
+    if _warns:
+        result["warnings"] = _warns
+    return result
 
 
 @mcp.tool()
@@ -308,9 +358,13 @@ async def translate_text(
         (skutečně použitý model name), ``document_mode``, ``input_chars``,
         ``output_chars``.
     """
-    return await _translator.translate(
+    text, _warns = _prepare_input(text, "translate_text")
+    result = await _translator.translate(
         text, src=src, tgt=tgt, document_mode=document_mode
     )
+    if _warns:
+        result["warnings"] = _warns
+    return result
 
 
 def main() -> None:
