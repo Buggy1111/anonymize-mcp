@@ -2,6 +2,77 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.7] — 2026-05-21
+
+### Robustnost po stress testu — H1 idempotence + 4 P2/P3 fixy
+
+Po publikaci v0.7.6 (94/94 PII coverage, 11/11 langdetect) zbývaly 4 P2/P3
+bugy z BUGS-v076.md. v0.7.7 je všechny adresuje + opravuje H1 idempotenci.
+
+### 🟠 P1 — `maskit.py` H1 idempotence fix
+
+`anonymize(anonymize(x)) != anonymize(x)` — re-volání anonymize na již
+anonymizovaný text korumpovalo placeholdery (`ENTITA1` → `ENTITA1ULICE1`)
+a klasifikovalo český literal `RČ` jako entitu (ENTITA1).
+
+**Fix**: nový STEP 0 v pipeline:
+- Detekuje existující placeholdery `(OSOBA|FIRMA|MESTO|ULICE|RC|...)\d+` v
+  vstupu pomocí regex postaveného z `_TYPE_TO_PREFIX` + `ENTITA`
+- Pokud **3+ placeholderů** → early return jako `idempotence guarantee`
+  (vstup je už anonymizovaný, pipeline by jen drift způsobila)
+- Pokud **<3 placeholderů** → chranime PUA sentinely (U+E300-E3FF range)
+  pred celou pipeline, na konci restore
+
+Test: `anonymize(x) == anonymize(anonymize(x)) == anonymize(anonymize(anonymize(x)))` ✓
+
+### 🟡 P2 — `validation.py` C0 control + zero-width chars strip
+
+**A18 NUL byte**: `"Jan\x00Novák"` → NameTag tise rozsekl entity, našel jen "Jan".
+**Fix**: `_C0_CONTROL_RE` strippuje `\x00-\x08\x0b\x0c\x0e-\x1f\x7f` + warning.
+
+**C2/C3 ZWS/ZWJ v jménech**: `"Jan​Novák"` (ZWSP) → entity dedup fail
+(downstream "Jan Novák" ≠ "Jan​Novák").
+**Fix**: `_ZW_RE` strippuje `U+200B-U+200D U+2060 U+FEFF` + warning.
+
+**PUA range rozšířen**: `U+E100-E2FF` → `U+E100-E3FF` (kryje nový idempotence
+sentinel pool U+E300+).
+
+### 🟢 P3 — `validation.py` whitespace-only raise
+
+**A2/A3/A15**: `"   "` / `"\n\n\n\t"` projely tise s `model=null` — nekonzistence
+vs empty raise.
+**Fix**: `if not text.strip(): raise ValidationError("Input is whitespace-only...")`
+Konzistentní s empty handling napříč nástroji.
+
+### 🟢 P3 — `langdetect.py` "unknown" fallback pro non-latin
+
+**A6/C9**: `"🦊🌍🇨🇿"` → `detected_language: czech` (misleading default).
+**Fix**: pokud po score-based detekci nemá vstup žádné latinkové slovo
+(`[A-Za-zÀ-ÿĀ-ž]{2,}`), vrátí `"unknown"` místo `"czech"`.
+- `nametag.resolve_model` mapuje `"unknown"` na multilingvální UNER s
+  `detected_language="unknown"` v outputu
+- `udpipe.analyze` fallback na CZ model (UDPipe nemá unknown model alias),
+  ale `detected_language="unknown"` v outputu pro transparency
+
+### 📊 Regression coverage
+
+- E12 (původní PII tests): 12/12 pass
+- A (degenerate input): 19/19 (10 pass + 9 expected_fail validation)
+- C (encoding): 9/9
+- Multilingual langdetect: 11/11
+- ULTIMATE 9-sektor 94/94 PII: 100 % stále caught
+- Cross-tool: H1_idempotence ✓ (předtím fail), H2/H4/H5 pass
+- H3 placeholder→entity zůstává (P3 by-design: NameTag tagne literal "FIRMA"
+  jako firma/společnost — není to anonymize bug)
+
+### Známé limitace (nezměněno)
+
+- UDPipe + PONK timeoutují na >10KB inputs (UFAL upstream limit)
+- MasKIT/PONK/Korektor jsou CZ-only — wrapper-regex chytá strukturované PII
+  univerzálně, NER fungure via UNER pro non-CZ
+- Charles `hi→en` neexistuje (en→hi jednosměrně) — `hi→cs` cleanly fails
+  v translator.py
+
 ## [0.7.6] — 2026-05-21
 
 ### Adversarial stress + cross-sektor rozšíření (94/94 PII, 11/11 langdetect)

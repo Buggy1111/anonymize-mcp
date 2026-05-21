@@ -21,9 +21,11 @@ Pipeline (8 kroků v `anonymize_text`):
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 from .http import MASKIT_URL, post_form
+from .maskit_constants import _TYPE_TO_PREFIX
 from .maskit_parsing import (
     _MASKIT_PLACEHOLDER as _MASKIT_PLACEHOLDER_for_rebuild,
     detect_fragmentation,
@@ -35,6 +37,46 @@ from .maskit_placeholders import PlaceholderRegistry, nametag_fallback
 from .maskit_stoplist import filter_false_positives
 from .maskit_strict import pre_anonymize_orgs, restore_sentinels
 from .nametag import classify_originals
+
+# Idempotence pre-pass: pokud vstup uz obsahuje placeholdery z predchozi anonymizace
+# (OSOBA1, FIRMA2, MESTO1, atd.), je chrame PUA sentinely PRED celou pipeline,
+# aby je MasKIT/NameTag nepreznacily/nekorumpovaly. Resi H1 idempotence bug:
+# anonymize(anonymize(x)) musi == anonymize(x).
+_IDEMPOTENCE_SENT_BASE = 0xE300
+_KNOWN_PREFIXES = sorted(set(_TYPE_TO_PREFIX.values()) | {"ENTITA"}, key=len, reverse=True)
+_EXISTING_PLACEHOLDER_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(p) for p in _KNOWN_PREFIXES) + r")\d+\b"
+)
+
+
+def _protect_existing_placeholders(text: str) -> tuple[str, dict[str, str]]:
+    """Najdi existujici placeholdery (OSOBA1, FIRMA2, ...) a nahrad je PUA sentinely.
+
+    Returns: (text_se_sentinely, map: sentinel -> original_placeholder)
+    """
+    restore_map: dict[str, str] = {}
+    next_idx = [0]
+
+    def _replace(m: re.Match[str]) -> str:
+        original = m.group(0)
+        if next_idx[0] >= 256:
+            return original  # bezpecnostni cap, nemelo by se stat
+        sentinel = chr(_IDEMPOTENCE_SENT_BASE + next_idx[0])
+        next_idx[0] += 1
+        restore_map[sentinel] = original
+        return sentinel
+
+    new_text = _EXISTING_PLACEHOLDER_RE.sub(_replace, text)
+    return new_text, restore_map
+
+
+def _restore_protected_placeholders(text: str, restore_map: dict[str, str]) -> str:
+    """Vrati PUA sentinely zpet na puvodni placeholdery."""
+    if not restore_map:
+        return text
+    for sentinel, original in restore_map.items():
+        text = text.replace(sentinel, original)
+    return text
 
 
 async def anonymize_text(
@@ -52,6 +94,48 @@ async def anonymize_text(
         return {"anonymized": "", "raw": "", "replacements": [], "warnings": []}
 
     all_warnings: list[str] = []
+
+    # === STEP 0: Idempotence pre-pass — detekce uz-anonymizovaneho vstupu ===
+    # Pokud vstup obsahuje 3+ placeholderu (OSOBA1/FIRMA1/MESTO1/...), je to
+    # re-anonymizace. PUA sentinely meni okolni kontext (MasKIT klasifikuje
+    # "RČ" pred sentinelem jinak nez pred cislem), takze single-step pre-pass
+    # nestaci. Resi H1: anonymize(anonymize(x)) == anonymize(x). Strategy:
+    #   - 3+ placeholderu => uz anonymizovany, vrat early jako identity
+    #   - <3 placeholderu => mozna text co se shoduje s nasim formatem nahodou,
+    #     necham probehnout pipeline (chraneny PUA sentinely)
+    idem_restore_map: dict[str, str] = {}
+    if output == "txt":
+        text_protected, idem_restore_map = _protect_existing_placeholders(text)
+        if len(idem_restore_map) >= 3:
+            # Early return — vrat identicky vstup, jen nahlas warningem.
+            return {
+                "anonymized": text,
+                "raw": text,
+                "replacements": [],
+                "warnings": [
+                    f"Vstup obsahuje {len(idem_restore_map)} existujicich placeholderu "
+                    f"(OSOBA*/FIRMA*/MESTO*/...) — detekovano jako jiz anonymizovany text, "
+                    f"pipeline preskocena (idempotence guarantee)."
+                ],
+                "count": 0,
+                "sources": {"maskit": 0, "wrapper-regex": 0, "wrapper-strict": 0,
+                            "wrapper-placeholder": 0, "wrapper-nametag-fallback": 0,
+                            "idempotence-skip": 1},
+            } if keep_mapping else {
+                "anonymized": text,
+                "raw": text,
+                "warnings": [
+                    f"Vstup obsahuje {len(idem_restore_map)} existujicich placeholderu — "
+                    f"detekovano jako jiz anonymizovany text, pipeline preskocena."
+                ],
+            }
+        # <3 placeholderu — chranime co je, pokracujeme pipeline normalne
+        text = text_protected
+        if idem_restore_map:
+            all_warnings.append(
+                f"Vstup obsahoval {len(idem_restore_map)} existujicich placeholderu — "
+                f"chraneny PUA sentinely pred pipeline."
+            )
 
     # === STEP 1: Regex pre-pass — strukturovaná PII ===
     regex_reps: list[dict[str, Any]] = []
@@ -178,7 +262,7 @@ async def anonymize_text(
         new_parts.append(raw[last_end:])
         anonymized = "".join(new_parts)
 
-        # NameTag fallback — chytí entity co MasKIT vynechal (emocionální texty)
+        # NameTag fallback — chytí entity co MasKIT vynechal (emocionální texty).
         anonymized, fallback_reps = await nametag_fallback(
             text, anonymized, new_replacements, registry
         )
@@ -189,6 +273,13 @@ async def anonymize_text(
     for r in replacements:
         r.pop("_raw_context_before", None)
         r.pop("_sentinel", None)
+
+    # === STEP 9: Idempotence restore — vrat chranene placeholdery ===
+    # Sentinely z STEP 0 musime vratit zpet do textu, aby vystup obsahoval
+    # puvodni placeholdery (OSOBA1, FIRMA2, ...) ne PUA sentinely.
+    if idem_restore_map and output == "txt":
+        anonymized = _restore_protected_placeholders(anonymized, idem_restore_map)
+        raw = _restore_protected_placeholders(raw, idem_restore_map)
 
     # === Output ===
     sources_count = {

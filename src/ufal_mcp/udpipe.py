@@ -193,6 +193,10 @@ async def analyze(
         from .langdetect import detect_language as _unified_detect
         actual_model = _unified_detect(text)
         detected = actual_model
+        # "unknown" => fallback na czech model (UDPipe nemá unknown model alias).
+        # detected_language zůstane "unknown" v outputu, ale model bude czech.
+        if actual_model == "unknown":
+            actual_model = "czech"
 
     payload: dict[str, str] = {
         "data": text,

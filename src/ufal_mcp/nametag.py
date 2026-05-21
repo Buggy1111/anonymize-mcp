@@ -116,6 +116,11 @@ def resolve_model(model: str, text: str) -> tuple[str, str | None]:
         # SK je mutual-intelligible s CZ — CNEC 2.0 dává víc entit než UNER
         if lang == "slovak":
             return DEFAULT_CZ_MODEL, "slovak (using cz-cnec for better coverage)"
+        # "unknown" = no latin words detected (emoji/exotic chars only).
+        # Fallback na multilingvální UNER — model přežije ale entity count
+        # bude nízký. detected_language="unknown" v outputu pro transparency.
+        if lang == "unknown":
+            return DEFAULT_MULTILINGUAL_MODEL, "unknown"
         # Ostatní jazyky → multilingvální UNER
         return DEFAULT_MULTILINGUAL_MODEL, lang
     if model in MODEL_ALIASES:
