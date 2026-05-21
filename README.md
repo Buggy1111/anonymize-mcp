@@ -146,6 +146,14 @@ V Claude Code stačí napsat například:
 
 > Klient mi posílá text bez diakritiky z mobilu — doplň diakritiku přes Korektor.
 
+## Autor
+
+`ufal-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — independent developer z ČR, který v0.7 sérii postavil na svém reálném legal-tech use case (Jiříkův spis, 102/102 ops) a v0.7.6 rozšířil napříč 9 sektory + 11 jazyky.
+
+Wrapper kolem skvělých ÚFAL MFF UK nástrojů — bez NameTag, MasKIT, UDPipe, PONK, Korektor a Charles Translator by tahle MCP serverka neexistovala. Díky celému ÚFAL týmu (Jana Straková, Milan Straka, Jiří Mírovský, Barbora Hladká, Silvie Cinková a další) za roky práce na production-grade NLP nástrojích pro češtinu.
+
+Issues, PRs, feedback vítány na [github.com/Buggy1111/ufal-mcp](https://github.com/Buggy1111/ufal-mcp).
+
 ## Licence
 
 Tento wrapper `ufal-mcp` má **MIT licenci** (viz `LICENSE`).
