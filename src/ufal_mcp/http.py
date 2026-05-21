@@ -13,8 +13,8 @@ NAMETAG_URL = "https://lindat.mff.cuni.cz/services/nametag/api/recognize"
 PONK_URL = "https://quest.ms.mff.cuni.cz/ponk/api/process"
 UDPIPE_URL = "https://lindat.mff.cuni.cz/services/udpipe/api/process"
 
-HTTP_TIMEOUT = 60.0
-HTTP_TIMEOUT_LONG = 180.0  # Translator doc mode / large inputs
+HTTP_TIMEOUT = 120.0  # Zvýšeno z 60s — MasKIT API občas reaguje 60-90s na úřední SK texty
+HTTP_TIMEOUT_LONG = 240.0  # Translator doc mode / large inputs
 
 # Retry config — exponential backoff pro transient failures
 MAX_RETRIES = 3
@@ -73,7 +73,11 @@ async def _post_with_retry(
                 backoff *= BACKOFF_MULTIPLIER
                 continue
             logger.error("Vše %d pokusů selhalo na %s: %s", MAX_RETRIES + 1, url, e)
-            raise
+            # Vytvoř exception s explicitní message — httpx.ReadTimeout má prázdné
+            # str(), což znesnadňuje debug u uživatele.
+            err_type = type(e).__name__
+            msg = str(e) or f"{err_type} po {timeout}s na {url} (server pravděpodobně přetížený)"
+            raise type(e)(msg) from e
         except httpx.HTTPStatusError as e:
             # 4xx errors except 429 — fail immediately, no point retrying client errors
             logger.error("HTTP %d na %s: %s", e.response.status_code, url, e)

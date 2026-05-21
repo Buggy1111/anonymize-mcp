@@ -54,14 +54,17 @@ async def translate(
 
     Args:
         text: Vstupní text.
-        src: Zdrojový jazyk (cs/en/fr/de/pl/ru/uk/hi).
+        src: Zdrojový jazyk (cs/en/fr/de/pl/ru/uk/hi). SK je akceptováno jako
+            alias na ``cs`` (Charles Translator nepodporuje SK přímo, ale
+            kvalita CZ-SK je díky mutual intelligibility prakticky srovnatelná
+            s identitou — model si poradí se SK textem).
         tgt: Cílový jazyk.
         document_mode: True pro dokumentový mód (zachová strukturu odstavců).
             Dostupné jen pro cs↔en (doc-cs-en, doc-en-cs).
 
     Returns:
         ``translated`` (text), ``src``, ``tgt``, ``pair`` (model name),
-        ``document_mode``, ``input_chars``, ``output_chars``.
+        ``document_mode``, ``input_chars``, ``output_chars``, ``warnings`` (list).
 
     Raises:
         UnsupportedPairError: Pokud zvolený pár není podporovaný.
@@ -75,12 +78,29 @@ async def translate(
             "document_mode": document_mode,
             "input_chars": 0,
             "output_chars": 0,
+            "warnings": [],
         }
+
+    warnings: list[str] = []
+    # SK → CS fallback (Charles Translator nepodporuje SK přímo, ale CZ model
+    # zvládá SK díky mutual intelligibility — testováno na Jiříkově spisu).
+    original_src = src
+    if src == "sk":
+        src = "cs"
+        warnings.append(
+            "SK není přímo podporovaný — použit CZ model (mutual intelligibility). "
+            "Pro úřední SK texty funguje dobře, lyrické/poetické SK může mít drobné chyby."
+        )
+    if tgt == "sk":
+        tgt = "cs"
+        warnings.append(
+            "Cílový jazyk SK nahrazen CZ (Charles Translator nepodporuje SK)."
+        )
 
     if src not in SUPPORTED_LANGUAGES:
         raise UnsupportedPairError(
-            f"Source language {src!r} not supported. "
-            f"Allowed: {sorted(SUPPORTED_LANGUAGES)}"
+            f"Source language {original_src!r} not supported. "
+            f"Allowed: {sorted(SUPPORTED_LANGUAGES)} (sk auto-fallback na cs)"
         )
     if tgt not in SUPPORTED_LANGUAGES:
         raise UnsupportedPairError(
@@ -108,10 +128,11 @@ async def translate(
 
     return {
         "translated": translated,
-        "src": src,
+        "src": original_src,  # zachovej originál (sk) pro audit
         "tgt": tgt,
         "pair": pair,
         "document_mode": document_mode,
         "input_chars": len(text),
         "output_chars": len(translated),
+        "warnings": warnings,
     }

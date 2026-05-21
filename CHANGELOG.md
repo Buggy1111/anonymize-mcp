@@ -2,6 +2,88 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.5] — 2026-05-21
+
+### Stress-test Jiříkův druhý spis — 5 fixů (102/102 ops success)
+
+Druhý reálný stress test na 17 dokumentech (5 PDF + 12 JPEG, SK+CZ mix, OCR
+přes ocrmypdf + tesseract + Claude vision na rukopisy) odhalil několik bugů,
+které v0.7.5 fixuje. **Po fixech: 17 dokumentů × 6 nástrojů = 102/102 success.**
+
+### Opraveno (kritické)
+
+**B1: Sentinel word-boundary v NameTag fallback**
+(`maskit_placeholders.nametag_fallback`)
+- `anonymized.replace(original, new_plc)` dělalo substring match → `"SK"` v
+  `"MESTSKÝ"` se nahrazovalo → výsledek `"MESTINSTITUCE16Ý SÚD"` (text poškozen)
+- Fix: `re.sub(r"(?<!\w)..(?!\w)", ...)` s Python 3 unicode \w → match jen
+  jako samostatné slovo
+- Plus: pokud word-boundary nematchne (např. `Bc.` u okraje), skip místo
+  prázdné replace
+
+**B2: INSTITUCE deduplication přes všechny zdroje**
+(`maskit_strict.pre_anonymize_orgs` + `maskit_placeholders.PlaceholderRegistry`)
+- "CIPC" 3× v textu → 3 různé placeholders (INSTITUCE12/13/14) místo 1×
+- Příčina 1: strict pre-pass vytvořil nový sentinel + counter pro každý výskyt
+- Příčina 2: NameTag klasifikoval CIPC postupně jako if/io/ic → různé prefixy
+- Příčina 3: PlaceholderRegistry znala jen MasKIT reps, ne strict/regex
+- Fix 1: strict dedup na (text only, case-insensitive), reuse sentinel
+- Fix 2: PlaceholderRegistry dedup jen na text (bez prefixu) — typ z prvního výskytu
+- Fix 3: `PlaceholderRegistry.preseed()` pro wrapper-strict + wrapper-regex
+  před MasKIT processing — registry vidí celé spektrum předem
+
+**E2: SK language detection — 5/17 SK textů zaroutováno chybně**
+(`langdetect.detect_language`)
+- Úřední SK texty (Sociálna poisťovňa, ÚPSVaR, CIPC) byly detekovány jako
+  portuguese/hungarian/romanian/english kvůli málo CZ-specific řěů a šumu
+  z mezinárodních EN titulů
+- Důsledek: NameTag default routing na UNER místo CNEC → málo entit (1-11 vs 20-76)
+- Fix: nový `_SLOVAK_UNIQUE_CHARS` (ľ/ĺ/ŕ — NIKDY ne v CZ/EN/HU/PT/RO) +
+  rozšířený `_SLOVAK_STRONG_WORDS` (úřední slovník: poisťovňa, výživn-,
+  ponechať, nesúhlas-, žiadosť, nakoľko, prehľad, ...)
+- Plus **SK morfologické rysy** distinktivní vůči CZ:
+  - `-ajú`/`-ujú` (3.pl.): prichádzajú SK vs přicházejí CZ
+  - `-ovaná + om`: sledovaná neurologom SK vs sledována neurologem CZ
+  - SK měsíce: máj/jún/júl + rok (CZ: květen/červen/červenec)
+- Decision tree porovnává CZ-unique chars × 2 vs SK-signal — handwritten
+  texty s občasným SK influence zůstávají CZ
+- Result: **17/17 PASS** (předtím 12/17)
+
+**E3: Translator SK fallback na cs** (`translator.translate`)
+- Charles Translator nepodporuje SK přímo (jen 8 jazyků: cs/en/fr/de/pl/ru/uk/hi)
+- 4 SK dokumenty failed s "Source language 'sk' not supported"
+- Fix: `src='sk'` → auto-fallback na `'cs'` + warning. CZ model díky mutual
+  intelligibility zvládá SK úřední texty bez ztráty kvality (testováno).
+- Auto-fallback platí i pro target lang (sk → cs)
+
+**E4: anonymize crash při MasKIT API timeoutu** (`maskit.anonymize_text`, `http.py`)
+- MasKIT API občas timeoutuje (přetížený server, zvlášť na úředních SK textech)
+- Dříve: empty error string (`str(httpx.ReadTimeout)` = "") → uživatel netuší co dělat
+- Fix 1: zvýšen `HTTP_TIMEOUT` 60s → **120s** (Translator 180s → 240s)
+- Fix 2: explicitní error message když exception nemá `str()` (`"ReadTimeout
+  po 120s na URL (server pravděpodobně přetížený)"`)
+- Fix 3: **soft-fail** v anonymize — pokud MasKIT padne, pipeline pokračuje
+  bez něj a vrátí partial výsledek z regex pre-pass + strict pre-pass +
+  NameTag fallback. Warning ale OK status. Lepší partial než crash.
+
+### Test track record
+
+- **Jiříkův druhý spis (full pipeline)**: 17 dokumentů × 6 ÚFAL nástrojů
+  = **102/102 operations OK** (předtím 88/102)
+- **NameTag entities zlepšení**: SK dokumenty teď CNEC 24-76 entit (předtím
+  UNER 1-11 entit po misclassification)
+- **Anonymize coverage**: 17/17 (předtím 16/17 — CIPC FAILed)
+- **Translator coverage**: 8/8 dostatečně krátkých dokumentů (předtím 4/8)
+- **Korektor + Morphology + Readability**: 17/17 vždy
+
+### Demo path
+
+`/home/buggy1111/dev/ufal-mcp-demo-jirik-batch/`:
+- `txt/` — 17 OCR'd dokumentů (PDF přes ocrmypdf, JPEG přes tesseract,
+  rukopis přes Claude vision)
+- `anonymized/v0.7.5-fixed/` — anonymizované verze
+- `reports/v0.7.5-fixed/` — per-doc JSON + summary.md (100% PASS)
+
 ## [0.7.4] — 2026-05-20
 
 ### NameTag fallback v anonymize + architekturní refactor

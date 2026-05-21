@@ -43,22 +43,45 @@ class PlaceholderRegistry:
     """Deduplikovaný číselník placeholderů pro deterministic mode.
 
     Stejná entita (case-insensitive normalizovaná) → vždy stejný placeholder.
+    Dedup je pouze na text — pokud NameTag klasifikuje stejnou entitu různě
+    (CIPC občas if/io/ic), vyhrává prefix z prvního výskytu.
     """
 
     def __init__(self) -> None:
-        self._seen: dict[tuple[str, str], str] = {}
+        self._seen: dict[str, str] = {}
         self._counters: dict[str, int] = {}
 
+    def _norm(self, original: str) -> str:
+        return re.sub(r"\s+", " ", original).strip().lower()
+
     def assign(self, original: str, type_label: str) -> str:
+        norm = self._norm(original)
+        if norm in self._seen:
+            return self._seen[norm]
         prefix = _TYPE_TO_PREFIX.get(type_label, "ENTITA")
-        norm = re.sub(r"\s+", " ", original).strip().lower()
-        key = (norm, prefix)
-        if key in self._seen:
-            return self._seen[key]
         self._counters[prefix] = self._counters.get(prefix, 0) + 1
         placeholder = f"{prefix}{self._counters[prefix]}"
-        self._seen[key] = placeholder
+        self._seen[norm] = placeholder
         return placeholder
+
+    def preseed(self, original: str, placeholder: str) -> None:
+        """Vloží existující placeholder do registry (z wrapper-strict/regex pre-pass).
+
+        Důležité pro dedup: pokud strict pre-pass nahradil 2× "CIPC" → FIRMA1,
+        ale 3. výskyt zachytil MasKIT, registry musí vědět že CIPC = FIRMA1.
+        Bez toho by registry.assign() vytvořila nový placeholder INSTITUCE3.
+        """
+        norm = self._norm(original)
+        if norm in self._seen:
+            return
+        self._seen[norm] = placeholder
+        # Sync counter — pokud placeholder je např. INSTITUCE3, posuň counter
+        # ať další assign(INSTITUCE) vrátí INSTITUCE4 (ne kolizi).
+        m = re.match(r"^([A-Z_]+?)(\d+)$", placeholder)
+        if m:
+            prefix, num = m.group(1), int(m.group(2))
+            if num > self._counters.get(prefix, 0):
+                self._counters[prefix] = num
 
 
 async def nametag_fallback(
@@ -98,8 +121,17 @@ async def nametag_fallback(
             continue
         type_label = ent.get("label", ent.get("type", "neznámé"))
         new_plc = registry.assign(original, type_label)
-        # Replace všechny occurrences (entity může být v textu vícekrát)
-        anonymized = anonymized.replace(original, new_plc)
+        # Word-boundary replace (re.UNICODE default): zabraňuje že "SK" v
+        # "MESTSKÝ" se nahradí, nebo "EUR" v "europský". \w v Py3 zahrnuje
+        # unicode písmena a číslice, takže pattern selže pokud original
+        # sousedí s písmenem/číslicí — což je přesně co chceme.
+        pattern = re.compile(r"(?<!\w)" + re.escape(original) + r"(?!\w)")
+        new_anon, n_subs = pattern.subn(new_plc, anonymized)
+        if n_subs == 0:
+            # Word boundary nematchne (např. originál obsahuje non-word chars
+            # u okrajů — "Bc.", "JUDr."). Skip, není v textu jako samostatné slovo.
+            continue
+        anonymized = new_anon
         fallback_reps.append({
             "original": original,
             "placeholder": new_plc,

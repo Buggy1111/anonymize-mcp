@@ -229,6 +229,52 @@ _TURKISH_CHARS = re.compile(r"[ıİşŞğĞçÇ][\w']*\b|\b\w*[ıİşŞğĞ]\w*\
 _ROMANIAN_CHARS = re.compile(r"[ăâțșȘȚ]")
 _SCANDINAVIAN_CHARS = re.compile(r"[æøåÆØÅ]")
 _ESTONIAN_CHARS = re.compile(r"õ")  # ä/ö/ü má i SV/DE, jen õ je ET-specific
+# Slovak-unique chars: ľ/ĺ/ŕ se NEVYSKYTUJÍ v žádném jiném latinkovém jazyce
+# v Evropě (LT má krátké ĺ jen formálně, prakticky se nepoužívá). Pokud text
+# obsahuje aspoň 1 výskyt → silný indikátor SK.
+_SLOVAK_UNIQUE_CHARS = re.compile(r"[ľĺŕĽĹŔ]")
+# Slovak-strong words: termíny z úředního/právního jazyka kde se SK liší od CZ.
+# Pro Jiříkovy SK dokumenty (Sociálna poisťovňa, ÚPSVaR, súdny spis) jsou tyto
+# velmi distinktivní — všechny jsou SK-only formy (CZ ekvivalenty: poisťovňa→
+# pojišťovna, poisťovne→pojišťovny, sociálnych→sociálních, ...).
+_SLOVAK_STRONG_WORDS = re.compile(
+    r"\b(poisť\w+|sociáln[yeo][acgmh]?\w*|"
+    r"výživn(?:ého|om|ého)?|"
+    r"ponechať|ponechan\w+|nesúhlas\w+|"
+    r"žiadosť|žiadam|žiada\w+|"
+    r"nakoľko|"
+    r"vyživovac\w+|"
+    r"nevyplat\w+|nepodieľ\w+|"
+    r"vyjadr\w+\s+k(?:u|\s)|"
+    r"povinnosti|povinnosť|"
+    r"oprávnen[yé]|"
+    r"prehľad|prehlad|"
+    r"dlh\b|dlhu\b|dlžné|"
+    r"Slovensk\w+|slovensk\w+|"
+    r"Bratislav\w+(?:\s+II)?|"
+    r"Mestský\s+súd|"
+    r"poškoden\w+|"
+    r"konaní|konanie|konania|"
+    # SK morfologické rysy — distinktivní vůči CZ
+    # -ajú (3.pl. -a kmen): "prichádzajú" SK vs "přicházejí" CZ
+    # -ujú (3.pl. -u kmen): "študujú" SK vs "studují" CZ
+    # -ovaná/-ovaný v lékařských zprávách: "sledovaná neurologom"
+    # -om instrumental sg. místo CZ -em: "neurologom", "súdom"
+    r"\w{3,}aj[úu]\b|\w{3,}uj[úu]\b|"
+    r"\w{3,}ovan[áéý]\s+(?:[a-žá-ž]+om|[a-žá-ž]+ov)\b|"
+    r"neurológ\w*|sledovan[áéýou]\s+\w+om|"
+    r"\w{4,}om\b\s+(?:bol|bola|bolo|boli|som|si|sme|sú|je|nie)|"
+    # -ä (Slovak schwa): "vďaka", "ďakuj"
+    r"vďak\w*|ďakuj\w+|"
+    # Měsíce kalendářního formátu SK: máj, jún, júl, august (SK), nie CZ květen/červen/červenec/srpen
+    r"\b(máj|jún|júl|august|január|február|marec|apríl|október|december|november)\s+\d{4}|"
+    # Common SK words v úředních textech: "prichádz" (přicházejí), "transakci" se SK koncovkou
+    r"prichádz\w+|odchádz\w+|"
+    r"transakci[aei]|"
+    # SK specific: "narodená/narodený" + datum
+    r"narodená\b|narodený\b)",
+    re.IGNORECASE,
+)
 _SLOVENIAN_HINT = re.compile(
     r"\b(je|so|sem|si|smo|ste|ni|ki|kar|kakor|vlož\w+|tožb\w+|sodišč\w+)\b",
     re.IGNORECASE,
@@ -271,6 +317,26 @@ def detect_language(text: str) -> str:
         return "greek"
 
     # 2) Character signatures — distinktivní diakritika pro jazyky
+
+    # SK vs CZ disambiguation — compare unique-char counts a strong word hits.
+    # Bez tohoto by se falešně zařazovaly úřední SK texty (Sociálna poisťovňa,
+    # ÚPSVaR, CIPC) jako HU/PT/RO/EN protože nemají žádné CZ-specific řěů, ale
+    # angl. nebo evropský šum (např. anglický title v CIPC potvrdení).
+    # Pozor: handwritten texty (Jiříkův rukopis) můžou mít SK chars omylem nebo
+    # SK influence — tam preferujeme CZ pokud má text víc CZ-specific chars.
+    cz_unique_hits = sum(1 for c in text if c in "řěůŘĚŮ")
+    sk_unique_hits = len(_SLOVAK_UNIQUE_CHARS.findall(text))
+    sk_strong_hits = len(_SLOVAK_STRONG_WORDS.findall(text))
+    # Strong SK signal: 3+ unique chars (ľ/ĺ/ŕ) NEBO 1+ unique + 3+ strong words
+    # NEBO 0 unique + 4+ strong words. Plus CZ chars musí být ≤ SK signál × 2.
+    is_strong_sk = (
+        sk_unique_hits >= 3
+        or (sk_unique_hits >= 1 and sk_strong_hits >= 3)
+        or (sk_unique_hits == 0 and sk_strong_hits >= 4)
+    )
+    if is_strong_sk and cz_unique_hits <= max(sk_unique_hits, sk_strong_hits) * 2:
+        return "slovak"
+
     if len(_VIETNAMESE_CHARS.findall(text)) >= 2:
         return "vietnamese"
     if _ESTONIAN_CHARS.search(text):
