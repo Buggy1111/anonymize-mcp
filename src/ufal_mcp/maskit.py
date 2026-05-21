@@ -67,16 +67,32 @@ async def anonymize_text(
             text_after_regex, start_counters=None
         )
 
-    # === STEP 3: MasKIT call ===
-    data = await post_form(
-        MASKIT_URL,
-        {"text": text_for_maskit, "input": "txt", "output": output},
-    )
-    raw = data.get("result", "")
-    if output == "txt":
-        anonymized, maskit_replacements = parse_maskit(raw)
-    else:
-        anonymized, maskit_replacements = raw, []
+    # === STEP 3: MasKIT call (soft-fail při timeoutu) ===
+    # Pokud MasKIT API selže (timeout/přetížení serveru), pokračujeme s tím,
+    # co dal regex pre-pass + strict pre-pass. Lepší partial anonymizace
+    # (úřady, telefony, č.j., IBAN) než kompletní crash.
+    import httpx
+    try:
+        data = await post_form(
+            MASKIT_URL,
+            {"text": text_for_maskit, "input": "txt", "output": output},
+        )
+        raw = data.get("result", "")
+        if output == "txt":
+            anonymized, maskit_replacements = parse_maskit(raw)
+        else:
+            anonymized, maskit_replacements = raw, []
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+        # Soft fallback: emuluj výstup MasKITu sentinely, ostatní pipeline
+        # (restore, fallback, placeholder mode) doběhne na regex+strict reps.
+        all_warnings.append(
+            f"MasKIT API selhalo ({type(e).__name__}: {e or 'timeout'}) — "
+            f"vrácen partial výsledek z regex pre-pass + strict pre-pass. "
+            f"Pro full anonymizaci zkus znovu za pár minut."
+        )
+        raw = text_for_maskit
+        anonymized = text_for_maskit
+        maskit_replacements = []
 
     for r in maskit_replacements:
         r["source"] = "maskit"
@@ -115,6 +131,17 @@ async def anonymize_text(
     # === STEP 8: Placeholder mode (deterministic + NameTag fallback) ===
     if placeholder_mode and output == "txt":
         registry = PlaceholderRegistry()
+
+        # Pre-seed registry s wrapper-strict + wrapper-regex placeholdery.
+        # Bez toho by MasKIT-zachycený další výskyt stejné entity dostal nový
+        # placeholder (CIPC: strict→FIRMA1 × 2, maskit→INSTITUCE3 = 3 různé).
+        for r in replacements:
+            src = r.get("source", "")
+            if src in ("wrapper-strict", "wrapper-regex"):
+                orig = r.get("original")
+                plc = r.get("placeholder")
+                if orig and plc:
+                    registry.preseed(orig, plc)
 
         # Build map: MasKIT old placeholder → deterministic placeholder
         placeholder_map: dict[str, str] = {}

@@ -40,6 +40,10 @@ async def pre_anonymize_orgs(
     replacements: list[dict[str, Any]] = []
     counters: dict[str, int] = dict(start_counters or {})
     sentinel_idx = 0
+    # Dedup pouze na text (case-insensitive). NameTag občas klasifikuje stejné
+    # zkratky (CIPC, ČVS, OZ) postupně různými typy (if/io/ic), což dřív vedlo
+    # ke 3 různým placeholderům pro stejnou entitu. Bereme typ z prvního výskytu.
+    dedup_key_to_existing: dict[str, dict[str, Any]] = {}
 
     for ent in org_entities:
         ent_text = ent["text"]
@@ -56,19 +60,30 @@ async def pre_anonymize_orgs(
         if replaced_variant is None:
             continue
 
+        dedup_key = re.sub(r"\s+", " ", ent_text).strip().lower()
+
+        existing = dedup_key_to_existing.get(dedup_key)
+        if existing is not None:
+            # Reuse existující sentinel — nahradí další výskyt stejnou značkou.
+            # Po restore_sentinels se na něj namapuje stejný placeholder.
+            text = text.replace(replaced_variant, existing["_sentinel"], 1)
+            continue
+
         prefix = _STRICT_PLACEHOLDER_PREFIX[ent["type"]]
         counters[prefix] = counters.get(prefix, 0) + 1
         sentinel_idx += 1
         sentinel = make_strict_sentinel(sentinel_idx)
 
         text = text.replace(replaced_variant, sentinel, 1)
-        replacements.append({
+        rep = {
             "_sentinel": sentinel,
             "original": ent_text,
             "placeholder": f"{prefix}{counters[prefix]}",
             "type": _STRICT_LABEL[ent["type"]],
             "source": "wrapper-strict",
-        })
+        }
+        replacements.append(rep)
+        dedup_key_to_existing[dedup_key] = rep
 
     return text, replacements
 
