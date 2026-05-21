@@ -12,6 +12,12 @@ from typing import Any
 
 from .maskit_constants import make_pii_sentinel
 
+# RČ "YY MM DD" prefix — MM validovaný na (01-12, 21-32, 51-62, 71-82).
+# Pokrývá muže/ženy + post-2004 ±20 modifikátor (vyčerpání číselné řady).
+# Validace MM chrání proti false positives na 10-ciferných číslech (ISBN, atd.).
+_RC_MM = r"(?:0[1-9]|1[0-2]|2[1-9]|3[0-2]|5[1-9]|6[0-2]|7[1-9]|8[0-2])"
+_RC_YYMMDD = rf"\d{{2}}{_RC_MM}\d{{2}}"
+
 # Format-only patterns — match celé na format, žádný kontext potřebný.
 # Tyto jsou bezpečné (jednoznačný format, žádné false positives).
 _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
@@ -27,14 +33,55 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "TELEFON", "telefon",
     ),
-    # Rodné číslo (6 cifer/3-4 cifer)
-    (re.compile(r"\b\d{6}\s?/\s?\d{3,4}\b"), "RC", "rodné číslo"),
+    # Rodné číslo — 5 variant, vždy s validovaným měsícem:
+    #   800312/1234, 800312 / 1234 (slash, 3-4 cifer tail)
+    #   800312 1234                 (space separator, 4 digits tail)
+    #   8003121234                  (compact, 10 digits)
+    #   80-03-12/1234               (dashed prefix)
+    (
+        re.compile(
+            rf"\b{_RC_YYMMDD}\s?/\s?\d{{3,4}}\b"
+            rf"|\b{_RC_YYMMDD}\s\d{{4}}\b"
+            rf"|\b{_RC_YYMMDD}\d{{4}}\b"
+            rf"|\b\d{{2}}-{_RC_MM}-\d{{2}}/\d{{3,4}}\b"
+        ),
+        "RC", "rodné číslo",
+    ),
+    # Číslo účtu CZ — strong form (prefix-base/bank s pomlčkou).
+    # 19-2000145399/0800, 35-1234567890/0100. Pomlčka mezi prefix a base
+    # je jednoznačný signál — žádný spis/telefon/č.j. tenhle tvar nemá.
+    (re.compile(r"\b\d{2,6}-\d{2,10}/\d{4}\b"), "UCET", "číslo účtu"),
     # DIČ — CZ12345678
     (re.compile(r"\b(?:CZ|SK)\d{8,10}\b"), "DIC", "DIČ"),
     # SPZ (CZ formát: 1A1 1234, 2BC 1234)
     (re.compile(r"\b\d[A-Z]\d\s?\d{4}\b|\b\d[A-Z]{2}\s?\d{4}\b"), "SPZ", "SPZ"),
     # IBAN
     (re.compile(r"\b[A-Z]{2}\d{2}\s?(?:[A-Z0-9]\s?){15,30}\b"), "IBAN", "IBAN"),
+    # ORCID (akademický unikátní ID): 0000-0002-1825-0097, poslední pozice X nebo digit
+    (re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b"), "ORCID", "ORCID"),
+    # Researcher ID (Web of Science / Publons): AAB-1234-5678
+    (re.compile(r"\b[A-Z]{1,3}-\d{4}-\d{4}\b"), "RESEARCHER_ID", "Researcher ID"),
+    # Platební karta (PAN) — Visa 4xxx, MasterCard 5xxx, Amex 3xxx, Discover 6xxx.
+    # Restrikce na BIN startovní cifru chrání před false-positives na 4×4-digit sekvence
+    # (např. roky 1990 1995 2000 2005). 16 digits with optional spaces/dashes.
+    (
+        re.compile(r"\b[3-6]\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta",
+    ),
+    # CZ banky — č.ú. následovaný bankou v závorce. Pokrývá format bez prefix-dash.
+    # "1234567890/2010 (Fio banka)", "12345/0100 (KB)"
+    (
+        re.compile(
+            r"\b\d{2,10}/\d{4}\b(?=\s*\((?:"
+            r"KB|ČSOB|Fio|ČNB|ČS|Moneta|Air\s+Bank|mBank|Equa\s+bank|"
+            r"UniCredit|Raiffeisen|Sberbank|Wüstenrot|Komerční\s+banka|"
+            r"Česká\s+spořitelna|Československá\s+obchodní\s+banka|"
+            r"[A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+\s+banka"
+            r")[^)]*\))",
+            re.IGNORECASE,
+        ),
+        "UCET", "číslo účtu",
+    ),
 ]
 
 # Context patterns — match prefix+value, nahradit JEN value (group 2).
@@ -61,17 +108,38 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "SPZN", "spisová značka",
     ),
-    # Občanský průkaz / datová schránka / telefon s prefixem
-    (
-        re.compile(r"(občansk\w*\s+průkaz\w*[:\s]+)(\d{9})\b", re.IGNORECASE),
-        "OP", "občanský průkaz",
-    ),
+    # Občanský průkaz / datová schránka / telefon s prefixem.
+    # Allow optional "č." between "průkaz*" and digits (instrumentál "průkazem č. 12345").
     (
         re.compile(
-            r"(datov\w+\s+schránk\w+[:\s]+(?:ID\s)?)([a-z0-9]{7})\b",
+            r"(občansk\w*\s+průkaz\w*\s+(?:č\.\s*)?)(\d{9})\b",
+            re.IGNORECASE,
+        ),
+        "OP", "občanský průkaz",
+    ),
+    # Technický průkaz vozidla (TP): AB1234567 or numeric
+    (
+        re.compile(
+            r"((?:č(?:íslo)?\.\s+)?T(?:echnický)?\s*P(?:růkaz)?[:\s]+|TP[:\s]+|číslo\s+TP[:\s]+)([A-Z]{1,3}\d{6,9})\b",
+            re.IGNORECASE,
+        ),
+        "TP", "technický průkaz",
+    ),
+    # Datová schránka — rozšířený trigger: "Datová schránka FNO: gh4nqpr",
+    # "datová schránka (bezpečnostní kód): ab7c2dx", "ID datové schránky: ud4abqd"
+    (
+        re.compile(
+            r"(datov\w+\s+schránk\w+(?:\s+[\w()-]+){0,3}?[:\s]+(?:ID\s)?)([a-z][a-z0-9]{6})\b",
             re.IGNORECASE,
         ),
         "DATOVKA", "datová schránka",
+    ),
+    # Posudek/další oficiální dokumenty — "č. KZ-2024/187", "č. ČŠI-1234/2024"
+    (
+        re.compile(
+            r"(č\.\s+)([A-ZÁ-Ž]{2,5}-\d{2,4}/\d{1,5})\b",
+        ),
+        "CJ", "číslo jednací (alternativní)",
     ),
     (
         re.compile(
@@ -80,6 +148,118 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             re.IGNORECASE,
         ),
         "TELEFON", "telefon",
+    ),
+    # Číslo účtu CZ — weak form (bez prefixu pomlčkou, vyžaduje kontext).
+    # "č.ú. 2000145399/0800", "účet č. 19234/0800", "bankovní spojení: 12345/0100",
+    # "Účet: 1234567890/0800". Trigger "účet" může stát samostatně (bez "č.").
+    (
+        re.compile(
+            r"((?:č\.\s?ú\.|čú\.|číslo\s+účtu|účet(?:\s+č\.)?|bankovní\s+spojení)[:\s]+)"
+            r"(\d{2,10}/\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "UCET", "číslo účtu",
+    ),
+    # Bankovní výpis header — "VÝPIS Z ÚČTU č. 1234567890" (standalone bez /bank).
+    (
+        re.compile(
+            r"(výpis\s+z\s+účtu\s+č\.\s*)(\d{4,10})\b",
+            re.IGNORECASE,
+        ),
+        "UCET", "číslo účtu (z výpisu)",
+    ),
+    # === Bankovní symboly (univerzální v CZ platebním styku) ===
+    # VS / KS / SS: 1-10 ciferné identifikátory platby
+    (
+        re.compile(
+            r"((?:VS|KS|SS|variabiln[íý]\s+symbol|konstantn[íý]\s+symbol|specifick[ýý]\s+symbol|var\.\s*symbol|konst\.\s*symbol|spec\.\s*symbol)[:\s]+)(\d{1,10})\b",
+            re.IGNORECASE,
+        ),
+        "VS_SYM", "variabilní/konstantní symbol",
+    ),
+    # === Real estate / Katastr nemovitostí ===
+    # Parcelní č.: "p.č. 123/4", "parc. č. 456", "stavební parcela st. 12/3"
+    (
+        re.compile(
+            r"((?:p\.\s?č\.|parc\.\s?č\.|parcel(?:a|ní\s+číslo)|st\.\s+parc\.|parcela\s+č\.)[:\s]+)(\d+(?:/\d+)?)\b",
+            re.IGNORECASE,
+        ),
+        "PARCELA", "parcelní číslo",
+    ),
+    # List vlastnictví (LV)
+    (
+        re.compile(
+            r"((?:LV(?:\s+č\.)?|list\s+vlastnictví(?:\s+č\.)?|č\.\s+LV)[:\s]+)(\d{1,7})\b",
+            re.IGNORECASE,
+        ),
+        "LV", "list vlastnictví",
+    ),
+    # Katastrální území
+    (
+        re.compile(
+            r"((?:k\.\s?ú\.|katastrální\s+území)[:\s]+)([A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+(?:[\s-][A-ZÁ-Ža-záčďéěíňóřšťúůýž]+)?)",
+        ),
+        "KU", "katastrální území",
+    ),
+    # === Insurance / Auto ===
+    # VIN (Vehicle Identification Number) — 17 znaků, žádné I/O/Q. Context-based.
+    (
+        re.compile(
+            r"(VIN(?:\s+číslo)?[:\s]+)([A-HJ-NPR-Z0-9]{17})\b",
+            re.IGNORECASE,
+        ),
+        "VIN", "VIN",
+    ),
+    # Číslo pojistné smlouvy — hodnota může obsahovat CZ uppercase znaky (ČP-2024-...).
+    (
+        re.compile(
+            r"((?:č\.\s+pojistné\s+smlouvy|číslo\s+pojistné\s+smlouvy|pojistka\s+č\.|č\.\s+pojistky|pojistná\s+smlouva\s+č\.)[:\s]+)([A-ZÁ-Ž0-9-]{4,25})\b",
+            re.IGNORECASE,
+        ),
+        "POJISTKA", "pojistná smlouva",
+    ),
+    # === Notary ===
+    # NZ číslo (notářský zápis), NCRgp (centrální registr)
+    (
+        re.compile(
+            r"((?:NZ|N\.\s?Z\.|notářsk[ýý]\s+zápis(?:\s+č\.)?|sp\.\s?zn\.\s+NZ)[:\s]+)(\d+/\d{2,4})\b",
+            re.IGNORECASE,
+        ),
+        "NZ", "notářský zápis",
+    ),
+    # === Education ===
+    # ISIC karta — formát varies, ale typicky "S 410 002 ..." nebo "ISIC: ..."
+    (
+        re.compile(
+            r"(ISIC(?:\s+(?:č\.|karta))?[:\s]+)([A-Z0-9\s]{6,25})(?=\s|$|[.,;])",
+            re.IGNORECASE,
+        ),
+        "ISIC", "ISIC karta",
+    ),
+    # Studijní číslo / IČZ studenta (varies — most universities use 6-10 digit IDs)
+    (
+        re.compile(
+            r"((?:studijní\s+č(?:íslo)?|os\.\s+č(?:íslo)?\s+studenta|UČO|VŠ\s+ID)[:\s]+)(\d{4,10})\b",
+            re.IGNORECASE,
+        ),
+        "STUDENT_ID", "studijní číslo",
+    ),
+    # === Healthcare extension ===
+    # Číslo pojištěnce ZP — 6-10 digits, prefix "č. pojištěnce" or "ZP č."
+    (
+        re.compile(
+            r"((?:č(?:íslo)?\.?\s+pojištěnce|ZP\s+č\.|pojišt[ěe]nec\s+č\.)[:\s]+)(\d{6,10})\b",
+            re.IGNORECASE,
+        ),
+        "POJISTENEC", "číslo pojištěnce",
+    ),
+    # IČZ (identifikační číslo zdravotnického zařízení) — 5-7 digits + optional suffix
+    (
+        re.compile(
+            r"(IČZ[:\s]+)(\d{5,8}(?:-\d{1,4})?)\b",
+            re.IGNORECASE,
+        ),
+        "ICZ", "IČZ",
     ),
 ]
 
@@ -98,6 +278,42 @@ _COURT_REGEX = re.compile(
     r"(?:\s+(?:II|III|IV|V|VI|VII|VIII|IX|X|XI|XII))?)?"
     r"(?:\s+(?:SR|ČR|S\.\s?R\.|Č\.\s?R\.))?",
 )
+
+
+# Section-aware pre-pass — najde "Datové schránky:" header a anonymizuje
+# 7-char alphanumeric IDs v následujícím list bloku ("- Subject: code\n").
+# Tohle pokrývá real-world layouty kde trigger word je v section headeru,
+# ne na každém řádku.
+_DATOVKA_SECTION_HEADER = re.compile(
+    r"(?:^|\n)\s*Datov[éý][a-záčďéěíňóřšťúůýž]*\s+schránk[a-záčďéěíňóřšťúůýž]+\s*:\s*\n",
+    re.IGNORECASE,
+)
+_DATOVKA_LIST_ITEM = re.compile(
+    r"(^[\s\-•*]*\s*[^:\n]+:\s+)([a-z][a-z0-9]{6})\b",
+    re.MULTILINE,
+)
+
+
+def _section_pass_datovky(text: str, make_replacer):
+    """Pokud najde "Datové schránky:" header, replace všechny list items
+    v následujícím bloku až do první prázdné řádky."""
+    out_parts: list[str] = []
+    last_end = 0
+    for m in _DATOVKA_SECTION_HEADER.finditer(text):
+        # všechno před headerem zachovat
+        out_parts.append(text[last_end:m.end()])
+        # blok = od konce headeru do prázdné řádky nebo konce textu
+        section_start = m.end()
+        # find blank line
+        blank = text.find("\n\n", section_start)
+        section_end = blank if blank != -1 else len(text)
+        section = text[section_start:section_end]
+        # replace list items in this section
+        new_section = _DATOVKA_LIST_ITEM.sub(make_replacer, section)
+        out_parts.append(new_section)
+        last_end = section_end
+    out_parts.append(text[last_end:])
+    return "".join(out_parts)
 
 
 def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
@@ -154,7 +370,9 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     # 2) Context patterns
     for pattern, prefix, label in _CONTEXT_PII_PATTERNS:
         text = pattern.sub(make_replacer_context(prefix, label), text)
-    # 3) Court regex
+    # 3) Section-aware pass — "Datové schránky:" header + list items
+    text = _section_pass_datovky(text, make_replacer_context("DATOVKA", "datová schránka"))
+    # 4) Court regex
     text = _COURT_REGEX.sub(
         make_replacer_format("INSTITUCE", "úřad/instituce"), text
     )

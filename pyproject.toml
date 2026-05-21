@@ -1,6 +1,6 @@
 [project]
 name = "ufal-mcp"
-version = "0.7.5"
+version = "0.7.6"
 description = "MCP server pro ÚFAL MFF UK NLP nástroje — production-grade anonymizace, multilingvální NER (33+ jazyků) + UDPipe (961 modelů, auto-detect 8 jazyků), Charles Translator (8 jazyků), PONK rich output (4 feature sety), Korektor, NameTag XML/vertical"
 readme = "README.md"
 requires-python = ">=3.10"

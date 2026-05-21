@@ -327,10 +327,18 @@ async def translate_text(
     tgt: str = "en",
     document_mode: bool = False,
 ) -> dict[str, Any]:
-    """Přeloží text přes Charles Translator (LINDAT) — 8 jazyků, 17 párů.
+    """Přeloží text přes Charles Translator (LINDAT) — 8 jazyků, 17 přímých párů
+    + auto EN-pivot pro nepřímé páry.
 
     Podporované jazyky: ``cs`` (čeština), ``en``, ``fr``, ``de``, ``pl``,
     ``ru``, ``uk`` (ukrajinština), ``hi`` (hindština).
+
+    **Přímé páry** (17): cs↔en (+doc), cs↔uk, cs↔ru, en↔fr, en↔de, en↔ru,
+    en↔pl, en→hi (jednosměrně).
+
+    **EN-pivot** (auto): pro páry mimo seznam (typicky de→cs, pl→cs, fr→cs,
+    fr→de) wrapper provede 2 volání ``src→en→tgt`` a vrátí finální překlad
+    + warning + ``pivot=True``. Doc-mode v pivotu nepodporován.
 
     Klíčové páry pro legal-tech:
     - ``cs-en`` / ``en-cs`` — anglické sumáře, mezinárodní komunikace
@@ -338,10 +346,10 @@ async def translate_text(
       se zachovanou strukturou odstavců
     - ``cs-uk`` / ``uk-cs`` — ukrajinští klienti / legal aid pro UA migranty
     - ``cs-ru`` / ``ru-cs`` — ruskojazyční klienti
+    - ``de-cs`` / ``pl-cs`` / ``fr-cs`` — automatický EN-pivot pro EU sousedy
 
-    Pozor: SK ↔ CZ pár v Charles Translatoru chybí. Pro česko-slovenský
-    use case spoléháme na mutual intelligibility (CZ a SK jsou si podobné),
-    nebo lze pivotovat přes EN (CZ→EN→SK přes jiný nástroj).
+    Pozor: SK ↔ CZ pár v Charles Translatoru chybí. SK je auto-alias na CS
+    (mutual intelligibility). HI lze jen jako tgt (en→hi), ne jako src.
 
     Charles Translator umí vlastní jména zachovat v originále — užitečné
     pro legal: *"Jiří Vzorek podal žalobu u Krajského soudu v Ostravě."*

@@ -2,6 +2,115 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.6] — 2026-05-21
+
+### Adversarial stress + cross-sektor rozšíření (94/94 PII, 11/11 langdetect)
+
+Den dva v jednom: dopoledne 94-test adversarial stress suite, odpoledne
+9-sektorový ULTIMATE test + 11-jazyčný multilingual stress. Výsledek:
+**3 P0 PII leaky opraveny**, **20+ nových PII patternů**, **langdetect 6/11 → 11/11**,
+**auto EN-pivot v translator**. Test suite v `dev/ufal-mcp-stress-v076/`
+(94 base + 5 chain + 11 lang testů, reproducible).
+
+### 🔴 P0 fixy v `maskit_patterns.py` — PII leaks v anonymize
+
+**RČ 5 variant** — předchozí regex `\b\d{6}\s?/\s?\d{3,4}\b` chytal jen formát
+s lomítkem. Real-world OCR z PDF občas lomítko odstraní → leak.
+- Nový pattern s validovaným měsícem (01-12, 21-32, 51-62, 71-82) chytá:
+  `800312/1234`, `800312 1234`, `8003121234`, `80-03-12/1234`, `800312/123`
+- Validace MM chrání před false positive na ISBN-10 nebo dlouhých číslech
+
+**Č.ú. CZ (prefix-base/bank)** — IBAN se chytal, ale klasický český formát
+`19-2000145399/0800` ne. Banking workflow standard.
+- Strong: `\b\d{2,6}-\d{2,10}/\d{4}\b` (prefix s pomlčkou = jednoznačné)
+- Bank-paren lookahead: `\d{4,10}/\d{4} (KB|ČSOB|Fio banka|ČNB|…)` — pokrývá
+  formát bez prefix-dash s bankou v závorce
+- Weak context (rozšířen z předchozího): `č.ú.|čú.|číslo účtu|účet|bankovní spojení|Účet:` + `\d{2,10}/\d{4}`
+- Výpis z účtu header: `VÝPIS Z ÚČTU č. \d+`
+
+### 🟢 Nové sektory pokryté v `maskit_patterns.py`
+
+**Bankovnictví / commerce**:
+- Platební karta (Visa/MC/Amex/Discover, BIN-validated): `\b[3-6]\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b`
+- VS / KS / SS symboly (variabilní/konstantní/specifický symbol)
+
+**Reality / katastr nemovitostí**:
+- Parcelní číslo: `p.č.`, `parc. č.`, `parcela`, `st. parc.`
+- List vlastnictví (LV): `LV č. \d+`, `list vlastnictví \d+`
+- Katastrální území: `k.ú.`, `katastrální území`
+
+**Insurance / Auto**:
+- VIN: 17 znaků [A-HJ-NPR-Z0-9] (context-required)
+- Pojistná smlouva: `č. pojistné smlouvy|pojistka č.|č. pojistky` + value (s CZ uppercase support pro `ČP-2024-187654`)
+- Technický průkaz vozidla (TP): `AB1234567` (s context "Číslo TP:")
+
+**Notáři**:
+- NZ číslo (notářský zápis): `NZ \d+/\d{2,4}`, `notářský zápis č. ...`
+
+**Vzdělávání**:
+- UČO / studijní číslo: `UČO|os. č. studenta|VŠ ID|studijní č.` + 4-10 digit
+- ISIC karta: `ISIC: ...`
+
+**Akademický výzkum**:
+- ORCID: `0000-0002-1825-0097` (4-4-4-4 with optional X)
+- Researcher ID: `AAB-1234-5678` (Web of Science)
+
+**Zdravotnictví**:
+- Číslo pojištěnce ZP: `č. pojištěnce|ZP č.|pojištěnec č.` + 6-10 digit
+- IČZ (identifikační číslo zdravotnického zařízení): `IČZ: \d{5,8}(-\d+)?`
+
+**Section-aware pass**:
+- "Datové schránky:" header + následující list `- Subject: code\n` blok →
+  všechny 7-char alfanumerické IDs anonymizovány
+
+### Posudek č.j. + č. OP s instrumentálem
+
+- "č. KZ-2024/187", "č. ČŠI-1234/2024" — formát `[A-Z]{2,5}-\d+/\d+` (mimo "č.j.")
+- "občanským průkazem č. 123456789" — fix instrumentálu (allow optional "č." between průkaz* a digits)
+
+### 🟢 `langdetect.py` — 6/11 → 11/11 přes multilingual korpus
+
+Tightened over-matching patterns:
+- **RO**: vyhozeno common short `de|nu|pe|cu|al|ale` (matchovaly DE TLD `.de`, IT/ES `de/al`, EN `de` v jménech). Ponechány RO copuly a sufixy
+- **HU**: vyhozeno `mi|ti|te|en|meg|fel|le|el|be` + `\w+ja\b` (kolize s IT pronouny, EN `en`, vlastní jména). Sufixy ankerované na min 4 znaků
+- **NL**: vyhozeno `de|en|of|is|bij|van|voor|over|naar` (kolize s ES/DE/EN). Přidán `ij` digraf a NL sufixy
+
+Přidán **char-class boost** (3× count v score):
+- DE: `[ß]`, FR: `[çêëîïâôûœ]`, ES: `[ñ¿¡]`, PL: `[ąęłżźćńŁ]`, PT: `[ãõ]`, HU: `[őűŐŰ]`
+- Boost překlene situace kde tightened word patterns nedosáhnou thresholdu
+
+Výsledek na 11-jazyčném korpusu (SK/EN/DE/PL/UK/RU/FR/HI/ES/IT/AR):
+- Před: SK✓ EN✓ UK✓ RU✓ HI✓ AR✓ + 5 wrong (DE→romanian, PL→german, FR→romanian, ES→dutch, IT→hungarian)
+- Po: **11/11 správně**
+
+CZ regression + edge cases (empty/whitespace/numbers default to czech) zachováno.
+
+### 🟢 `translator.py` — auto EN-pivot fallback
+
+Pro páry mimo `SUPPORTED_PAIRS` (typicky `de→cs`, `pl→cs`, `fr→cs`, `fr→de`) wrapper:
+1. Detekuje že `src-tgt` chybí v přímých párech
+2. Ověří dostupnost `src-en` + `en-tgt`
+3. Provede 2 volání s mezivýsledkem v EN
+4. Vrátí finální překlad + `pivot=True`, `pair="src->en->tgt"`, warning, `intermediate_en_chars`
+
+Doc-mode v pivotu vypnut (auto downgrade s warningem — každý hop by ztratil strukturu).
+HI→cs (`hi-en` chybí) cleanly fails s informativním errorem.
+
+Test: 6/7 lang→cs pairs fungují transparently přes wrapper (en/ru direct + de/pl/fr pivot). HI vrací clean error.
+
+### Stress test coverage celkem
+
+- 94 base + 5 chain + 11 lang = **110 tests passed**
+- ULTIMATE 9-sektorový spis (12.7KB, 94 unikátních PII): **100% caught**
+- Backend ÚFAL drží napříč 11 jazyky bez crashů
+- Idempotence + cross-sektor dedup ověřeno (Jiří Vzorek v žalobě = OSOBA1 v lékařské zprávě = OSOBA1 v pojistce)
+
+### Známé limitace (nezměněno)
+
+- UDPipe + PONK timeoutují na >10KB (známý B-test finding, dokumentováno v `validation.py`)
+- MasKIT/PONK/Korektor jsou CZ-only — wrapper-regex chytá email/IBAN/ORCID univerzálně, ostatní NER-based nahrady fungují via NameTag UNER pro non-CZ
+- Anonymize není idempotentní pro re-volání (H1 finding) — zatím nezfixováno, plánováno na v0.7.7
+
 ## [0.7.5] — 2026-05-21
 
 ### Stress-test Jiříkův druhý spis — 5 fixů (102/102 ops success)
