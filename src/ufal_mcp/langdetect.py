@@ -36,7 +36,10 @@ _BG_CHARS = re.compile(r"\bе(?!\w*[ыэ])", re.IGNORECASE)  # weak heuristic
 # 2. LATINKOVÉ JAZYKY — markery
 # ============================================================================
 
-# Pořadí: nejvíce distinktivní první (slovenština před češtinou má prioritu)
+# Pořadí: nejvíce distinktivní první (slovenština před češtinou má prioritu).
+# Markery musí být DISTINKTIVNÍ — krátká common slova (de, en, mi, ti, ja, ...)
+# falešně matchují v jiných jazycích. Drž jen termíny, které kombinaci frekvence
+# + jazykově-specifické morfologie/lexika splňují.
 _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
     # SK — distinktivní slova která nejsou v CZ
     ("slovak", re.compile(
@@ -51,13 +54,16 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"musím\b|chcem\b|ktor[áéýou][a-ž]*|pretože\b|tiež\b|aj\b)",
         re.IGNORECASE,
     ), 2),
-    # HU — ugrofinské, velmi distinktivní agglutinace
+    # HU — distinktivní agglutinace. Vyhozeno: mi/ti/te/en (kolize s IT/EN/...)
+    # a meg/fel/le/el/be (kolize s DE/NL/krátká common slova) a \w+ja\b (kolize
+    # s vlastními jmény "Anja", "Vondračka", apod.). Ponechány jen typicky
+    # uherské sufixy s minimalní delkou 4 znaků pred koncovkou.
     ("hungarian", re.compile(
-        r"\b(egy|nincs|van|vannak|hogy|nem|igen|után|által|"
-        r"benyújt\w+|bíróság\w*|kereset\w*|"
-        r"ő|ők|én|te|mi|ti|"
-        r"meg|fel|le|el|be|"
-        r"\w+nak\b|\w+nek\b|\w+ban\b|\w+ben\b|\w+ról\b|\w+ből\b|\w+vel\b|\w+ja\b)",
+        r"\b(egy|nincs|vannak|hogy|igen|után|által|"
+        r"benyújt\w+|bíróság\w*|kereset\w*|ítélet\w*|törvény\w*|"
+        r"ők|én|"
+        r"\w{4,}nak\b|\w{4,}nek\b|\w{4,}ban\b|\w{4,}ben\b|"
+        r"\w{4,}ról\b|\w{4,}ből\b|\w{4,}vel\b)",
         re.IGNORECASE,
     ), 3),
     # FI — finština, velmi distinktivní aglutinace + skandinávské znaky
@@ -97,11 +103,14 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"się|już|albo|jeśli|wszystk\w+)",
         re.IGNORECASE,
     ), 2),
-    # RO — rumunština
+    # RO — rumunština. Vyhozeno krátká common slova (nu/pe/de/cu/al/ale) která
+    # falešně matchují DE TLD "de", IT/ES "de/al", EN "de" v jménech.
+    # Ponechány: typické RO copuly, předložky, právní terminologie + RO sufixy.
     ("romanian", re.compile(
-        r"\b(este|sunt|sînt|sînt|să|și|sau|sau|nu|"
-        r"depus|plângere|tribunal\w*|"
-        r"prin|pentru|pe|de|cu|în|al|ale)",
+        r"\b(este|sunt|sînt|să|și|sau|"
+        r"depus|plângere|tribunal\w*|judecător\w*|reclamant\w*|pârât\w*|"
+        r"prin|pentru|"
+        r"\w{4,}ului\b|\w{4,}ele\b|\w{4,}lor\b)",
         re.IGNORECASE,
     ), 3),
     # SL — slovinština: jen distinktivní slova, NE common Slavic
@@ -127,11 +136,15 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"Beograd\w*|Srbij\w*|srpsk\w*)\b",
         re.IGNORECASE,
     ), 2),
-    # NL — nizozemština
+    # NL — nizozemština. Vyhozeno: de|en|of|is|bij|van|voor|over|naar (kolize
+    # se ES/DE/EN). Ponechány distinktivní NL slova s ij-digrafem nebo specifickou
+    # NL morfologií.
     ("dutch", re.compile(
-        r"\b(de|het|een|en|of|maar|niet|is|zijn|was|waren|"
+        r"\b(het|een|maar|niet|zijn|waren|wij|hij|zij|"
         r"heeft|hebben|aangespan\w+|rechtbank\w*|zaak|"
-        r"bij|van|met|voor|over|naar|tegen)",
+        r"tegen|tussen|onder|"
+        r"\w{3,}ij\w*|"  # ij digraf (typical Dutch: zijn, hij, mij, vrij)
+        r"\w{3,}lijk\b|\w{3,}heid\b)",  # NL sufixy
         re.IGNORECASE,
     ), 3),
     # DE — němčina
@@ -280,6 +293,23 @@ _SLOVENIAN_HINT = re.compile(
     re.IGNORECASE,
 )
 
+# ============================================================================
+# 2b. UNIKÁTNÍ DIAKRITICKÉ ZNAKY — boost pro score-based detekci
+# ============================================================================
+# Pokud text obsahuje znak, který je výrazně asociován s daným jazykem,
+# přidá značný score-boost (3× per znak). Tím odřízneme false positives
+# kde HU/RO/NL pattern overfire na common krátkých slovech.
+_LANG_UNIQUE_CHARS: dict[str, "re.Pattern[str]"] = {
+    "german": re.compile(r"[ß]"),
+    "french": re.compile(r"[çêëîïâôûœÇÊËÎÏÂÔÛŒ]"),
+    "spanish": re.compile(r"[ñ¿¡Ñ]"),
+    "portuguese": re.compile(r"[ãõÃÕ]"),
+    "polish": re.compile(r"[ąęłżźćńŁ]"),  # ł je strongest signal
+    "hungarian": re.compile(r"[őűŐŰ]"),
+    # IT/FR sdílí à/è — ne unique, použito jen víc-marker boost přes word patterns
+    # NL nemá unique char ani ij digraf je v word pattern už
+}
+
 
 def detect_language(text: str) -> str:
     """Vrátí jméno jazyka (czech default), použitelné jako UDPipe model alias.
@@ -358,17 +388,21 @@ def detect_language(text: str) -> str:
         if re.search(r"[ışğ]", text) or re.search(r"\bİ", text):
             return "turkish"
 
-    # 3) Score-based: spočítej skóre pro každý latinkový jazyk
+    # 3) Score-based: spočítej skóre pro každý latinkový jazyk + char boost
     scores: dict[str, int] = {}
     for lang, pattern, threshold in _LATIN_MARKERS:
-        score = len(pattern.findall(text))
-        # Skore se počítá jen pokud převyšuje threshold (eliminuje noise)
-        if score >= threshold:
-            scores[lang] = score
+        word_score = len(pattern.findall(text))
+        # Char-boost: 3× count of unique chars per jazyk
+        char_pattern = _LANG_UNIQUE_CHARS.get(lang)
+        char_boost = len(char_pattern.findall(text)) * 3 if char_pattern else 0
+        total = word_score + char_boost
+        # Threshold se aplikuje na word_score (musí být dostatek slov v patternu),
+        # ale char_boost se přičte k finálnímu skóre.
+        if word_score >= threshold or char_boost >= 6:  # 2+ unique chars projdou samostatně
+            scores[lang] = total
 
-    # CZ má vlastní proxy: počet CZ-specific diakritik (ř/ě/ů jsou unikátní pro CZ)
-    # POZOR: ř/ě/ů jsou unique pro CZ, ale š/č/ž má i SK/SL/HR/SR.
-    # Použij JEN ř/ě/ů jako CZ proxy aby nedošlo k falešnému match na SL ("č", "š", "ž" v SL).
+    # CZ má vlastní proxy: počet CZ-specific diakritik (ř/ě/ů jsou unikátní pro CZ).
+    # š/č/ž má i SK/SL/HR/SR, takže používáme jen ř/ě/ů.
     cz_unique = sum(1 for c in text if c in "řěůŘĚŮ")
     if cz_unique >= 1:
         scores["czech"] = max(scores.get("czech", 0), cz_unique * 3)
