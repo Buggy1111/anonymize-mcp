@@ -411,6 +411,14 @@ def detect_language(text: str) -> str:
     if scores:
         return max(scores, key=lambda l: scores[l])
 
+    # Fallback: žádné latin markery + žádné non-latin skripty.
+    # Pokud text neobsahuje žádné latinkové slovo (jen emoji, čísla,
+    # interpunkce, exotické znaky), vrátíme "unknown" místo defaultu "czech".
+    # Jinak default "czech" (krátký text bez markerů, např. "Pan Jan.").
+    # Stress test A6/C9: emoji-only nebo "𓂀 + emoji" tise falsely → czech.
+    has_latin_word = bool(re.search(r"[A-Za-zÀ-ÿĀ-žȀ-ɏ]{2,}", text))
+    if not has_latin_word:
+        return "unknown"
     return "czech"
 
 
