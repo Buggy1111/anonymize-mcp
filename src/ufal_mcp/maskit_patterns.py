@@ -430,16 +430,25 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     replacements: list[dict[str, Any]] = []
     counters: dict[str, int] = {}
     sentinel_idx_holder = [0]
+    # Dedup: stejný PII (per prefix) → stejný placeholder + reused sentinel.
+    # Bez dedup: 3× "800312/1234" → RC1, RC2, RC3 (bug). S dedup: → RC1, RC1, RC1.
+    dedup_map: dict[tuple[str, str], tuple[str, str]] = {}  # (prefix, normalized) → (placeholder, sentinel)
 
     def make_replacer_format(prefix: str, label: str):
         def _replace(m: re.Match[str]) -> str:
             original = m.group(0).strip()
             if not original:
                 return m.group(0)
+            key = (prefix, original.lower())
+            if key in dedup_map:
+                # Reuse existing placeholder + sentinel
+                _, sentinel = dedup_map[key]
+                return sentinel
             counters[prefix] = counters.get(prefix, 0) + 1
             sentinel_idx_holder[0] += 1
             sentinel = make_pii_sentinel(sentinel_idx_holder[0])
             placeholder = f"{prefix}{counters[prefix]}"
+            dedup_map[key] = (placeholder, sentinel)
             replacements.append({
                 "_sentinel": sentinel,
                 "original": original,
@@ -456,10 +465,15 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
             value = m.group(2).strip()
             if not value:
                 return m.group(0)
+            key = (prefix, value.lower())
+            if key in dedup_map:
+                _, sentinel = dedup_map[key]
+                return prefix_text + sentinel
             counters[prefix] = counters.get(prefix, 0) + 1
             sentinel_idx_holder[0] += 1
             sentinel = make_pii_sentinel(sentinel_idx_holder[0])
             placeholder = f"{prefix}{counters[prefix]}"
+            dedup_map[key] = (placeholder, sentinel)
             replacements.append({
                 "_sentinel": sentinel,
                 "original": value,
