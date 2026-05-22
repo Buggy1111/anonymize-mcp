@@ -118,10 +118,18 @@ def revert_institutional_persons(
         # Najdi position v original_text — heuristika: search po contextu kolem
         # nejbližšího INSTITUCE placeholder PŘED touto sekvencí v anonymized.
         seq_start_in_anon = m.start()
-        prefix_in_anon = anonymized[max(0, seq_start_in_anon - 100):seq_start_in_anon]
+        # Tighter window — 30 chars, ne 100. Předtím institutional revert
+        # mate sekvenci "OSOBA1 OSOBA2" pro Karla Čapka jako součást
+        # Karlovy univerzity z předchozí věty, leaked Karel Čapek na output.
+        prefix_in_anon = anonymized[max(0, seq_start_in_anon - 30):seq_start_in_anon]
 
-        # Najdi INSTITUCE placeholder v prefix (institutional marker placeholder)
-        inst_match = re.search(r"\bINSTITUCE\d+\b", prefix_in_anon[-80:])
+        # INSTITUCE musí být v posledních ~30 znaků (= adjacent in same phrase)
+        # a NESMÍ být přerušen větnou interpunkcí (. ! ? \n).
+        # Sentence boundary chrání proti cross-sentence false positives.
+        if re.search(r"[.!?\n]", prefix_in_anon):
+            return seq_text  # institutional context skončil na předchozí větě
+
+        inst_match = re.search(r"\bINSTITUCE\d+\b", prefix_in_anon)
 
         # Cesta A: prefix v anonymized obsahuje INSTITUCE → high-confidence institutional
         if inst_match:
