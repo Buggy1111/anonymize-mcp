@@ -41,19 +41,43 @@ _BG_CHARS = re.compile(r"\bе(?!\w*[ыэ])", re.IGNORECASE)  # weak heuristic
 # falešně matchují v jiných jazycích. Drž jen termíny, které kombinaci frekvence
 # + jazykově-specifické morfologie/lexika splňují.
 _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
-    # SK — distinktivní slova která nejsou v CZ
+    # SK — distinktivní slova která nejsou v CZ. Rozšířené v v0.7.14 o legal
+    # terminologii (rozsudok, žalobcu, vyhlásil) a běžné konverzační markery
+    # (takže, lebo, naopak, vlastne, dokonca) které jsou SK-only.
     ("slovak", re.compile(
+        # copuly + pronouns
         r"\b(som|sme|sú|nie\s+je|môj|moja|moje|môjho|môjmu|"
+        # zdvořilost + dialogue
         r"vďaka|ďakujem|ďakuje|prepáčte|vo\b|"
+        # legal terminology — SK specific
         r"súd|súdu|súdom|sudkyňa|sudca|sudkyne|"
-        r"narodená|narodený|narodenej|"
+        r"rozsudok|rozsudku|rozsudkom|"
+        r"žalobca|žalobcu|žalobcovi|žalobcom|"
+        r"žalovaný|žalovaného|žalovanému|žalovaným|"
+        r"vyhlásil|vyhlásila|vyhlásilo|vyhlásili|vyhlásiť|"
+        r"rozhodol|rozhodla|rozhodlo|rozhodli|rozhodnúť|"
+        r"prospech|prospechu|prospechom|"
+        r"rodné\s+číslo|narodená|narodený|narodenej|"
+        # geo / adjectives — SK morfologie
         r"mestsk[ýéáeéouá]\w*|krajsk[ýéáou]\w*|okresn[ýéáou]\w*|"
+        r"slovensk[ýáéouá]\w*|"
+        # process verbs
         r"prejednáv\w+|konanie|konania|"
         r"návrh|otcovi|matke|"
         r"povedať|robiť|nájsť|hovorím|môže[mš]?\b|"
-        r"musím\b|chcem\b|ktor[áéýou][a-ž]*|pretože\b|tiež\b|aj\b)",
+        r"musím\b|chcem\b|ktor[áéýou][a-ž]*|pretože\b|tiež\b|aj\b|"
+        # SK conversational distinct
+        r"takže\b|lebo\b|naopak\b|vlastne\b|dokonca\b|"
+        r"hneď\b|teraz\b|včera\b|zajtra\b|dnešok|včerajš\w+|"
+        # SK prepositions/conjunctions distinct vs CZ
+        r"pre\b|cez\b|ako\b|aby\b|"  # SK: pre (CZ pro), cez (CZ přes), ako (CZ jak)
+        # SK distinct morphology
+        r"\w+ovať\b)",  # SK infinitive -ovať (vs CZ -ovat)
         re.IGNORECASE,
-    ), 2),
+    # Threshold 1 — všechny markery jsou DISTINKT (pre, cez, ako, lebo, súd,
+    # rozsudok, žalobcu, vyhlásil, ďakujem, môj…) které v CZ neexistují.
+    # Risk: vlastní jméno "Súd" v CZ textu jako false positive — marginal.
+    ), 1),
     # HU — distinktivní agglutinace. Vyhozeno: mi/ti/te/en (kolize s IT/EN/...)
     # a meg/fel/le/el/be (kolize s DE/NL/krátká common slova) a \w+ja\b (kolize
     # s vlastními jmény "Anja", "Vondračka", apod.). Ponechány jen typicky
