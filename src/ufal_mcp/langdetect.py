@@ -201,11 +201,32 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
         r"levert|søksmål|tingret\w+)",
         re.IGNORECASE,
     ), 2),
-    # EN — angličtina (poslední pojistka)
+    # EN — angličtina (poslední pojistka). Rozšířené markery pro tech/business/
+    # daily speech aby auto-detect zachytil i krátké věty mimo legal corpus.
+    # Vyhozeno bývalé common short ("a", "an" — collide CZ "a"), ponecháno
+    # distinktivní (the, doesn, building, ...).
     ("english", re.compile(
+        # legal
         r"\b(the|and|of|in|on|at|with|from|since|by|for|to|"
-        r"are|is|was|were|been|have|has|had|"
-        r"filed|lawsuit|court|claim|notice)",
+        r"filed|lawsuit|court|claim|notice|plaintiff|defendant|ruled|"
+        # forms of "be" + auxiliaries
+        r"are|is|was|were|been|being|have|has|had|having|"
+        r"will|would|could|should|may|might|can|cannot|must|"
+        r"don't|doesn't|isn't|aren't|wasn't|weren't|haven't|hasn't|hadn't|"
+        # pronouns
+        r"this|that|these|those|it|its|we|us|they|them|their|"
+        # tech / business / daily speech
+        r"writing|writes|wrote|written|"
+        r"building|builds|built|made|making|develop|developed|developing|"
+        r"requires|required|require|using|use|used|"
+        r"software|hardware|computer|technology|system|"
+        r"manufacturing|production|service|services|"
+        r"careful|planning|important|please|thank|sorry|hello|hi|"
+        r"about|tomorrow|today|yesterday|here|there|where|when|how|why|"
+        r"something|anything|nothing|everything|"
+        r"people|person|company|business|"
+        # high-confidence EN-only morphology
+        r"\w+ing\b)",
         re.IGNORECASE,
     ), 2),
 ]
