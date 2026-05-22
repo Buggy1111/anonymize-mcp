@@ -34,6 +34,7 @@ from .maskit_parsing import (
 )
 from .maskit_patterns import regex_pre_pass
 from .maskit_placeholders import PlaceholderRegistry, nametag_fallback
+from .maskit_postprocess import postprocess as _final_postprocess
 from .maskit_stoplist import filter_false_positives
 from .maskit_strict import pre_anonymize_orgs, restore_sentinels
 from .nametag import classify_originals
@@ -268,6 +269,14 @@ async def anonymize_text(
         )
 
         replacements = new_replacements + fallback_reps
+
+        # === STEP 8.5: Final post-process layer ===
+        # 1) Compound city merge ("MESTO1 za MESTO2" → "MESTO1")
+        # 2) Institutional revert ("OSOBA1 OSOBA2 z OSOBA3" v názvech škol/ulic → originály)
+        # Tyto opravy nelze udělat dříve protože MasKIT a NameTag dají
+        # placeholders nezávisle a context je viditelný až ve finálním textu.
+        if output == "txt" and placeholder_mode:
+            anonymized, replacements = _final_postprocess(anonymized, replacements, text)
 
     # === Cleanup internal fields ===
     for r in replacements:

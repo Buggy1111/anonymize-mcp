@@ -2,6 +2,65 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.10] — 2026-05-22
+
+### Post-process layer — institucionální revert + compound city merge
+
+Nový modul `maskit_postprocess.py` přidává final pass NA finálním
+anonymizovaném textu (po MasKIT + NameTag fallback). Řeší 2 known
+edge cases které dřívější patche v pre-pass / nametag-fallback nezvládly,
+protože MasKIT už klasifikoval entity před jejich startem.
+
+### ➕ `revert_institutional_persons`
+
+Detekuje sequence `OSOBA\d+ OSOBA\d+ (z\s+)?OSOBA\d+` a ověřuje 2 cesty:
+- **Cesta A**: prefix v anonymized obsahuje `INSTITUCE\d+` jehož `original`
+  obsahuje institutional keyword (gymnázium, škola, univerzita, …).
+- **Cesta B**: prefix v original textu (±60 chars) obsahuje institutional
+  keyword v posledních 5 slovech.
+
+Pokud match → revert OSOBA placeholderů zpět na originály (historic jména
+v názvech institucí nejsou sensitive PII).
+
+**Před**:
+> "studoval na **INSTITUCE9 OSOBA6 OSOBA7 z OSOBA8** v MESTO6"
+
+**Po**:
+> "studoval na **INSTITUCE9 Jana Žižky z Trocnova** v MESTO6"
+
+### ➕ `merge_compound_cities` + `strip_compound_connector_leak`
+
+Pro compound city tokens ("Lhoty za Červeným Kostelcem"):
+- **Merge**: pokud existují 2 sousední `MESTO\d+ (za|u|nad|pod|při) MESTO\d+`,
+  ověř v originál textu a sloučí do jednoho.
+- **Strip leak**: pokud MasKIT vrátil compound jako 1 placeholder ale s
+  connectorem ("MESTO1za "), smaže leak.
+
+**Před**: `"Pochází ze MESTO1za ."`
+**Po**: `"Pochází ze MESTO1 ."`
+
+### 📊 Wikipedia brutal stress (3501 chars, Petr Pavel)
+
+| Metric | v0.7.9 | **v0.7.10** |
+|---|---|---|
+| PII placeholderů | 56 | 52 (compound merged) |
+| Jana Žižky / Trocnova | OSOBA (false) | ✅ preserved |
+| (1937–2020), (1940–2005) | ✅ DATUM | ✅ DATUM |
+| MESTO leak (MESTO3za) | ❌ leak | ✅ clean |
+| **KEY CASES PASSED** | 3/6 | **6/6** |
+
+### 📊 9-sektorový ULTIMATE_SPIS regression (12017 chars)
+
+- ✅ 373 PII placeholders zachycených (předtím 94 unique items)
+- ✅ 10/10 critical PII sample anonymized (RC, ICO, UCET, ORCID, DIC, KARTA, DATOVKA)
+- ✅ Žádné regressions
+
+### 🚨 Known limitation (nereleased)
+
+"Univerzitě Karlově v Praze" → "INSTITUCE1 OSOBA1 v OSOBA2" (Karlově/Praze
+klasifikované MasKITem jako OSOBA). Existuje od dříve, není regression této
+verze. Vyžaduje refactor MasKIT entity klasifikace.
+
 ## [0.7.9] — 2026-05-22
 
 ### Range years v parens → DATUM (Wikipedia stress test discovery)
