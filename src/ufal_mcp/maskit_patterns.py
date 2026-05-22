@@ -63,6 +63,20 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
     # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
     (re.compile(r"\b\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
+    # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
+    # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
+    # Lookaround: musí sousedit s velkým písmenem (město) NEBO interpunkcí.
+    # Negative lookahead na měnové jednotky (Kč, EUR, USD, …) chrání proti
+    # false positives typu "250 00 Kč" (částka, ne PSČ).
+    (
+        re.compile(
+            r"(?:(?<=\s)|(?<=^)|(?<=,\s)|(?<=,))"
+            r"[1-7]\d{2}\s\d{2}"
+            r"(?!\s*(?:Kč|EUR|USD|GBP|CHF|PLN|HUF|Eur\.?|Kčs|korun|euro|dolar))"
+            r"(?=\s+[A-ZÁ-Ž]|[.,;)])"
+        ),
+        "PSC", "PSČ",
+    ),
     # OP / občanský průkaz — MUSÍ být PŘED telefon pattern (3-3-3 collision).
     # Match jen s kontextem "OP" / "občanský průkaz" v lookbehind:
     (
