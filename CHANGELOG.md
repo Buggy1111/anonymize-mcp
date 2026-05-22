@@ -2,6 +2,29 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.9] — 2026-05-22
+
+### Range years v parens → DATUM (Wikipedia stress test discovery)
+
+Po brutálním stress testu na reálném Wikipedia článku (cs.wikipedia.org/wiki/Petr_Pavel,
+3501 chars / 501 slov / 54 PII zachycených) vyšla najevo poslední bezpečně
+opravitelná mezera: **roky života v závorkách** `(1937–2020)` zůstávaly plain.
+Typicky birth–death dates osob — PII pro žijící příbuzné.
+
+**Pattern**: `\((\d{4}\s?[\-–—]\s?\d{4})\)` — match jen uvnitř parens
+chrání proti false positives na `"v letech 1975–1979 studoval"`. Pokrývá
+všechny tři dash znaky (hyphen-minus, en-dash, em-dash).
+
+### Co bylo zkoumáno ale NEbylo přijato
+
+Dva další edge cases (compound city names `"Lhota za Červeným Kostelcem"`
+a historic names v institutních názvech `"gymnázium Jana Žižky z Trocnova"`)
+mají kořen v MasKIT API výstupu, ne v post-processu — vyžadují hlubší
+zásah do pipeline. Drženo na pozdější release.
+
+**Wikipedia coverage**: ~90 % (v0.7.8) → ~93 % (v0.7.9). 100 % vyžaduje
+MasKIT pipeline refactor.
+
 ## [0.7.8] — 2026-05-22
 
 ### Pre-pass regex patterns z testu reálné smlouvy (2124 chars)

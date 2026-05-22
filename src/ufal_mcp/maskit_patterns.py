@@ -59,6 +59,16 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "DATUM", "datum (číselný)",
     ),
+    # Range roky v parens — "(1937–2020)", "(1940-2005)", "(1937—2020)".
+    # Typicky birth/death dates osob (PII pro žijící příbuzné). Match jen
+    # uvnitř parens chrání proti false positives na "v letech 1975–1979".
+    # Pokrývá všechny tři dash znaky: hyphen-minus, en-dash, em-dash.
+    (
+        re.compile(
+            r"\((\d{4}\s?[\-–—]\s?\d{4})\)"
+        ),
+        "DATUM", "rozpětí let (narození–úmrtí)",
+    ),
     # Číslo účtu — 7-10 cifer / 4 cifer banka. Distinguished od RČ:
     # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
     # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
