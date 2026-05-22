@@ -69,6 +69,11 @@ _PRESERVE_ACRONYMS = frozenset({
 _CONTEXT_PREFIX_TOKENS = frozenset({
     "NZ", "č.j.", "čj.", "č.j", "sp.zn.", "spzn.",
     "GA", "TA",  # vždy ve spojení s "ČR" / "AV" / "UK"
+    "RČ", "rč", "RC", "IČO", "DIČ", "VS", "KS", "SS",  # uvozující prefixy
+    "OP", "TP", "ID", "č.", "č.ú.", "čú.", "č.OP",
+    "VIN", "SPZ", "UČO", "ISIC", "ORCID", "IBAN",
+    "LV", "k.ú.", "ku.", "č.p.", "č.or.",
+    "IČZ",  # č. pojištěnce kód lékaře
 })
 
 # Pattern pro pickup OSOBA/MESTO/ENTITA placeholders

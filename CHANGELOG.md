@@ -2,6 +2,43 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.12] — 2026-05-22
+
+### Dedup v regex_pre_pass + rozšířený context prefix list
+
+Edge case test odhalil 2 bugy:
+
+1. **Repeated PII non-deduplicated** — "Petr, RČ 800312/1234" 3× v textu →
+   RC1, RC2, RC3 (✗) místo 3× RC1. Stejný problém pro emaily, IBAN, telefony, …
+2. **Kontextové prefixy klasifikované jako instituce** — "RČ" samostatně →
+   INSTITUCE1 (false positive na "RČ" coby instituce).
+
+### 🔧 Fix #1: dedup v `regex_pre_pass`
+
+`make_replacer_format` + `make_replacer_context` mají nový `dedup_map`:
+- Klíč: `(prefix, normalized_lower)`
+- Hodnota: `(placeholder, sentinel)` z prvního výskytu
+- Druhý výskyt téhož PII → reuse existující placeholder + sentinel (žádný
+  nový counter increment).
+
+Výsledek pro 3× stejný RČ: jediný `RC1` placeholder, 1 unique replacement.
+Idempotence zachována, paměť ušetřena.
+
+### 🔧 Fix #2: rozšířený `_CONTEXT_PREFIX_TOKENS`
+
+Přidáno: `RČ`, `RC`, `IČO`, `DIČ`, `VS`, `KS`, `SS`, `OP`, `TP`, `ID`,
+`č.ú.`, `VIN`, `SPZ`, `UČO`, `ISIC`, `ORCID`, `IBAN`, `LV`, `k.ú.`, `IČZ`.
+
+Tyto tokeny jsou jen **uvozující prefixy** (např. "RČ 800312/1234") —
+sám prefix NEMÁ být anonymizován jako entita, jen hodnota za ním.
+
+### 📊 Test coverage
+
+- ✅ **9/9 sektorů PASS** (žádné regression)
+- ✅ Dedup ověřen: 3× RČ → 1× RC1, 3× email → 1× EMAIL1, 2× IBAN → 1× IBAN1
+- ✅ ULTIMATE_SPIS regression OK
+- ✅ Idempotence: `anonymize(anonymize(x)) == anonymize(x)`
+
 ## [0.7.11] — 2026-05-22
 
 ### 9/9 sektorů PASS — preserved acronyms (granty, klinické kódy)
