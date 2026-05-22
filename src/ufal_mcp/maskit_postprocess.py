@@ -48,6 +48,29 @@ _INSTITUTIONAL_CONTEXT_WORDS = frozenset({
 # City connectors mezi compound city tokens
 _CITY_CONNECTORS = ("za", "u", "nad", "pod", "při", "ve", "v")
 
+# Grantové agentury, klinické kódy a akademické identifikátory které NESMÍ
+# být anonymizovány — jsou to identifikační kódy pro citace, NE sensitive PII.
+# Pokud je v finálním textu najdeme jako placeholder, revertneme je zpátky.
+_PRESERVE_ACRONYMS = frozenset({
+    # Grantové agentury CZ
+    "GA ČR", "GAČR", "TA ČR", "TAČR", "AZV", "MŠMT", "MPSV", "MPO",
+    "GA AV", "GAAV", "GA UK", "GAUK",
+    # Evropské granty
+    "ERC", "Horizon Europe", "Horizon 2020", "H2020", "FP7", "FP8",
+    # Klinické kódy / katalogy
+    "MKN-10", "MKN-11", "ICD-10", "ICD-11",
+    # Vědecké standardy
+    "ISO", "ISBN", "ISSN", "DOI",
+})
+
+# Kontextové prefixy které se NEMOHOU vyskytovat samy jako PII — jen
+# uvozují další PII (NZ 45/2024, č.j. 5C/2024). Pokud je MasKIT klasifikuje
+# jako instituce ("NZ" sám), revertneme zpět.
+_CONTEXT_PREFIX_TOKENS = frozenset({
+    "NZ", "č.j.", "čj.", "č.j", "sp.zn.", "spzn.",
+    "GA", "TA",  # vždy ve spojení s "ČR" / "AV" / "UK"
+})
+
 # Pattern pro pickup OSOBA/MESTO/ENTITA placeholders
 _PLACEHOLDER_RE = re.compile(r"\b(OSOBA|MESTO|ENTITA|REGION|STAT)(\d+)\b")
 
@@ -207,6 +230,58 @@ def strip_compound_connector_leak(anonymized: str) -> str:
     return pattern.sub(r"\1\3", anonymized)
 
 
+def revert_preserved_acronyms(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> str:
+    """Revert placeholderů které vznikly z preserved akronymů (granty, klinika).
+
+    GA ČR / TA ČR / MKN-10 / ISO / ICD-10 / ... NEJSOU sensitive PII — jsou to
+    citační identifikátory. Pokud je MasKIT/NameTag klasifikoval jako instituce/
+    osoby/místa, revertneme zpět na originál.
+
+    Také pokrývá samostatné kontextové prefixy ("NZ" sám klasifikovaný jako
+    INSTITUCE) které jsou jen uvozující slova, ne samostatné PII.
+    """
+    plc_map = _build_placeholder_map(replacements)
+
+    # Build reverse map: placeholder → original. Najdi všechny placeholdery
+    # kde original je v preserve list nebo context prefix.
+    revert_targets: dict[str, str] = {}
+    for plc, orig in plc_map.items():
+        orig_stripped = orig.strip()
+        if orig_stripped in _PRESERVE_ACRONYMS or orig_stripped in _CONTEXT_PREFIX_TOKENS:
+            revert_targets[plc] = orig_stripped
+
+    if not revert_targets:
+        return anonymized
+
+    # Replace each placeholder with original (word boundary to avoid e.g. OSOBA1 in OSOBA12)
+    for plc, orig in revert_targets.items():
+        pattern = re.compile(r"\b" + re.escape(plc) + r"\b")
+        anonymized = pattern.sub(orig, anonymized)
+
+    # Sloučit rozdělené granty: "GA STAT1" pokud STAT1=="ČR" → "GA ČR"
+    # (pokrývá případy kdy "GA" zůstal plain ale "ČR" se anonymizoval samostatně)
+    for grant_prefix in ("GA", "TA"):
+        # Pattern: prefix + space + STAT placeholder kde original je "ČR" / "AV" / "UK"
+        m_pattern = re.compile(
+            r"\b(" + grant_prefix + r")\s+(STAT\d+|INSTITUCE\d+|ENTITA\d+)\b"
+        )
+        def _maybe_join(m: re.Match[str]) -> str:
+            prefix = m.group(1)
+            plc = m.group(2)
+            orig = plc_map.get(plc, "").strip()
+            # Acceptovat jen kdyby orig je validní suffix grantové agentury
+            if orig in ("ČR", "AV", "UK", "AVČR", "AV ČR"):
+                return f"{prefix} {orig}"
+            return m.group(0)
+        anonymized = m_pattern.sub(_maybe_join, anonymized)
+
+    return anonymized
+
+
 def postprocess(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -217,8 +292,10 @@ def postprocess(
     1. Compound city merge — spojit "MESTO1 za MESTO2" → "MESTO1"
     2. Strip compound connector leak — "MESTO1za" → "MESTO1"
     3. Institutional revert — vrátit "OSOBA1 OSOBA2 z OSOBA3" v institucích zpět
+    4. Preserved acronyms revert — "INSTITUCE1 STAT1" (GA ČR) → "GA ČR"
     """
     anonymized, replacements = merge_compound_cities(anonymized, replacements, original_text)
     anonymized = strip_compound_connector_leak(anonymized)
     anonymized, replacements = revert_institutional_persons(anonymized, replacements, original_text)
+    anonymized = revert_preserved_acronyms(anonymized, replacements, original_text)
     return anonymized, replacements

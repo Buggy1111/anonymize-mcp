@@ -2,6 +2,35 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.11] — 2026-05-22
+
+### 9/9 sektorů PASS — preserved acronyms (granty, klinické kódy)
+
+Comprehensive sectoral test napříč všemi 9 sektory README (právo, medicína,
+věda, banky, reality, pojišťovny, notáři, studijní, NGO) odhalil že MasKIT
+agresivně anonymizuje grantové agentury (GA ČR, TA ČR) a kontextové prefixy
+(NZ, č.j.) které jsou jen citační identifikátory, NE sensitive PII.
+
+### ➕ `revert_preserved_acronyms` v `maskit_postprocess.py`
+
+Dva drop-listy:
+
+- **`_PRESERVE_ACRONYMS`** — grantové agentury (GA ČR, TA ČR, MŠMT, ERC,
+  Horizon Europe, …), klinické kódy (MKN-10, ICD-10), vědecké standardy
+  (ISO, ISBN, ISSN, DOI). Pokud MasKIT je klasifikoval, revert zpět.
+
+- **`_CONTEXT_PREFIX_TOKENS`** — "NZ", "GA", "TA" samostatně NEJSOU instituce
+  (jen uvozují další PII jako "NZ 45/2024"). Revert.
+
+Plus heuristika pro rozdělené granty: "GA STAT1" kde STAT1=ČR → "GA ČR".
+
+### 📊 Test coverage
+
+- ✅ **9/9 sectors PASS** (právo, medicína, věda, banky, reality, pojišťovny, notáři, studijní, NGO)
+- ✅ ULTIMATE_SPIS regression: 9/9 critical PII anonymized
+- ✅ Wikipedia stress: 6/6 KEY CASES (z v0.7.10)
+- 0 leaks, 0 over-anonymizations (klinické kódy preserved)
+
 ## [0.7.10] — 2026-05-22
 
 ### Post-process layer — institucionální revert + compound city merge
