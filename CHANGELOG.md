@@ -2,6 +2,41 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.14] — 2026-05-22
+
+### SK auto-detect rozšířen (legal + everyday) — threshold snížen na 1
+
+Pokračování v0.7.13: stejně jako EN, SK detection měl jen úzký pattern
+(`som|sme|sú|môj|súd|sudkyňa`...) který nezachytil běžné SK fráze.
+
+### Rozšíření `_LATIN_MARKERS["slovak"]`
+
+Přidáno:
+- **Legal**: rozsudok/rozsudku, žalobca/žalobcu/žalobcovi, žalovaný,
+  vyhlásil/vyhlásila, rozhodol/rozhodla, prospech/prospechu, rodné číslo
+- **Geo morfologie**: slovenský/slovenská/slovenské (všechny pády)
+- **Conversational**: takže, lebo, naopak, vlastne, dokonca, hneď, teraz,
+  včera, zajtra, dnešok, včerajš
+- **Prepositions** (SK vs CZ): pre (CZ "pro"), cez (CZ "přes"),
+  ako (CZ "jak"), aby
+- **Morphology**: `\w+ovať\b` — SK infinitive ending (vs CZ -ovat)
+
+### 🔧 Threshold 2 → 1 pro slovak
+
+Všechny SK markery jsou DISTINKT — v CZ nemají word-boundary match
+(např. "pre" v CZ "Prezident" matchne jako prefix, NE jako samostatné slovo —
+\b chrání). Threshold 1 stačí pro spolehlivou detekci.
+
+Risk: vlastní jméno "Súd" v CZ textu jako false positive — marginal.
+
+### 📊 Test coverage
+
+- ✅ **4/4 SK texts** detected slovak (legal, tech, short, personal)
+- ✅ **4/4 CZ controls** still czech (legal, tech, everyday, no diacritic)
+- ✅ **2/2 EN controls** still english
+- ✅ **2/2 CZ traps** still czech ("Prezident", "Předseda" — "pre" jako prefix neprojde \b)
+- ✅ **9/9 sektorů PASS** (žádné regression)
+
 ## [0.7.13] — 2026-05-22
 
 ### EN langdetect rozšířen — UDPipe auto-detect fix pro tech/business texty
