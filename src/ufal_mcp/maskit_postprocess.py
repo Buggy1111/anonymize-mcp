@@ -295,6 +295,70 @@ def revert_preserved_acronyms(
     return anonymized
 
 
+def extend_institution_names(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> str:
+    """Sloučí "INSTITUCE\\d+ [Capitalized]" do jednoho INSTITUCE placeholderu.
+
+    NameTag občas vynechá rozšiřující komponentu instituce:
+    "Univerzita Karlova" → klasifikuje "Univerzita" jako INSTITUCE4, "Karlova" zůstává.
+    "Česká národní banka" → "Česká národní" jako INSTITUCE, "banka" zůstává.
+
+    Pattern: INSTITUCE\\d+ + 1-3 sousední slova začínající velkým písmenem
+    (nebo small connector mezi nimi: "ve", "na", "v"). Smaže suffix
+    slova z výstupu — jsou už součástí institucionálního jména v originálu.
+
+    Safe: vyžaduje INSTITUCE prefix → low false positive risk.
+    """
+    # Pattern A: INSTITUCE + plain Capitalized word (NameTag missed entirely)
+    pattern_plain = re.compile(
+        r"\b(INSTITUCE\d+)((?:\s+[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+){1,3})\b"
+    )
+
+    # Pattern B: INSTITUCE + OSOBA (NameTag misclassified adjective form jako person)
+    pattern_osoba = re.compile(
+        r"\b(INSTITUCE\d+)\s+(OSOBA\d+)\b"
+    )
+
+    plc_map = _build_placeholder_map(replacements)
+
+    def _maybe_merge_plain(m: re.Match[str]) -> str:
+        inst_plc = m.group(1)
+        suffix = m.group(2)
+        inst_orig = plc_map.get(inst_plc, "")
+        if not inst_orig:
+            return m.group(0)
+        combined_pat = re.compile(
+            re.escape(inst_orig) + r"\s*" + re.escape(suffix.strip()) + r"\b",
+            re.IGNORECASE,
+        )
+        if combined_pat.search(original_text):
+            return inst_plc
+        return m.group(0)
+
+    def _maybe_merge_osoba(m: re.Match[str]) -> str:
+        inst_plc = m.group(1)
+        osoba_plc = m.group(2)
+        inst_orig = plc_map.get(inst_plc, "")
+        osoba_orig = plc_map.get(osoba_plc, "")
+        if not inst_orig or not osoba_orig:
+            return m.group(0)
+        # Validate: original text obsahuje "INSTITUCE_orig + OSOBA_orig"
+        combined_pat = re.compile(
+            re.escape(inst_orig) + r"\s+" + re.escape(osoba_orig) + r"\b",
+            re.IGNORECASE,
+        )
+        if combined_pat.search(original_text):
+            return inst_plc  # OSOBA je část institučního jména
+        return m.group(0)
+
+    anonymized = pattern_plain.sub(_maybe_merge_plain, anonymized)
+    anonymized = pattern_osoba.sub(_maybe_merge_osoba, anonymized)
+    return anonymized
+
+
 def anonymize_middle_names(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -373,5 +437,6 @@ def postprocess(
     anonymized = strip_compound_connector_leak(anonymized)
     anonymized, replacements = revert_institutional_persons(anonymized, replacements, original_text)
     anonymized = revert_preserved_acronyms(anonymized, replacements, original_text)
+    anonymized = extend_institution_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
     return anonymized, replacements
