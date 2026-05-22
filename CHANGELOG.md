@@ -2,6 +2,38 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.16] — 2026-05-22
+
+### Middle name capture — "Tomáš Garrigue Masaryk" fix
+
+Wikipedia broader stress test 5 biografií (Karel Čapek, Věra Čáslavská,
+Miloš Forman, Tomáš Garrigue Masaryk, Bohumil Hrabal) odhalil leak:
+"Garrigue" v TGM zůstával plain. NameTag klasifikoval Tomáš + Masaryk
+jako osoby, ale středové "Garrigue" (anglicko-francouzské původní jméno
+maminky Charlotte Garrigue) ignoroval.
+
+### ➕ `anonymize_middle_names` v `maskit_postprocess.py`
+
+Heuristika: detect pattern `OSOBA\d+ [Capitalized] OSOBA\d+` v finálním
+anonymized textu — pokud middle slovo začíná velkým písmenem a NEní
+particle (de/von/van/del/della/di/da/le/la), klasifikuj jako nový OSOBA.
+
+Dedup: stejné middle name → stejný placeholder (norm-based map).
+
+**Safe** — vyžaduje sousední OSOBA placeholders ⇒ low false positive risk
+(NEspustí na "Praha Karel Brno", spustí jen na "Karel von Bismarck" → "OSOBA1 von OSOBA2"
+NEBO na "Tomáš Garrigue Masaryk" → "OSOBA1 OSOBA3 OSOBA2").
+
+### 📊 Test coverage
+
+- ✅ **5/5 Wikipedia bios** clean (předtím 4/5 = Garrigue leaked)
+- ✅ TGM: "OSOBA1 OSOBA3 OSOBA2" (Garrigue → OSOBA3)
+- ✅ "Charles de Gaulle" → "OSOBA1 de OSOBA2" (particle preserved)
+- ✅ "Pablo del Río" → "OSOBA1 del OSOBA2"
+- ✅ "Otto von Bismarck" → "OSOBA1 von OSOBA2"
+- ✅ 2-jména a 1-jméno regressions OK
+- ✅ 9/9 sektorů PASS
+
 ## [0.7.15] — 2026-05-22
 
 ### Fix institutional revert false positive (Karel Čapek Wikipedia leak)
