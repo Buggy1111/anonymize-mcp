@@ -18,6 +18,24 @@ from .maskit_constants import make_pii_sentinel
 _RC_MM = r"(?:0[1-9]|1[0-2]|2[1-9]|3[0-2]|5[1-9]|6[0-2]|7[1-9]|8[0-2])"
 _RC_YYMMDD = rf"\d{{2}}{_RC_MM}\d{{2}}"
 
+# CZ měsíce — všechny pády (genitiv, lokál, akuzativ), bez diakritiky tolerantní.
+# Pokrývá: "ledna/lednu/leden", "února/únoru/únor", atd.
+_CZ_MESICE = (
+    r"(?:"
+    r"led(?:na|nu|en)|"
+    r"únor[au]?|unor[au]?|"
+    r"břez(?:na|nu|en)|brez(?:na|nu|en)|"
+    r"dub(?:na|nu|en)|"
+    r"květ(?:na|nu|en)|kvet(?:na|nu|en)|"
+    r"červ(?:na|nu|en)c?|cerv(?:na|nu|en)c?|"
+    r"srp(?:na|nu|en)|"
+    r"září|zari|září?u?|"
+    r"říj(?:na|nu|en)|rij(?:na|nu|en)|"
+    r"listopad[au]?|"
+    r"prosin(?:ce|ci|ec)"
+    r")"
+)
+
 # Format-only patterns — match celé na format, žádný kontext potřebný.
 # Tyto jsou bezpečné (jednoznačný format, žádné false positives).
 _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
@@ -25,9 +43,42 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"https?://[^\s\"'<>]+"), "URL", "URL/web"),
     # E-mail
     (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"), "EMAIL", "e-mail"),
-    # Telefon CZ/SK: +420 777 123 456, 777 123 456 (3-3-3), 777 18 18 10 (3-2-2-2)
+    # Slovní datumy CZ — "23. března 1972", "1. září 2025", "15. června 2024".
+    # Tečka za dnem volitelná. Mezery flexibilní.
     (
         re.compile(
+            rf"\b\d{{1,2}}\.?\s+{_CZ_MESICE}\s+\d{{4}}\b",
+            re.IGNORECASE,
+        ),
+        "DATUM", "datum (slovní měsíc)",
+    ),
+    # Číselné datumy DD.MM.YYYY a DD/MM/YYYY — 15.6.2024, 1.9.2025, 01/06/2024
+    (
+        re.compile(
+            r"\b(?:0?[1-9]|[12]\d|3[01])[.\/](?:0?[1-9]|1[0-2])[.\/](?:19|20)\d{2}\b"
+        ),
+        "DATUM", "datum (číselný)",
+    ),
+    # Číslo účtu — 7-10 cifer / 4 cifer banka. Distinguished od RČ:
+    # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
+    # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
+    (re.compile(r"\b\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
+    # OP / občanský průkaz — MUSÍ být PŘED telefon pattern (3-3-3 collision).
+    # Match jen s kontextem "OP" / "občanský průkaz" v lookbehind:
+    (
+        re.compile(
+            r"(?:(?<=č\. OP: )|(?<=č\.OP: )|(?<=OP č\. )|"
+            r"(?<=občanský průkaz: )|(?<=občanského průkazu: ))"
+            r"\d{2,3}\s?\d{2,3}\s?\d{2,3}\b"
+        ),
+        "OP", "občanský průkaz",
+    ),
+    # Telefon CZ/SK: +420 777 123 456, 777 123 456 (3-3-3), 777 18 18 10 (3-2-2-2)
+    # Negative lookbehind: nematchne pokud předchází "OP:" / "průkaz:" /
+    # "průkazu:" — to je už OP, ne telefon.
+    (
+        re.compile(
+            r"(?<!OP: )(?<!OP:)(?<!průkaz: )(?<!průkazu: )"
             r"(?:\+\d{1,3}[\s-])?"
             r"(?:\d{3}[\s-]\d{3}[\s-]\d{3}|\d{3}\s\d{2}\s\d{2}\s\d{2})(?!\d)"
         ),
@@ -91,6 +142,37 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"(IČO[:\s]+)(\d{8})\b", re.IGNORECASE), "ICO", "IČO"),
     # PSČ: 749 01
     (re.compile(r"(PSČ[:\s]+)(\d{3}\s?\d{2})\b", re.IGNORECASE), "PSC", "PSČ"),
+    # Číslo účtu bez bank-v-závorce (jen s kontextovým slovem):
+    # "č. účtu: 1234567890/0800", "na účet 9876543210/0300", "číslo účtu 1234567890/0800"
+    # Pokrývá use case kdy účet stojí bez "(ČSOB)" za sebou (volné texty smluv).
+    (
+        re.compile(
+            r"((?:č\.\s?ú\.|čú\.|číslo\s+účtu|na\s+účet|účet[:\s]+č\.?)[:\s]+)"
+            r"(\d{2,10}(?:-\d{2,10})?/\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "UCET", "číslo účtu",
+    ),
+    # Občanský průkaz — "č. OP: 102 345 678", "OP č. 12345678", "občanský průkaz 102345678".
+    # Číslo OP má 6-9 cifer, často 9 (formát ČR pre-2014), s nebo bez mezer.
+    (
+        re.compile(
+            r"((?:č\.\s?OP|OP\s+č\.?|občansk\w+\s+průkaz\w*(?:\s+č\.?)?|"
+            r"číslo\s+OP|číslo\s+občansk\w+\s+průkaz\w*)[:\s]+)"
+            r"(\d{2,3}\s?\d{2,3}\s?\d{2,3})\b",
+            re.IGNORECASE,
+        ),
+        "OP", "občanský průkaz",
+    ),
+    # Pas — "č. pasu: 12345678", "cestovní pas P12345678".
+    (
+        re.compile(
+            r"((?:č\.\s?pasu|číslo\s+pasu|cestovn\w+\s+pas(?:\s+č\.?)?)[:\s]+)"
+            r"([A-Z]?\d{6,9})\b",
+            re.IGNORECASE,
+        ),
+        "PAS", "cestovní pas",
+    ),
     # č.j. 25 C 123/2026, sp. zn. 11Pc/99/2030, alternativně "spisová značka"
     (
         re.compile(

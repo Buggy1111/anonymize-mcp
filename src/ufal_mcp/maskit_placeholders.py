@@ -38,6 +38,42 @@ _WRAPPER_PREFIXES = (
     "MEDIA", "OBJEKT", "PRODUKT", "ENTITA",
 )
 
+# Akademické a profesní tituly NEjsou PII — NameTag je často klasifikuje
+# jako osoba (P/ps) protože stojí před jménem. Tady je drop-list.
+# Pokrývá CZ + SK + EN běžné varianty s i bez tečky.
+_TITLE_TOKENS = frozenset({
+    # bakalářské / magisterské
+    "bc", "bc.", "mgr", "mgr.", "ing", "ing.", "ing.arch.", "mga", "mga.",
+    "mudr", "mudr.", "mvdr", "mvdr.", "judr", "judr.", "phdr", "phdr.",
+    "rndr", "rndr.", "pharmdr", "pharmdr.", "thmgr", "thmgr.", "thdr", "thdr.",
+    "paeddr", "paeddr.", "dis", "dis.",
+    # postgraduální
+    "ph.d", "phd", "ph.d.", "csc", "csc.", "drsc", "drsc.", "doc", "doc.",
+    "prof", "prof.", "mba", "mba.", "llm", "llm.", "th.d", "thd",
+    # vojenské / církevní / nobility
+    "p.", "p", "dr", "dr.", "fr", "fr.", "br", "br.",
+    # SK
+    "akad", "akad.", "ing.csc.",
+})
+
+
+def _is_title_only(text: str) -> bool:
+    """True pokud `text` je *jen* akademický/profesní titul (žádné jméno).
+
+    Pokrývá: "Ing.", "Bc.", "Ph.D.", "MUDr.", "doc. Ing.", "JUDr." atd.
+    Tolerantní na velikost písmen, mezery, tečky.
+    """
+    if not text:
+        return False
+    # Strip whitespace + final punctuation, normalize spaces
+    cleaned = re.sub(r"\s+", " ", text.strip()).rstrip(",;:")
+    if not cleaned:
+        return False
+    # Split na slova (tituly mohou být víceslovné: "doc. Ing." nebo "JUDr. Ph.D.")
+    tokens = cleaned.lower().split()
+    # Všechny tokeny musí být titul → True
+    return all(t in _TITLE_TOKENS for t in tokens)
+
 
 class PlaceholderRegistry:
     """Deduplikovaný číselník placeholderů pro deterministic mode.
@@ -111,6 +147,10 @@ async def nametag_fallback(
             continue
         original = ent.get("text", "").strip().rstrip(",.;:")
         if not original or len(original) < 2:
+            continue
+        # Tituly (Ing., Bc., Ph.D., MUDr., ...) NEjsou PII — NameTag je často
+        # klasifikuje jako osoba protože stojí před jménem. Skip.
+        if _is_title_only(original):
             continue
         norm = original.lower()
         if norm in already_replaced:
