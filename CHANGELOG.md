@@ -2,6 +2,47 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.13] — 2026-05-22
+
+### EN langdetect rozšířen — UDPipe auto-detect fix pro tech/business texty
+
+Smoke test 6 nástrojů odhalil bug: `analyze_morphology` na EN textu
+"Michal builds an MES system for a rubber factory." použil **czech-pdtc**
+model místo english-ewt. Příčina: pattern v `langdetect.py` měl jen legal
+vocabulary (filed, lawsuit, court, claim, notice + krátká common slova),
+nezachytil běžné tech/business angličtinu.
+
+### Rozšíření `_LATIN_MARKERS["english"]`
+
+Přidáno:
+- **Auxiliaries**: will/would/could/should/may/might/can/cannot/must,
+  don't/doesn't/isn't/aren't/wasn't/weren't/haven't/hasn't/hadn't,
+  being/having
+- **Pronouns**: this/that/these/those/it/its/we/us/they/them/their
+- **Verbs**: writing/writes/wrote/written, building/builds/built/made/making,
+  develop/developed/developing, requires/required/require, using/use/used
+- **Nouns**: software/hardware/computer/technology/system,
+  manufacturing/production/service/services
+- **Adjectives & social**: careful/planning/important/please/thank/sorry/hello/hi
+- **Time/space**: about/tomorrow/today/yesterday/here/there/where/when/how/why
+- **Quantifiers**: something/anything/nothing/everything, people/person/company/business
+- **Morphology fallback**: `\w+ing\b` — EN gerunds (catches arbitrary "X-ing")
+
+Threshold zůstává 2.
+
+### 📊 Test coverage
+
+- ✅ **4/4 EN texts** nyní detekovány jako english (předtím 1/4)
+- ✅ EN→english-ewt-ud-2.17 model (předtím czech-pdtc)
+- ✅ CZ controls beze změny (Michal staví MES, Soud rozhodl, Petr Novák, …)
+- ✅ 9/9 sektorů PASS (žádné regression)
+
+### Known limitation
+
+SK auto-detect stále nedostatečný — "Súd vyhlásil rozsudok v prospech žalobcu."
+detekováno jako CZ. Pre-existing issue (SK markers chybí "rozsudok/žalobcu/
+vyhlásil"). Drženo na pozdější iteraci.
+
 ## [0.7.12] — 2026-05-22
 
 ### Dedup v regex_pre_pass + rozšířený context prefix list
