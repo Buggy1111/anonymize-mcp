@@ -2,6 +2,38 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.17] — 2026-05-22
+
+### `extend_institution_names` — merge složené názvy institucí
+
+Wikipedia stress test institutional articles odhalil že NameTag rozdělí
+složené názvy institucí na fragmenty:
+
+- "Univerzita Karlova" → INSTITUCE4 + "Karlova" (plain leak)
+- "Univerzita Karlově" → INSTITUCE4 + OSOBA1 (misclassified jako person)
+- "Česká národní banka" → INSTITUCE + "banka" (suffix leak)
+
+### Pattern A: INSTITUCE + plain Capitalized → merge
+
+`INSTITUCE\d+ + 1-3 Capitalized words` → pokud kombinace existuje v
+originálu, smaže suffix. "Karlova" jako součást "Univerzita Karlova" je
+spojena do INSTITUCE placeholderu.
+
+### Pattern B: INSTITUCE + OSOBA → merge
+
+`INSTITUCE\d+ + OSOBA\d+` → pokud combinace existuje v originálu, smaže
+OSOBA. "Karlově" misclassified jako OSOBA1 je merge-nuto do INSTITUCE.
+
+Validace přes lookup v `original_text` chrání proti false positives.
+
+### 📊 Test coverage
+
+- ✅ "Univerzitě Karlově v Praze" → "INSTITUCE1 v OSOBA2" (Karlově merged)
+- ✅ "České národní bance" → "INSTITUCE1" (composite merged)
+- ✅ "Univerzitě Karlově. V letech 1910 byl Karel Čapek..." → no cross-sentence regression
+- ✅ Babiš Agrofert (regular case) beze změny
+- ✅ 9/9 sektorů PASS
+
 ## [0.7.16] — 2026-05-22
 
 ### Middle name capture — "Tomáš Garrigue Masaryk" fix
