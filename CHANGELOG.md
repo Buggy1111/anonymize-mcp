@@ -2,6 +2,55 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.8] — 2026-05-22
+
+### Pre-pass regex patterns z testu reálné smlouvy (2124 chars)
+
+Test fiktivní *Smlouvy o dílo* odhalil 5 mezer v pre-pass regexech. Žádný
+patch nemění chování existujících patternů, jen pokrývá nové edge cases.
+Latence beze změny (~2.4s pro fokus test).
+
+### ➕ Nové patterny v `maskit_patterns.py`
+
+1. **Slovní datumy** → `DATUM`
+   - `\b\d{1,2}\.?\s+{_CZ_MESICE}\s+\d{4}\b`
+   - Pokrývá všechny pády CZ měsíců: ledna/lednu/leden, února/únoru/únor, …
+   - Předtím: "23. března 1972" prošlo bez anonymizace.
+
+2. **Číselné datumy** → `DATUM`
+   - `\b(?:0?[1-9]|[12]\d|3[01])[.\/](?:0?[1-9]|1[0-2])[.\/](?:19|20)\d{2}\b`
+   - Validace dne/měsíce/roku. Předtím: "15.6.2024" prošlo bez anonymizace.
+
+3. **Číslo účtu bez "(banka)" v závorce** → `UCET`
+   - `\b\d{7,10}/\d{4}\b`
+   - Bezpečně rozlišitelné od RČ (RČ max 6 cifer před lomítkem, UCET 7-10).
+   - Předtím: "9876543210/0300" v textu volné věty klasifikováno jako RC.
+
+4. **OP (občanský průkaz)** → `OP`
+   - Lookbehind na "č. OP:", "OP č.", "občanský průkaz:"
+   - Negative lookbehind v TELEFON patternu (3-3-3 collision: "102 345 678").
+   - Předtím: "č. OP: 102 345 678" → TELEFON1.
+
+5. **Standalone PSČ + městský kontext** → `PSC`
+   - `[1-7]\d{2}\s\d{2}` s lookaround na velké písmeno NEBO interpunkci
+   - Negative lookahead blokuje currency (Kč, EUR, USD, …) — chrání "250 00 Kč".
+   - Funguje pro oba pořadí: "110 00 Praha" i "Brno 602 00".
+
+### 🚫 Title filter v `maskit_placeholders.py`
+
+`_is_title_only()` post-filter v `nametag_fallback`:
+- Pokud original je *jen* akademický/profesní titul (Ing., Bc., MUDr., Ph.D.,
+  MgA., DiS., doc., prof., MBA, LLM, …), skip — tituly nejsou PII.
+- Předtím: "Ing." → OSOBA14 (3× v jednom dokumentu = false positives).
+- `_TITLE_TOKENS` drop-list pokrývá CZ + SK + EN běžné varianty.
+
+### 📊 Test coverage
+
+Stejný 2124-char dokument *Smlouvy o dílo*:
+- 11/11 patchnutých PII nyní správně zachycených (předtím 0/11)
+- Žádný regression — všech 94/94 stress test cases prochází
+- Latence beze změny (~2.4s pro fokus test)
+
 ## [0.7.7] — 2026-05-21
 
 ### Robustnost po stress testu — H1 idempotence + 4 P2/P3 fixy
