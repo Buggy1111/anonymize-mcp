@@ -2,6 +2,41 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.15] — 2026-05-22
+
+### Fix institutional revert false positive (Karel Čapek Wikipedia leak)
+
+Wikipedia stress test 4 biografií odhalil leak: "Karel Čapek" v Wikipedia
+článku zůstal **plain v output** přesto že `Karel` a `Čapek` byly v 3 jiných
+výskytech anonymized (registry mapping ukázala 4× OSOBA1, 4× OSOBA2).
+
+### Root cause: window 100 chars + cross-sentence false positive
+
+`revert_institutional_persons` lookbehind hledal INSTITUCE placeholder v
+posledních **100 chars** anonymized textu. V kontextu:
+
+> "Studoval na Karlově univerzitě v Praze. **V letech 1910–1911 byl Karel Čapek**
+> na studijním pobytu v Berlíně."
+
+INSTITUCE z předchozí věty (Karlova univerzita) **chybně trigger revert**
+sekvence "OSOBA1 OSOBA2" (Karel Čapek) — protože v 100-char window byla
+INSTITUCE viditelná. Revert vrátil "Karel Čapek" zpět na originál a **lekl PII**.
+
+### 🔧 Fix
+
+- Window 100 → **30 chars** (tighter, adjacent in same phrase)
+- Plus **sentence boundary check** (`[.!?\n]` v prefixu → reset, NEinstitutional)
+
+Karlova univerzita končí tečkou → next sentence "byl Karel Čapek" už není
+v institutional context → revert NESPUSTÍ → OSOBA1 OSOBA2 zachovány.
+
+### 📊 Test coverage
+
+- ✅ Karel Čapek leak FIXED (3 výskyty replaced + 1 leak → 4/4 replaced)
+- ✅ Institutional revert STILL works ("Vojenském gymnáziu Jana Žižky z Trocnova" → preserved)
+- ✅ Compound city STILL works (Lhoty za Červeným Kostelcem → MESTO1)
+- ✅ 9/9 sektorů PASS (žádné regression)
+
 ## [0.7.14] — 2026-05-22
 
 ### SK auto-detect rozšířen (legal + everyday) — threshold snížen na 1
