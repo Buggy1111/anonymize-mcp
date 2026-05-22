@@ -295,6 +295,67 @@ def revert_preserved_acronyms(
     return anonymized
 
 
+def anonymize_middle_names(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Detekuj a anonymizuj middle names mezi 2 OSOBA placeholderech.
+
+    NameTag občas vynechá middle/birth names ("Tomáš Garrigue Masaryk" →
+    klasifikuje Tomáš + Masaryk, vynechá Garrigue). Tato heuristika
+    detekuje "OSOBA\\d+ [Capitalized] OSOBA\\d+" pattern a anonymizuje
+    capitalized word jako OSOBA — middle name plné PII.
+
+    Safe — vyžaduje sousední OSOBA placeholders → low false positive risk.
+    """
+    # Najdi další volný OSOBA counter
+    osoba_nums = [int(m.group(1)) for r in replacements
+                  if (m := re.match(r"OSOBA(\d+)", r.get("placeholder", "")))]
+    next_num = (max(osoba_nums) if osoba_nums else 0) + 1
+
+    # Pattern: 2 OSOBA placeholders s middle Capitalized word
+    pattern = re.compile(
+        r"\b(OSOBA\d+)\s+([A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+)\s+(OSOBA\d+)\b"
+    )
+
+    # Dedup: stejný middle name → stejný placeholder
+    middle_dedup: dict[str, str] = {}
+    added_replacements: list[dict[str, Any]] = []
+
+    def _replace(m: re.Match[str]) -> str:
+        nonlocal next_num
+        plc1 = m.group(1)
+        middle = m.group(2)
+        plc3 = m.group(3)
+        # Skip pokud middle slovo je common Czech word (de, von, ze, ...) — ne jméno
+        if middle.lower() in {"de", "von", "van", "del", "della", "di", "da", "le", "la"}:
+            return m.group(0)
+        # Skip pokud middle je již placeholder
+        if re.match(r"^[A-Z]+\d+$", middle):
+            return m.group(0)
+        # Assign or reuse placeholder pro middle name
+        norm = middle.lower()
+        if norm in middle_dedup:
+            new_plc = middle_dedup[norm]
+        else:
+            new_plc = f"OSOBA{next_num}"
+            next_num += 1
+            middle_dedup[norm] = new_plc
+            added_replacements.append({
+                "original": middle,
+                "placeholder": new_plc,
+                "type": "osoba (middle name)",
+                "source": "wrapper-postprocess-middle",
+            })
+        return f"{plc1} {new_plc} {plc3}"
+
+    anonymized = pattern.sub(_replace, anonymized)
+    if added_replacements:
+        replacements = replacements + added_replacements
+    return anonymized, replacements
+
+
 def postprocess(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -306,9 +367,11 @@ def postprocess(
     2. Strip compound connector leak — "MESTO1za" → "MESTO1"
     3. Institutional revert — vrátit "OSOBA1 OSOBA2 z OSOBA3" v institucích zpět
     4. Preserved acronyms revert — "INSTITUCE1 STAT1" (GA ČR) → "GA ČR"
+    5. Middle name capture — "OSOBA1 Garrigue OSOBA2" → "OSOBA1 OSOBA3 OSOBA2"
     """
     anonymized, replacements = merge_compound_cities(anonymized, replacements, original_text)
     anonymized = strip_compound_connector_leak(anonymized)
     anonymized, replacements = revert_institutional_persons(anonymized, replacements, original_text)
     anonymized = revert_preserved_acronyms(anonymized, replacements, original_text)
+    anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
     return anonymized, replacements
