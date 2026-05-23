@@ -47,6 +47,8 @@ _TYPE_TO_PREFIX: dict[str, str] = {
     "událost": "UDALOST",
     "zákon": "ZAKON",
     "měna": "MENA",
+    "měna/částka": "MENA",
+    "měna/částka (prefix)": "MENA",
     # CNEC short codes (fallback když label není známý)
     "i_": "INSTITUCE",
     "g_": "MESTO",

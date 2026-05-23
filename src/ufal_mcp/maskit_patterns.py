@@ -107,6 +107,58 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "SPZN", "spisová značka",
     ),
+    # === v0.7.31: MĚNOVÉ ČÁSTKY — všechny major world currencies + symboly ===
+    # Anonymizuje peněžní částky v právních/lékařských/obchodních dokumentech.
+    # Pokrývá EU, EEA, NA, LATAM, Asia, Pacific currencies + jejich slovní
+    # tvary v CZ/SK/EN/DE (jazyky podporované UI).
+    #
+    # Variant A: number + suffix currency  ("2 350 000 Kč", "5000 EUR")
+    (
+        re.compile(
+            r"\b(?:\d{1,3}(?:[ \u00A0,.]\d{3})+|\d+)"
+            r"(?:[,.]\d{1,3})?"
+            r"\s*"
+            r"(?:"
+            r"Kč|Kčs|EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|RMB|"
+            r"INR|BRL|MXN|KRW|TRY|UAH|RON|BGN|HRK|DKK|SEK|NOK|ISK|"
+            r"AUD|CAD|NZD|SGD|HKD|TWD|THB|IDR|MYR|PHP|VND|"
+            r"ZAR|ILS|AED|SAR|EGP|"
+            r"€|\$|US\$|C\$|A\$|£|¥|₽|₹|₩|₺|₴|₪|₿|"
+            r"korun(?:y|u|ě|ami|ách|ám|ou)?|haléř(?:e|ů|ům)?|"
+            r"euro?(?:s|y|ům|a|m)?|"
+            r"dolar(?:y|u|ů|ům|ech|s)?|dollars?|"
+            r"liber(?:y|u|ám|s)?|pound(?:s)?|"
+            r"franku?|francs?|"
+            r"zlot[ýé](?:ch)?|złot[ye]?|zlotys?|"
+            r"forintů?|forints?|"
+            r"rubl(?:y|ů|ům|s)?|rouble(?:s)?|"
+            r"jen(?:ů|ům)?|yen|"
+            r"yuan(?:s)?|rupi(?:e|í|s)?|won(?:ů|s)?|"
+            r"lir(?:a|y|s)?|shekel(?:s)?|"
+            r"Cent(?:s)?|cent[uů]?"
+            r")"
+            r"\b"
+        ),
+        "MENA", "měna/částka",
+    ),
+    # Variant B: prefix currency  ("€1,250,000", "$5,000.50", "USD 1000")
+    (
+        re.compile(
+            r"(?<![A-Za-z0-9])"
+            r"(?:"
+            r"[€\$£¥₽₹₩₺₴₪]|"
+            r"(?:EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|INR|BRL|MXN|"
+            r"KRW|TRY|UAH|AUD|CAD|NZD|SGD|HKD|ZAR|ILS|AED|"
+            r"Kč|Kčs)\s+"
+            r")"
+            r"\s?"
+            r"(?:\d{1,3}(?:[ \u00A0,]\d{3})+|\d+)"
+            r"(?:[.,]\d{1,3})?"
+            r"(?![A-Za-z0-9])"
+        ),
+        "MENA", "měna/částka (prefix)",
+    ),
+
     # === v0.7.29: PAYMENT CARDS (early — before PSČ DE) ===
     # PSČ DE chytala posledních 5 cifer Amex (3782 822463 10005 → 10005
     # jako německé PSČ protože za ním byl capitalized word). Karty musí
