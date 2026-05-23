@@ -111,6 +111,21 @@ _PRESERVE_ACRONYMS = frozenset({
     "Erasmus+", "Erasmus", "EUDAT", "OPVVV", "EuropeAid",
     # Burzy / financial standards
     "BCPP", "SWIFT", "EURIBOR", "PRIBOR", "LIBOR",
+    # Mezinárodní banky — public brand reference (preserve, ne PII)
+    "Chase", "Chase Bank", "JPMorgan", "JPMorgan Chase", "JP Morgan",
+    "Bank of America", "BoA", "Citi", "Citibank", "Citigroup",
+    "Wells Fargo", "Goldman Sachs", "Morgan Stanley", "HSBC",
+    "Barclays", "Lloyds", "RBS", "NatWest", "Standard Chartered",
+    "Deutsche Bank", "Commerzbank", "BNP Paribas", "Société Générale",
+    "Crédit Agricole", "Santander", "BBVA", "ING", "Rabobank",
+    "Credit Suisse", "UBS", "Nordea", "Danske Bank",
+    # Akademické databáze / vědecké platformy (preserve, ne PII)
+    "arXiv", "bioRxiv", "medRxiv", "ChemRxiv", "SSRN", "RePEc",
+    "Scopus", "Web of Science", "WoS", "PubMed", "PMC", "Embase",
+    "Google Scholar", "Semantic Scholar", "ResearchGate", "Academia.edu",
+    "JSTOR", "SpringerLink", "ScienceDirect", "Wiley", "Elsevier",
+    "IEEE Xplore", "ACM Digital Library", "Cochrane Library",
+    "Crossref", "DataCite", "OpenAIRE", "CORE", "DOAJ", "DOAB",
 })
 
 
@@ -148,6 +163,16 @@ def _is_preserve_acronym(text: str) -> bool:
         flags=re.IGNORECASE,
     ).strip()
     if stripped2 and stripped2 != s and stripped2 in _PRESERVE_ACRONYMS:
+        return True
+    # Strip trailing "Author"/"Author ID"/"ID"/"Profile"/"Editor" suffix
+    # ("Scopus Author ID" → "Scopus", "Scopus Author" → "Scopus")
+    stripped3 = re.sub(
+        r"\s+(?:Author(?:\s+ID)?|Editor|Reviewer|"
+        r"ID|Profile|Number|Index|Database|Citation)$",
+        "",
+        s,
+    ).strip()
+    if stripped3 and stripped3 != s and stripped3 in _PRESERVE_ACRONYMS:
         return True
     # Combine: Grant prefix + legal form trailing
     s_no_pre = re.sub(r"^(?:Grant|Projekt|Project|Program|Programme)\s+", "", s)
@@ -603,11 +628,21 @@ def capture_company_prefix(
                   if (m := re.match(r"FIRMA(\d+)", r.get("placeholder", "")))]
     next_num = (max(firma_nums) if firma_nums else 0) + 1
 
-    # Legal form orig patterns
+    # Legal form orig patterns (CZ + international)
     LEGAL_FORMS = re.compile(
-        r"^(?:s\.?\s*r\.?\s*o\.?|sr\.o\.|a\.?\s*s\.?|"
+        r"^(?:"
+        # CZ
+        r"s\.?\s*r\.?\s*o\.?|sr\.o\.|a\.?\s*s\.?|"
         r"spol\.\s*s\s*r\.?\s*o\.?|k\.\s*s\.?|v\.\s*o\.\s*s\.?|"
-        r"družstvo|SE)$"
+        r"družstvo|"
+        # International
+        r"SARL|S\.A\.R\.L\.|SAS|S\.A\.S\.|SA|S\.A\.|EURL|"  # FR
+        r"GmbH|AG|KG|KGaA|OHG|UG|SE|"  # DE/EU
+        r"Ltd|Ltd\.|LLC|Inc|Inc\.|Corp|Corp\.|Co|Co\.|LLP|LP|PLC|"  # US/UK
+        r"S\.r\.l\.|S\.p\.A\.|Srl|SpA|"  # IT
+        r"S\.L\.|S\.A\.U\.|SL|SA|SLU|"  # ES
+        r"Sp\.\s*z\s*o\.o\.|Sp\.z\.o\.o\.|S\.A\.|Sp\. z o\.o\."  # PL
+        r")$"
     )
 
     added: list[dict[str, Any]] = []
@@ -618,8 +653,8 @@ def capture_company_prefix(
         # Find this FIRMA placeholder in anonymized
         # Pattern: 1-4 Capitalized words (s opcionálním dashem) + WHITESPACE + plc
         pattern = re.compile(
-            r"((?:[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]*"
-            r"(?:[\s-][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][\wáéěíóúůýžščřňťďj]*)?){1,3})"
+            r"((?:[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎa-záéěíóúůýžščřňťďj]*"
+            r"(?:[\s-][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ\wáéěíóúůýžščřňťďj]*)?){1,3})"
             r"\s+" + re.escape(plc) + r"\b"
         )
         def _replace(m: re.Match[str]) -> str:
@@ -652,6 +687,77 @@ def capture_company_prefix(
         if plc.startswith("FIRMA") and LEGAL_FORMS.match(orig.strip()):
             _process(plc, orig)
 
+    if added:
+        replacements = replacements + added
+    return anonymized, replacements
+
+
+_FOREIGN_LEGAL_FORM = re.compile(
+    r"\b(?:SARL|S\.A\.R\.L\.|SAS|S\.A\.S\.|EURL|"
+    r"GmbH|AG|KG|KGaA|OHG|UG|SE|"
+    r"Ltd|Ltd\.|LLC|Inc|Inc\.|Corp|Corp\.|Co\.|LLP|PLC|"
+    r"S\.r\.l\.|S\.p\.A\.|Srl|SpA|"
+    r"S\.L\.|S\.A\.U\.|SL|SLU|"
+    r"Sp\.\s*z\s*o\.o\.|Sp\.z\.o\.o\.)\b"
+)
+
+
+def anonymize_international_companies(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Detekuj 'ALL CAPS NAME + foreign legal form' když MasKIT/NameTag missed.
+
+    Pattern: 'ALPHA TECH SARL', 'BETA GmbH', 'GAMMA Ltd', 'DELTA S.p.A.'
+    NameTag CZ-focused občas ignoruje foreign companies.
+
+    Safe: vyžaduje ALL CAPS / Capitalized prefix + EXPLICIT foreign legal form.
+    """
+    firma_nums = [int(m.group(1)) for r in replacements
+                  if (m := re.match(r"FIRMA(\d+)", r.get("placeholder", "")))]
+    next_num = (max(firma_nums) if firma_nums else 0) + 1
+
+    pattern = re.compile(
+        r"\b([A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ0-9]*"
+        r"(?:[\s-][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ0-9]*){0,3})"
+        r"\s+(SARL|S\.A\.R\.L\.|SAS|S\.A\.S\.|EURL|"
+        r"GmbH|AG|KG|KGaA|OHG|UG|"
+        r"Ltd|Ltd\.|LLC|Inc|Inc\.|Corp|Corp\.|Co\.|LLP|PLC|"
+        r"S\.r\.l\.|S\.p\.A\.|Srl|SpA|"
+        r"S\.L\.|S\.A\.U\.|SL|SLU|"
+        r"Sp\.\s*z\s*o\.o\.|Sp\.z\.o\.o\.)\b"
+    )
+
+    added: list[dict[str, Any]] = []
+    dedup: dict[str, str] = {}
+
+    def _replace(m: re.Match[str]) -> str:
+        nonlocal next_num
+        name = m.group(1).strip()
+        form = m.group(2).strip()
+        # Skip pokud obsahuje placeholders
+        if re.search(r"[A-Z]+\d+", name):
+            return m.group(0)
+        # Skip pokud je preserve acronym
+        if _is_preserve_acronym(name):
+            return m.group(0)
+        full_name = f"{name} {form}"
+        norm = full_name.lower()
+        if norm in dedup:
+            return dedup[norm]
+        new_plc = f"FIRMA{next_num}"
+        next_num += 1
+        dedup[norm] = new_plc
+        added.append({
+            "original": full_name,
+            "placeholder": new_plc,
+            "type": "firma (international)",
+            "source": "wrapper-postprocess-firma-intl",
+        })
+        return new_plc
+
+    anonymized = pattern.sub(_replace, anonymized)
     if added:
         replacements = replacements + added
     return anonymized, replacements
@@ -748,4 +854,5 @@ def postprocess(
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_facility_names(anonymized, replacements, original_text)
     anonymized, replacements = capture_company_prefix(anonymized, replacements, original_text)
+    anonymized, replacements = anonymize_international_companies(anonymized, replacements, original_text)
     return anonymized, replacements
