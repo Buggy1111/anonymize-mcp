@@ -107,6 +107,423 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "SPZN", "spisová značka",
     ),
+    # === EXPANDED CZ ID PATTERNS (v0.7.24) ===
+
+    # OP nový formát (eOP 2012+) — 2 letters + 6 digits, nebo 9 digits with context
+    (
+        re.compile(
+            r"((?:č\.\s*OP|OP\s+č\.?|občansk\w+\s+průkaz\w*)\s*[:\.]?\s+)"
+            r"([A-Z]{2}\d{6})\b"
+        ),
+        "OP", "občanský průkaz (eOP)",
+    ),
+    # Cestovní pas CZ — 8 chars (2 letters + 6 digits, nebo 8 digits)
+    (
+        re.compile(
+            r"((?:č\.\s*pasu|cestovní\s+pas\s+č\.?|pasu\s+č\.?)\s*[:\.]?\s+)"
+            r"([A-Z]{2}\d{6}|\d{8})\b",
+            re.IGNORECASE,
+        ),
+        "PAS", "cestovní pas",
+    ),
+    # Řidičský průkaz CZ — E + letter + 6 digits ("EB123456")
+    (
+        re.compile(
+            r"((?:č\.\s+ŘP|ŘP\s+č\.?|řidičský\s+průkaz\s+č\.?|"
+            r"číslo\s+řidičského\s+průkazu)\s*[:\.]?\s+)"
+            r"(E[A-Z]\d{6})\b",
+            re.IGNORECASE,
+        ),
+        "RP", "řidičský průkaz",
+    ),
+    # IČP (pracoviště lékaře) — 5 digits with context
+    (
+        re.compile(
+            r"((?:IČP|číslo\s+pracoviště)\s*[:\.]?\s+)(\d{5})\b",
+            re.IGNORECASE,
+        ),
+        "ICP", "IČP pracoviště",
+    ),
+    # SPZ pre-2001 (historical) — 3 letters + dashed digits
+    (
+        re.compile(
+            r"\b[A-Z]{3}\s?\d{2}-\d{2}\b"
+        ),
+        "SPZ", "SPZ historická",
+    ),
+    # Spis. zn. — Ústavní soud "I. ÚS 123/25", "Pl. ÚS 45/2024"
+    (
+        re.compile(
+            r"\b(?:I|II|III|IV|Pl)\.\s?ÚS\s+\d+/\d{2,4}\b"
+        ),
+        "SPZN", "spis. zn. ÚS",
+    ),
+    # Spis. zn. — Nejvyšší soud "21 Cdo 1234/2025", "8 Tdo ..."
+    (
+        re.compile(
+            r"\b\d{1,2}\s+(?:Cdo|Tdo|Odo|Ndo|Tcu|Cz|Nd|ICdo)\s+\d+/\d{2,4}\b"
+        ),
+        "SPZN", "spis. zn. NS",
+    ),
+    # Spis. zn. — NSS "2 As 45/2025-67"
+    (
+        re.compile(
+            r"\b\d{1,3}\s+(?:As|Afs|Azs|Ads|Ars|Aps|Aos|Ao|Komp|Konf|Vol)"
+            r"\s+\d+/\d{2,4}(?:-\d+)?\b"
+        ),
+        "SPZN", "spis. zn. NSS",
+    ),
+
+    # === INTERNATIONAL FINANCIAL ===
+
+    # IBAN — country-specific (proper lengths per ISO 13616)
+    (
+        re.compile(
+            r"\b(?:"
+            # 18-char
+            r"NO\d{13}|"
+            # 20-char
+            r"AT\d{18}|BA\d{18}|EE\d{18}|"
+            # 21-char
+            r"HR\d{19}|LV\d{2}[A-Z]{4}[A-Z0-9]{13}|"
+            r"LI\d{7}[A-Z0-9]{12}|CH\d{7}[A-Z0-9]{12}|"
+            # 22-char
+            r"BG\d{2}[A-Z]{4}\d{6}[A-Z0-9]{8}|DE\d{20}|"
+            r"GB\d{2}[A-Z]{4}\d{14}|IE\d{2}[A-Z]{4}\d{14}|"
+            r"GE\d{2}[A-Z]{2}\d{16}|RS\d{20}|"
+            # 24-char
+            r"AD\d{2}\d{8}[A-Z0-9]{12}|CY\d{2}\d{8}[A-Z0-9]{16}|"
+            r"CZ\d{22}|ES\d{22}|RO\d{2}[A-Z]{4}[A-Z0-9]{16}|"
+            r"SE\d{22}|SK\d{22}|"
+            # 26-char
+            r"IS\d{24}|"
+            # 27-char
+            r"FR\d{12}[A-Z0-9]{11}\d{2}|GR\d{9}[A-Z0-9]{16}|"
+            r"IT\d{2}[A-Z]\d{10}[A-Z0-9]{12}|MC\d{12}[A-Z0-9]{11}\d{2}|"
+            r"SM\d{2}[A-Z]\d{10}[A-Z0-9]{12}|"
+            # 28-char
+            r"HU\d{26}|PL\d{26}|AL\d{2}\d{8}[A-Z0-9]{16}|"
+            # 29-char
+            r"UA\d{27}|"
+            # 31-char
+            r"MT\d{2}[A-Z]{4}\d{5}[A-Z0-9]{18}|"
+            # Generic fallback for less common countries (16-31 chars)
+            r"[A-Z]{2}\d{2}[A-Z0-9]{12,28}"
+            r")\b"
+        ),
+        "IBAN", "IBAN",
+    ),
+    # BIC/SWIFT — 8 nebo 11 chars (rozšířený)
+    (
+        re.compile(r"\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b"),
+        "BIC", "BIC/SWIFT",
+    ),
+    # LEI (Legal Entity Identifier) — 20 alphanumeric (last 2 = mod-97 check)
+    (
+        re.compile(r"\b[A-Z0-9]{18}\d{2}\b"),
+        "LEI", "LEI",
+    ),
+
+    # === EU VAT IDs (28 countries) ===
+    (
+        re.compile(
+            r"\b(?:"
+            r"ATU\d{8}|BE0?\d{9,10}|BG\d{9,10}|CY\d{8}[A-Z]|"
+            r"DE\d{9}|DK\d{8}|EE\d{9}|EL\d{9}|"
+            r"ES[A-Z0-9]\d{7}[A-Z0-9]|FI\d{8}|"
+            r"FR[A-Z0-9]{2}\d{9}|HR\d{11}|HU\d{8}|"
+            r"IE\d{7}[A-Z]{1,2}|IT\d{11}|LT(?:\d{9}|\d{12})|"
+            r"LU\d{8}|LV\d{11}|MT\d{8}|NL\d{9}B\d{2}|"
+            r"PL\d{10}|PT\d{9}|RO\d{2,10}|SE\d{12}|"
+            r"SI\d{8}|SK\d{10}"
+            r")\b"
+        ),
+        "DIC", "VAT (EU)",
+    ),
+
+    # === INTERNATIONAL PERSONAL IDs ===
+
+    # US SSN — 3-2-4 digits, valid ranges
+    (
+        re.compile(r"\b(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b"),
+        "SSN", "US SSN",
+    ),
+    # US EIN — 2-7 digits
+    (
+        re.compile(r"\b\d{2}-\d{7}\b"),
+        "EIN", "US EIN",
+    ),
+    # DE Steuer-ID (IdNr) — 11 digits with context
+    (
+        re.compile(
+            r"((?:Steuer-ID|IdNr|Steueridentifikationsnummer)\s*[:\.]?\s+)"
+            r"(\d{11})\b",
+            re.IGNORECASE,
+        ),
+        "STEUERID", "DE Steuer-ID",
+    ),
+    # UK NIN (National Insurance) — 2 letters + 6 digits + A-D
+    (
+        re.compile(
+            r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)"
+            r"[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]\b"
+        ),
+        "NIN", "UK NIN",
+    ),
+    # UK NHS Number — 10 digits (3-3-4)
+    (
+        re.compile(
+            r"((?:NHS\s+Number|NHS\s+No\.?|NHS)\s*[:\.]?\s+)"
+            r"(\d{3}\s?\d{3}\s?\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "NHS", "UK NHS Number",
+    ),
+    # FR SIRET — 14 digits
+    (
+        re.compile(
+            r"((?:SIRET|Siret)\s*[:\.]?\s+)(\d{14})\b"
+        ),
+        "SIRET", "FR SIRET",
+    ),
+    # FR SIREN — 9 digits
+    (
+        re.compile(
+            r"((?:SIREN|Siren)\s*[:\.]?\s+)(\d{9})\b"
+        ),
+        "SIREN", "FR SIREN",
+    ),
+    # IT Codice Fiscale — 16 chars structured
+    (
+        re.compile(
+            r"\b[A-Z]{6}\d{2}[A-EHLMPRT]\d{2}[A-Z]\d{3}[A-Z]\b"
+        ),
+        "CF", "IT Codice Fiscale",
+    ),
+    # ES DNI — 8 digits + control letter
+    (
+        re.compile(
+            r"\b\d{8}[A-HJ-NP-TV-Z]\b"
+        ),
+        "DNI", "ES DNI",
+    ),
+    # ES NIE — XYZ + 7 digits + letter
+    (
+        re.compile(r"\b[XYZ]\d{7}[A-HJ-NP-TV-Z]\b"),
+        "NIE", "ES NIE",
+    ),
+    # PL PESEL — 11 digits
+    (
+        re.compile(
+            r"((?:PESEL|nr\s+PESEL)\s*[:\.]?\s+)(\d{11})\b",
+            re.IGNORECASE,
+        ),
+        "PESEL", "PL PESEL",
+    ),
+    # PL NIP — 10 digits dashed/plain
+    (
+        re.compile(
+            r"((?:NIP)\s*[:\.]?\s+)(\d{3}-?\d{3}-?\d{2}-?\d{2})\b",
+            re.IGNORECASE,
+        ),
+        "NIP", "PL NIP",
+    ),
+    # RU SNILS — 11 digits with format XXX-XXX-XXX YY
+    (
+        re.compile(r"\b\d{3}-\d{3}-\d{3}\s\d{2}\b"),
+        "SNILS", "RU SNILS",
+    ),
+    # IN Aadhaar — 12 digits with spaces (4-4-4)
+    (
+        re.compile(
+            r"((?:Aadhaar|आधार)\s*[:\.]?\s+)"
+            r"([2-9]\d{3}\s?\d{4}\s?\d{4})\b",
+            re.IGNORECASE,
+        ),
+        "AADHAAR", "IN Aadhaar",
+    ),
+    # IN PAN — 5 letters + 4 digits + letter
+    (
+        re.compile(
+            r"((?:PAN)\s*[:\.]?\s+)([A-Z]{5}\d{4}[A-Z])\b"
+        ),
+        "PAN", "IN PAN",
+    ),
+
+    # === VEHICLES (international license plates) ===
+
+    # DE license plate
+    (
+        re.compile(r"\b[A-ZÄÖÜ]{1,3}\s+[A-Z]{1,2}\s?\d{1,4}[HE]?\b"),
+        "SPZ", "SPZ DE",
+    ),
+    # FR license plate (SIV 2009+) — AA-123-AA
+    (
+        re.compile(r"\b[A-Z]{2}-\d{3}-[A-Z]{2}\b"),
+        "SPZ", "SPZ FR",
+    ),
+    # UK license plate
+    (
+        re.compile(r"\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b"),
+        "SPZ", "SPZ UK",
+    ),
+
+    # === NETWORK / TECH ===
+
+    # IPv4
+    (
+        re.compile(
+            r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}"
+            r"(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b"
+        ),
+        "IP", "IPv4",
+    ),
+    # IPv6 (simplified — full form)
+    (
+        re.compile(r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b"),
+        "IP", "IPv6",
+    ),
+    # MAC address (colon, dash, cisco)
+    (
+        re.compile(
+            r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b|"
+            r"\b(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}\b"
+        ),
+        "MAC", "MAC address",
+    ),
+    # IMEI — 15 digits with context (avoid collision)
+    (
+        re.compile(
+            r"((?:IMEI|EMEI)\s*[:\.]?\s+)(\d{15})\b",
+            re.IGNORECASE,
+        ),
+        "IMEI", "IMEI",
+    ),
+    # API tokens — common formats
+    (
+        re.compile(r"\bsk-[A-Za-z0-9]{48}\b"),
+        "TOKEN", "OpenAI API key",
+    ),
+    (
+        re.compile(r"\bsk-ant-[A-Za-z0-9_-]{90,}\b"),
+        "TOKEN", "Anthropic API key",
+    ),
+    (
+        re.compile(r"\bsk-or-v1-[a-f0-9]{64}\b"),
+        "TOKEN", "OpenRouter API key",
+    ),
+    (
+        re.compile(r"\bghp_[A-Za-z0-9]{36}\b"),
+        "TOKEN", "GitHub PAT",
+    ),
+    (
+        re.compile(r"\bgithub_pat_[A-Za-z0-9_]{82}\b"),
+        "TOKEN", "GitHub fine-grained PAT",
+    ),
+    (
+        re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+        "TOKEN", "AWS Access Key",
+    ),
+    (
+        re.compile(r"\bAIza[0-9A-Za-z\-_]{35}\b"),
+        "TOKEN", "Google API key",
+    ),
+    (
+        re.compile(r"\bxox[abprs]-[A-Za-z0-9-]+\b"),
+        "TOKEN", "Slack token",
+    ),
+    (
+        re.compile(r"\bsk_live_[A-Za-z0-9]{24,}\b"),
+        "TOKEN", "Stripe key",
+    ),
+    # UUID v4
+    (
+        re.compile(
+            r"\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
+            re.IGNORECASE,
+        ),
+        "UUID", "UUID v4",
+    ),
+
+    # === CRYPTOCURRENCY ===
+
+    # Bitcoin Legacy (P2PKH) — starts 1
+    (
+        re.compile(r"\b1[a-km-zA-HJ-NP-Z1-9]{25,34}\b"),
+        "CRYPTO", "Bitcoin Legacy",
+    ),
+    # Bitcoin P2SH — starts 3
+    (
+        re.compile(r"\b3[a-km-zA-HJ-NP-Z1-9]{25,34}\b"),
+        "CRYPTO", "Bitcoin P2SH",
+    ),
+    # Bitcoin Bech32 — bc1q
+    (
+        re.compile(r"\bbc1q[ac-hj-np-z02-9]{38,58}\b"),
+        "CRYPTO", "Bitcoin Bech32",
+    ),
+    # Bitcoin Bech32m (Taproot) — bc1p
+    (
+        re.compile(r"\bbc1p[ac-hj-np-z02-9]{58}\b"),
+        "CRYPTO", "Bitcoin Taproot",
+    ),
+    # Ethereum
+    (
+        re.compile(r"\b0x[a-fA-F0-9]{40}\b"),
+        "CRYPTO", "Ethereum address",
+    ),
+    # Monero standard
+    (
+        re.compile(r"\b4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}\b"),
+        "CRYPTO", "Monero",
+    ),
+    # XRP
+    (
+        re.compile(r"\br[1-9A-HJ-NP-Za-km-z]{24,34}\b"),
+        "CRYPTO", "Ripple/XRP",
+    ),
+    # TRON
+    (
+        re.compile(r"\bT[1-9A-HJ-NP-Za-km-z]{33}\b"),
+        "CRYPTO", "TRON",
+    ),
+
+    # === ACADEMIC EXTENDED ===
+
+    # ISBN-13
+    (
+        re.compile(r"\b97[89]-?\d{1,5}-?\d{1,7}-?\d{1,7}-?\d\b"),
+        "ISBN", "ISBN-13",
+    ),
+    # ISBN-10
+    (
+        re.compile(r"\b\d{1,5}-\d{1,7}-\d{1,7}-[\dX]\b"),
+        "ISBN", "ISBN-10",
+    ),
+    # ISNI — 4-4-4-4 (similar to ORCID)
+    (
+        re.compile(r"\bISNI\s+\d{4}\s?\d{4}\s?\d{4}\s?\d{3}[\dX]\b"),
+        "ISNI", "ISNI",
+    ),
+    # arXiv (new format YYMM.NNNNN)
+    (
+        re.compile(r"\barXiv:?\s*\d{4}\.\d{4,5}(?:v\d+)?\b"),
+        "ARXIV", "arXiv ID",
+    ),
+    # PMID — context
+    (
+        re.compile(
+            r"((?:PMID|PubMed\s+ID)\s*[:\.]?\s+)(\d{1,8})\b",
+            re.IGNORECASE,
+        ),
+        "PMID", "PubMed ID",
+    ),
+    # PMCID
+    (
+        re.compile(r"\bPMC\d+\b"),
+        "PMCID", "PubMed Central ID",
+    ),
+
     # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
     # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
     # Lookaround: musí sousedit s velkým písmenem (město) NEBO interpunkcí.

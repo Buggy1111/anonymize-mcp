@@ -80,7 +80,17 @@ _PRESERVE_FORMAT_PATTERNS = [
     # BIC/SWIFT — "GIBACZPX", "KOMBCZPP" (4 caps + CZ + 2-5 chars)
     re.compile(r"\b[A-Z]{4}CZ[A-Z0-9]{2,5}\b"),
     # Klinické kódy MKN-10/ICD-10 (s tečkou nebo bez): "F32.1", "K85.0", "MKN-10"
-    re.compile(r"\bMKN-1[01]\b|\bICD-1[01](?:-PCS)?\b"),
+    re.compile(r"\bMKN-1[01]\b|\bICD-1[01](?:-PCS|-CM)?\b"),
+    # ICD-10 codes: Letter + 2 digits + optional .X — STRICT (letter only A-N,P-Z, no I/O risk)
+    # Avoid false positives like dates/IDs — require letter followed by exactly 2 digits
+    re.compile(r"\b[A-HJ-NP-TV-Z]\d{2}\.\d{1,3}\b"),
+    # NDC (US drug code) — needs context
+    re.compile(r"\bNDC[:\s]+\d{4,5}-\d{3,4}-\d{2}\b"),
+    # CPT/HCPCS/NPI/DEA — all context-bound
+    re.compile(r"\bCPT[:\s]+\d{5}\b"),
+    re.compile(r"\bHCPCS[:\s]+[A-V]\d{4}\b"),
+    re.compile(r"\bNPI[:\s]+\d{10}\b"),
+    re.compile(r"\bDEA[:\s]+[A-Z]{2}\d{7}\b"),
     # DOI — "10.1063/1.5142345"
     re.compile(r"\b10\.\d{4,9}/[A-Z0-9._;()/:%-]+\b", re.IGNORECASE),
     # CZ akreditovaný studijní program (CZ MŠMT format): "B0322A100021"
