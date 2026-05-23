@@ -17,17 +17,27 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (retry on transient ref race)
+        uses: Wandalen/wretry.action@v3
+        with:
+          action: actions/checkout@v4
+          attempt_limit: 5
+          attempt_delay: 15000
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install package
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+      - name: Install package (retry on PyPI flakes)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            python -m pip install --upgrade pip
+            pip install -e .
 
       - name: Import smoke test
         run: |
