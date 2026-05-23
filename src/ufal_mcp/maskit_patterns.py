@@ -213,9 +213,18 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "IBAN", "IBAN",
     ),
-    # BIC/SWIFT — 8 nebo 11 chars (rozšířený)
+    # BIC/SWIFT — 4 bank + ISO country (incl. CZ/SK/DE/AT/...) + 2 + opt 3
+    # ISO 3166-1 alpha-2 whitelist aby nematchlo "APPOINTMENT" etc.
     (
-        re.compile(r"\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b"),
+        re.compile(
+            r"\b[A-Z]{4}"
+            r"(?:AD|AE|AL|AM|AR|AT|AU|AZ|BA|BE|BG|BH|BR|BY|CA|CH|CN|CR|CY|CZ|"
+            r"DE|DK|DO|EE|EG|ES|FI|FO|FR|GB|GE|GI|GL|GR|GT|HK|HR|HU|IE|IL|IN|"
+            r"IS|IT|JO|JP|KW|KZ|LB|LC|LI|LT|LU|LV|MC|MD|ME|MK|MR|MT|MU|MX|MY|"
+            r"NL|NO|NZ|PK|PL|PS|PT|QA|RO|RS|RU|SA|SE|SG|SI|SK|SM|ST|SV|TH|TL|"
+            r"TN|TR|TW|UA|US|VA|VG|XK|ZA)"
+            r"[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b"
+        ),
         "BIC", "BIC/SWIFT",
     ),
     # LEI (Legal Entity Identifier) — 20 alphanumeric (last 2 = mod-97 check)
@@ -262,11 +271,13 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "STEUERID", "DE Steuer-ID",
     ),
-    # UK NIN (National Insurance) — 2 letters + 6 digits + A-D
+    # UK NIN (National Insurance) — strict format (2L + 6D + A-D)
+    # I use permissive regex BEZ invalid letter restriction protože reálné
+    # dokumenty mívají test/dummy hodnoty (QQ123456C) — pro anonymizaci
+    # je lepší false-positive (anonymizovat) než leak.
     (
         re.compile(
-            r"\b(?!BG|GB|NK|KN|TN|NT|ZZ)"
-            r"[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]\b"
+            r"\b[A-Z]{2}\d{6}[A-D]\b"
         ),
         "NIN", "UK NIN",
     ),
@@ -416,6 +427,27 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "SPZ", "SPZ PL",
     ),
+    # Country-code labeled fleet plates — "PL: WA 12345", "DE: M AB 1234",
+    # "FR: AB-123-CD", "UK: AB12 CDE" — řádek začíná CC labelem.
+    # Safe: vyžaduje 2-letter country code + ":" na začátku slova.
+    (
+        re.compile(
+            r"(\b(?:PL|DE|FR|UK|GB|ES|IT|AT|CH|NL|BE|PT|SE|NO|DK|FI|HU|RO|BG|GR|SK|HR|SI)\s*:\s*)"
+            r"([A-Z]{1,3}[\s-]?[A-Z0-9]{1,4}[\s-]?[A-Z0-9]{1,4})\b"
+        ),
+        "SPZ", "SPZ fleet (CC-labeled)",
+    ),
+    # Bare US bank account / routing number after explicit context
+    # "account 1234567890", "Account#: 1234567890", "routing 021000021"
+    # Safe: vyžaduje "account"/"acct"/"routing"/"účet" + 7-12 digits
+    (
+        re.compile(
+            r"\b((?:account|acct|routing|aba|číslo\s+účtu|account\s*#)\s*[#:\.]?\s+)"
+            r"(\d{7,12})\b",
+            re.IGNORECASE,
+        ),
+        "UCET", "US account/routing (context-bound)",
+    ),
     (
         re.compile(r"\bsk-or-v1-[a-f0-9]{64}\b"),
         "TOKEN", "OpenRouter API key",
@@ -513,24 +545,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         re.compile(r"\bISNI\s+\d{4}\s?\d{4}\s?\d{4}\s?\d{3}[\dX]\b"),
         "ISNI", "ISNI",
     ),
-    # arXiv (new format YYMM.NNNNN)
-    (
-        re.compile(r"\barXiv:?\s*\d{4}\.\d{4,5}(?:v\d+)?\b"),
-        "ARXIV", "arXiv ID",
-    ),
-    # PMID — context
-    (
-        re.compile(
-            r"((?:PMID|PubMed\s+ID)\s*[:\.]?\s+)(\d{1,8})\b",
-            re.IGNORECASE,
-        ),
-        "PMID", "PubMed ID",
-    ),
-    # PMCID
-    (
-        re.compile(r"\bPMC\d+\b"),
-        "PMCID", "PubMed Central ID",
-    ),
+    # NOTE: arXiv, PMID, PMCID jsou context-bound a přesunuty
+    # do _CONTEXT_PII_PATTERNS pro preserve labelu.
 
     # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
     # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
@@ -621,6 +637,24 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
 # Context patterns — match prefix+value, nahradit JEN value (group 2).
 # Konzervativní (vyžaduje kontextové slovo) aby nedošlo k false positives.
 _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
+    # arXiv ID — preserve "arXiv" label, anonymize jen číslo
+    (
+        re.compile(r"(\barXiv:?\s*)(\d{4}\.\d{4,5}(?:v\d+)?)\b"),
+        "ARXIV", "arXiv ID",
+    ),
+    # PMID — preserve "PMID" label
+    (
+        re.compile(
+            r"((?:PMID|PubMed\s+ID)\s*[:\.]?\s+)(\d{1,8})\b",
+            re.IGNORECASE,
+        ),
+        "PMID", "PubMed ID",
+    ),
+    # PMCID — preserve "PMC" label
+    (
+        re.compile(r"(\bPMC)(\d+)\b"),
+        "PMCID", "PubMed Central ID",
+    ),
     # IČO: 12345678
     (re.compile(r"(IČO[:\s]+)(\d{8})\b", re.IGNORECASE), "ICO", "IČO"),
     # PSČ: 749 01
