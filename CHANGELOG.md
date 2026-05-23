@@ -2,6 +2,96 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.24] — 2026-05-23
+
+### 🌍 MEGA EXPANSION — 50+ new patterns (international PII coverage)
+
+Comprehensive research z global authoritative sources (Wikipedia, government,
+ISO/IEC) — implementace 276+ PII pattern types napříč CZ + EU + international.
+
+### ➕ Czech expansion (15 patterns)
+- OP eOP (2012+): 2 letters + 6 digits
+- Cestovní pas CZ (2 letters + 6 digits or 8 digits)
+- Řidičský průkaz (EB123456 pattern)
+- IČP (5 digits + context)
+- SPZ pre-2001 (3 letters + dashed digits)
+- Sp. zn. ÚS (I./II./III./IV./Pl. ÚS)
+- Sp. zn. NS (Cdo/Tdo/Odo/Ndo)
+- Sp. zn. NSS (As/Afs/Azs/Ads/Ars/...)
+
+### ➕ EU/International financial (30+ patterns)
+- **IBAN per country** (30+ countries: AL, AD, AT, BE, BA, BG, CH, CY, CZ, DE,
+  DK, EE, ES, FI, FO, FR, GB, GE, GR, GL, HR, HU, IE, IS, IT, KZ, LI, LT, LU,
+  LV, MC, MT, NL, NO, PL, PT, RO, RS, SE, SI, SK, SM, UA)
+- BIC/SWIFT (8 + 11 chars)
+- LEI (Legal Entity Identifier)
+- **EU VAT 28 countries**: AT, BE, BG, CY, CZ, DE, DK, EE, EL, ES, FI, FR,
+  GB, HR, HU, IE, IT, LT, LU, LV, MT, NL, PL, PT, RO, SE, SI, SK
+
+### ➕ International personal IDs (15+ patterns)
+- US: SSN, EIN
+- DE: Steuer-ID (context)
+- UK: NIN, NHS Number (context)
+- FR: SIRET, SIREN
+- IT: Codice Fiscale
+- ES: DNI, NIE
+- PL: PESEL (context), NIP (context)
+- RU: SNILS
+- IN: Aadhaar (context), PAN (context)
+
+### ➕ Vehicles international (3 patterns)
+- DE license plate (`M AB 1234`)
+- FR SIV (`AB-123-CD`)
+- UK license plate (`AB12 CDE`)
+
+### ➕ Network/tech (15+ patterns)
+- IPv4 (validated ranges 0-255)
+- IPv6 full form
+- MAC address (colon/dash/cisco)
+- IMEI (with context)
+- **API tokens**: OpenAI sk-, Anthropic sk-ant-, OpenRouter sk-or-v1-,
+  GitHub PAT (ghp_), GitHub fine-grained (github_pat_), AWS Access Key (AKIA),
+  Google API key (AIza), Slack (xox), Stripe (sk_live_)
+- UUID v4
+
+### ➕ Cryptocurrency (8 patterns)
+- Bitcoin: Legacy (1...), P2SH (3...), Bech32 (bc1q), Taproot (bc1p)
+- Ethereum (0x...)
+- Monero (4...)
+- Ripple/XRP (r...)
+- TRON (T...)
+
+### ➕ Academic extended (5 patterns)
+- ISBN-13 (978/979 prefix)
+- ISBN-10 (with X check digit)
+- ISNI
+- arXiv (new format YYMM.NNNNN)
+- PMID (with context)
+- PMCID (PMC + digits)
+
+### ➕ Healthcare expansion (preserve format)
+- ICD-10/MKN-10/MKN-11/ICD-CM/ICD-PCS variants
+- ICD-10 specific codes (strict letter+2 digits+.X)
+- NDC (US drug, with context)
+- CPT/HCPCS/NPI/DEA (all context-bound to avoid false positives)
+
+### 🚨 Lesson learned
+- **ICD-11 stem regex `[A-Y0-9][A-Z0-9]{3}` was CATASTROPHIC false positive**
+  (matched any 4-char token) — reverted, used context-bound variants only.
+- **SNOMED/LOINC raw regex** = too generic, removed (require context).
+
+### 📊 Test coverage
+- 86/86 unit tests PASS
+- 9/9 synthetic regression PASS
+- Mass corpus v2 (29 docs): 29/29 PASS ✅
+- Mass corpus v3 (12 obscure docs): 12/12 PASS ✅
+- **Total: 41/41 docs still PASS after mega expansion**
+
+### 📈 Pattern count
+- Format patterns: ~80 (předtím ~30)
+- Context patterns: ~28
+- Total ~108 distinct PII pattern types
+
 ## [0.7.23] — 2026-05-23
 
 ### Mass corpus v3 — 12 obscure docs + employee number + company prefix
