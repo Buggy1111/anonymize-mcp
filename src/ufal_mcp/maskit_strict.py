@@ -21,6 +21,30 @@ _STRICT_LABEL = {
     "ic": "kulturní/vědecká instituce",
 }
 
+# Preserve list (v0.7.27) — známé zkratky / tagy které NameTag občas chybně
+# klasifikuje jako firmu/instituci. Tyto NIKDY nesmí být anonymizovány —
+# jsou to identifikátory typu (jako "tel.:") ne entity samy o sobě.
+_TAG_PRESERVE: frozenset[str] = frozenset({
+    # Tax IDs
+    "ičo", "dič", "usţ", "ust", "ust-idnr", "ust-idnr.",
+    "idnr", "idnr.", "tva", "nif", "vat", "ein", "ssn",
+    "steuer-id", "steuer", "steuerid", "siret", "siren",
+    "pesel", "nip", "regon",
+    # Documents
+    "op", "tp", "rp", "pas",
+    # Bank
+    "iban", "bic", "swift", "iban.", "vs", "ks", "ss",
+    # Card
+    "cvv", "cvc", "cid", "pan",
+    # Crypto labels (label preserve — anonymize jen adresu)
+    "bitcoin", "ethereum", "monero", "ripple", "xrp",
+    "tron", "litecoin", "btc", "eth", "xmr", "ltc",
+    # Currencies — separate from tag preserve list
+    "kč", "kc", "czk", "eur", "usd", "gbp", "chf", "pln", "huf",
+    # Misc
+    "id", "no.", "nr.", "č.", "č.j.", "sp.zn.", "č.ú.", "čú",
+})
+
 
 async def pre_anonymize_orgs(
     text: str,
@@ -47,6 +71,12 @@ async def pre_anonymize_orgs(
 
     for ent in org_entities:
         ent_text = ent["text"]
+        # Skip preserve-list tags (USt, TVA, NIF, IČO, DIČ, Bitcoin, etc.) — NameTag
+        # občas tag samotnou zkratku jako firmu, ale jsou to typové identifikátory
+        # ne entity. Bez tohoto by "USt-IdNr.: DE12345" anonymizovalo "USt" jako FIRMA1.
+        norm = re.sub(r"\s+", " ", ent_text).strip().lower().rstrip(",.:;")
+        if norm in _TAG_PRESERVE or len(norm) <= 2:
+            continue
         # Zkus víc variant textu — NameTag tokenizace občas přidá mezery kolem teček
         variants = [
             ent_text,

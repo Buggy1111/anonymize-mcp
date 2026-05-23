@@ -271,15 +271,56 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "STEUERID", "DE Steuer-ID",
     ),
-    # UK NIN (National Insurance) — strict format (2L + 6D + A-D)
-    # I use permissive regex BEZ invalid letter restriction protože reálné
-    # dokumenty mívají test/dummy hodnoty (QQ123456C) — pro anonymizaci
-    # je lepší false-positive (anonymizovat) než leak.
+    # UK NIN (National Insurance) — both compact (AB123456C) and spaced (AB 12 34 56 C) forms.
+    # Permissive regex without invalid letter restriction (real docs often have test/dummy QQ).
     (
         re.compile(
-            r"\b[A-Z]{2}\d{6}[A-D]\b"
+            r"\b[A-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
         ),
         "NIN", "UK NIN",
+    ),
+    # FR INSEE / NIR (numéro de sécurité sociale) — 13 digits + optional 2 control.
+    # Format: S YY MM DD CC NNN KK (1=male/2=female + 2-2-2-2-3-3 + optional 2 check)
+    # Common written with spaces between groups.
+    (
+        re.compile(
+            r"\b[12]\s?\d{2}\s?(?:0[1-9]|1[0-2]|2[0-9]|3[0-9])\s?"
+            r"\d{2}\s?\d{2,3}\s?\d{2,3}(?:\s?\d{2})?\b"
+        ),
+        "INSEE", "FR INSEE/NIR",
+    ),
+    # RU ИНН (Идентификационный Номер Налогоплательщика) — 10 (юр.лицо) or 12 (физ.лицо) digits
+    # with context "ИНН" / "INN" prefix. Without context = collision with phone/sequence.
+    (
+        re.compile(
+            r"((?:ИНН|INN|И\.Н\.Н\.?)\s*[:\.№]?\s*)(\d{10}|\d{12})\b",
+            re.IGNORECASE,
+        ),
+        "INN", "RU ИНН",
+    ),
+    # RU паспорт серия номер — 4 digit + 6 digit with context "паспорт"
+    (
+        re.compile(
+            r"((?:паспорт(?:\s+(?:серия|сер\.?))?|passport)\s*[:№\.]?\s*)"
+            r"(\d{4}\s?[№#]?\s?\d{6}|\d{4}\s?номер\s?\d{6})\b",
+            re.IGNORECASE,
+        ),
+        "PASS", "RU паспорт",
+    ),
+    # RU телефон +7 (495) 123-45-67 / 8 (495) 123-45-67 / +7-495-123-45-67
+    (
+        re.compile(
+            r"(?:\+7|8)\s?[\(\-]?\d{3}[\)\-]?\s?\d{3}[\-\s]?\d{2}[\-\s]?\d{2}\b"
+        ),
+        "TELEFON", "RU телефон",
+    ),
+    # IN Aadhaar without context — 12 digits with 4-4-4 spacing, BIN starts 2-9.
+    # Risk of false positive on bare 12-digit sequences mitigated by mandatory spacing.
+    (
+        re.compile(
+            r"\b[2-9]\d{3}\s\d{4}\s\d{4}\b"
+        ),
+        "AADHAAR", "IN Aadhaar",
     ),
     # UK NHS Number — 10 digits (3-3-4)
     (
@@ -411,8 +452,10 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "IMEI", "IMEI",
     ),
     # API tokens — common formats
+    # OpenAI: classic "sk-" + 48 chars, OR "sk-proj-/sk-svcacct-/sk-admin-" with 60+ chars.
+    # Use word boundary `(?!ant)` to avoid matching `sk-ant-...` (Anthropic).
     (
-        re.compile(r"\bsk-[A-Za-z0-9]{48}\b"),
+        re.compile(r"\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}\b"),
         "TOKEN", "OpenAI API key",
     ),
     (
@@ -429,11 +472,14 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     ),
     # Country-code labeled fleet plates — "PL: WA 12345", "DE: M AB 1234",
     # "FR: AB-123-CD", "UK: AB12 CDE" — řádek začíná CC labelem.
-    # Safe: vyžaduje 2-letter country code + ":" na začátku slova.
+    # FIX v0.7.27: vyžadovat aspoň 2 digity (každá reálná SPZ má digity), jinak
+    # collision s bank labels jako "UK: HSBC IBAN" (4+4 letters bez digitů).
+    # Také vyloučit IBAN keyword ze druhé skupiny.
     (
         re.compile(
             r"(\b(?:PL|DE|FR|UK|GB|ES|IT|AT|CH|NL|BE|PT|SE|NO|DK|FI|HU|RO|BG|GR|SK|HR|SI)\s*:\s*)"
-            r"([A-Z]{1,3}[\s-]?[A-Z0-9]{1,4}[\s-]?[A-Z0-9]{1,4})\b"
+            r"([A-Z]{1,3}[\s-]?(?:[A-Z]{0,2}\d{2,4}[A-Z0-9]*|\d{2,4}[A-Z]{0,3}))\b"
+            r"(?!\s*IBAN)"
         ),
         "SPZ", "SPZ fleet (CC-labeled)",
     ),
@@ -453,14 +499,39 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "TOKEN", "OpenRouter API key",
     ),
     (
-        re.compile(r"\bghp_[A-Za-z0-9]{36}\b"),
+        # GitHub PAT classic — ghp_ + 36-40 alphanumeric chars
+        re.compile(r"\bghp_[A-Za-z0-9]{36,40}\b"),
         "TOKEN", "GitHub PAT",
     ),
     (
+        # GitHub fine-grained PAT — github_pat_ + 82 chars
         re.compile(r"\bgithub_pat_[A-Za-z0-9_]{82}\b"),
         "TOKEN", "GitHub fine-grained PAT",
     ),
     (
+        # GitHub other tokens (OAuth, install, refresh, server-to-server)
+        re.compile(r"\b(?:gho_|ghu_|ghs_|ghr_)[A-Za-z0-9_]{36,255}\b"),
+        "TOKEN", "GitHub token",
+    ),
+    (
+        # AWS Secret adjacent — MUSÍ být PŘED AKIA Access Key pattern, jinak
+        # AKIA pattern matchne první a sebere prefix čímž rozbije adjacent match.
+        # Pattern: AKIA-key + separator (/ , ; whitespace) + 40-char secret.
+        re.compile(r"(AKIA[0-9A-Z]{16})(\s*[/,;\s]\s*)([A-Za-z0-9/+=]{40})\b"),
+        "TOKEN", "AWS Access+Secret pair",
+    ),
+    (
+        # AWS Secret Access Key — 40 chars base64 with context "aws_secret"
+        # or "Secret Access Key" prefix.
+        re.compile(
+            r"((?:aws[_\s]secret(?:_access)?[_\s]key|secret[_\s]access[_\s]key)"
+            r"\s*[:=]?\s*)([A-Za-z0-9/+=]{40})\b",
+            re.IGNORECASE,
+        ),
+        "TOKEN", "AWS Secret Access Key",
+    ),
+    (
+        # AWS Access Key alone — AKIA prefix + 16 alphanumeric
         re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
         "TOKEN", "AWS Access Key",
     ),
@@ -548,11 +619,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # NOTE: arXiv, PMID, PMCID jsou context-bound a přesunuty
     # do _CONTEXT_PII_PATTERNS pro preserve labelu.
 
-    # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
-    # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
-    # Lookaround: musí sousedit s velkým písmenem (město) NEBO interpunkcí.
-    # Negative lookahead na měnové jednotky (Kč, EUR, USD, …) chrání proti
-    # false positives typu "250 00 Kč" (částka, ne PSČ).
+    # PSČ standalone CZ — strict "XYZ AB" kde X∈[1-7] (oblastní kód):
+    # "110 00 Praha", "692 01 Mikulov". Negative lookahead na měny.
     (
         re.compile(
             r"(?:(?<=\s)|(?<=^)|(?<=,\s)|(?<=,))"
@@ -561,6 +629,22 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"(?=\s+[A-ZÁ-Ž]|[.,;)])"
         ),
         "PSC", "PSČ",
+    ),
+    # PSČ standalone DE — 5 digits + capital city: "10117 Berlin", "80331 München"
+    (
+        re.compile(
+            r"\b\d{5}\s+(?=[A-ZÄÖÜ][a-zäöüß]{2,})"
+        ),
+        "PSC", "PSČ DE",
+    ),
+    # Telefon DE / mezinárodní — +49 30 12345678, +49-30-12345678, +49 (0)30 1234567
+    # Format: + country code (1-3 digits) + area (2-5 digits) + number (4-10 digits)
+    # MUST be before generic CZ telefon (which has stricter 3-3-3 format).
+    (
+        re.compile(
+            r"\+\d{1,3}[\s-]?\(?\d{1,5}\)?[\s-]?\d{3,5}[\s-]?\d{3,5}\b"
+        ),
+        "TELEFON", "telefon mezinárodní",
     ),
     # OP / občanský průkaz — MUSÍ být PŘED telefon pattern (3-3-3 collision).
     # Match jen s kontextem "OP" / "občanský průkaz" v lookbehind:
@@ -607,17 +691,51 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\b\d[A-Z]\d\s?\d{4}\b|\b\d[A-Z]{2}\s?\d{4}\b"), "SPZ", "SPZ"),
     # IBAN
     (re.compile(r"\b[A-Z]{2}\d{2}\s?(?:[A-Z0-9]\s?){15,30}\b"), "IBAN", "IBAN"),
-    # ORCID (akademický unikátní ID): 0000-0002-1825-0097, poslední pozice X nebo digit
-    (re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b"), "ORCID", "ORCID"),
+    # Platební karty (PAN) — MUSÍ BÝT PŘED ORCID, jinak Visa "4xxx-xxxx-xxxx-xxxx"
+    # matchne ORCID format `\d{4}-\d{4}-\d{4}-\d{4}` jako falešný ORCID.
+    # Amex (15 digits, 4-6-5 format): 34xx / 37xx
+    (
+        re.compile(r"\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b"),
+        "KARTA", "platební karta (Amex)",
+    ),
+    # Visa (16 digits, starts 4): 4xxx-xxxx-xxxx-xxxx
+    (
+        re.compile(r"\b4\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Visa)",
+    ),
+    # MasterCard (16 digits, starts 51-55 or 2221-2720)
+    (
+        re.compile(r"\b(?:5[1-5]\d{2}|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (MC)",
+    ),
+    # Discover/JCB/UnionPay/Diners (16 digits, BINs 6011/65/35/30/36)
+    (
+        re.compile(r"\b(?:6011|65\d{2}|35\d{2}|30[0-5]\d|36\d{2})[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Discover/JCB/Diners)",
+    ),
+    # CVV / Security Code — 3-4 digits with context "CVV"/"CVC"/"CID"/"Security".
+    # Use \b on left to avoid matching "CID" inside "ORCID" (Bug v0.7.27 test failure).
+    (
+        re.compile(
+            r"(\b(?:CVV2?|CVC2?|CID|Security\s+Code|verifikační\s+kód)\s*[:\.]?\s*)(\d{3,4})\b",
+            re.IGNORECASE,
+        ),
+        "CVV", "CVV/CVC",
+    ),
+    # Card expiration — MM/YY or MM/YYYY following "exp"/"expires"
+    (
+        re.compile(
+            r"((?:exp\.?|expires?|expir\w+|platí\s+do|platnost)\s*[:\.]?\s*)"
+            r"(0[1-9]|1[0-2])\s?[/\-]\s?(?:20)?\d{2}\b",
+            re.IGNORECASE,
+        ),
+        "EXP", "expirace karty",
+    ),
+    # ORCID — musí mít anchor 000X- (všechny reálné ORCIDy začínají 0000-0009).
+    # Tento anchor chrání před false positive na kreditkách (4xxx-xxxx-xxxx-xxxx).
+    (re.compile(r"\b000\d-\d{4}-\d{4}-\d{3}[\dX]\b"), "ORCID", "ORCID"),
     # Researcher ID (Web of Science / Publons): AAB-1234-5678
     (re.compile(r"\b[A-Z]{1,3}-\d{4}-\d{4}\b"), "RESEARCHER_ID", "Researcher ID"),
-    # Platební karta (PAN) — Visa 4xxx, MasterCard 5xxx, Amex 3xxx, Discover 6xxx.
-    # Restrikce na BIN startovní cifru chrání před false-positives na 4×4-digit sekvence
-    # (např. roky 1990 1995 2000 2005). 16 digits with optional spaces/dashes.
-    (
-        re.compile(r"\b[3-6]\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
-        "KARTA", "platební karta",
-    ),
     # CZ banky — č.ú. následovaný bankou v závorce. Pokrývá format bez prefix-dash.
     # "1234567890/2010 (Fio banka)", "12345/0100 (KB)"
     (
