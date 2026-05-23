@@ -83,6 +83,21 @@ _PRESERVE_ACRONYMS = frozenset({
     # Legal forms (NEJSOU entity per se, jen označení)
     "s.r.o.", "a.s.", "k.s.", "v.o.s.", "OSVČ", "SE", "družstvo",
     "spol. s r.o.", "SE Société",
+    # Profesní komory CZ
+    "ČAK", "ČLK", "ČSK", "ČKA", "ČKAIT", "ČKL", "EMSO",
+    # Univerzity CZ — zkratky
+    "UK", "MU", "MFF UK", "1. LF UK", "ČVUT", "ČVUT v Praze",
+    "VUT", "VUT v Brně", "UPOL", "UPCE", "TUL", "ZČU", "VŠB", "VŠE",
+    "ČZU", "JCU", "JU", "FIT", "FEL", "FF", "MFF", "PřF", "FSV", "FSS",
+    "LF", "2. LF", "1. LF", "3. LF",
+    "Masarykova univerzita", "Univerzita Palackého", "Univerzita Karlova",
+    # Vědecká pracoviště / regulační orgány
+    "AV ČR", "ÚFAL", "LINDAT", "MFF",
+    "ÚOOÚ", "ČTÚ", "ČOI", "SÚKL", "SVS", "ČIŽP",
+    # Mezinárodní (research)
+    "Erasmus+", "Erasmus", "EUDAT", "OPVVV", "EuropeAid",
+    # Burzy / financial standards
+    "BCPP", "SWIFT", "EURIBOR", "PRIBOR", "LIBOR",
 })
 
 
@@ -110,6 +125,17 @@ def _is_preserve_acronym(text: str) -> bool:
     ).strip()
     if stripped and stripped in _PRESERVE_ACRONYMS:
         return True
+    # Strip trailing institution-type word (banka/pojišťovna/spořitelna/...)
+    # "Allianz pojišťovna, a.s." → strip ", a.s." (above) → "Allianz pojišťovna"
+    # → strip " pojišťovna" → "Allianz" → check in preserve
+    stripped2 = re.sub(
+        r"\s+(?:pojišťovna|banka|spořitelna|kasa|kampelička|úvěrov\w+\s+družstvo)$",
+        "",
+        stripped or s,
+        flags=re.IGNORECASE,
+    ).strip()
+    if stripped2 and stripped2 != s and stripped2 in _PRESERVE_ACRONYMS:
+        return True
     # Combine: Grant prefix + legal form trailing
     s_no_pre = re.sub(r"^(?:Grant|Projekt|Project|Program|Programme)\s+", "", s)
     s_no_pre_no_suf = re.sub(
@@ -117,6 +143,45 @@ def _is_preserve_acronym(text: str) -> bool:
     ).strip()
     if s_no_pre_no_suf and s_no_pre_no_suf in _PRESERVE_ACRONYMS:
         return True
+    # Compound s separator — "GA ČR , ČR" (MasKIT spojil 2 výskyty). Split na
+    # parts, pokud všechny jsou preserve acronyms nebo grant suffixes → preserve.
+    parts = [p.strip() for p in re.split(r"[,;]\s*", s) if p.strip()]
+    if len(parts) >= 2:
+        grant_suffixes = {"ČR", "AV", "UK", "AVČR"}
+        if all(p in _PRESERVE_ACRONYMS or p in grant_suffixes for p in parts):
+            return True
+    # ISSN format
+    if re.match(r"^ISSN\s+\d{4}-\d{3}[\dX]$", s):
+        return True
+    # BIC/SWIFT format — 8-11 caps with CZ midfix
+    if re.match(r"^[A-Z]{4}CZ[A-Z0-9]{2,5}$", s):
+        return True
+    return False
+
+
+def _try_restore_compound_grants(orig: str, original_text: str) -> str:
+    """Pokud MasKIT zkomprimoval compound "GA ČR ... AZV ČR" do "GA ČR , ČR"
+    a AZV se ztratil, zkus restoreovat fragment z original_text.
+
+    Returns: restored span if findable, jinak orig.
+    """
+    if not orig or "," not in orig:
+        return orig
+    # Detect malformed compound (např. "GA ČR , ČR")
+    parts = [p.strip() for p in orig.split(",") if p.strip()]
+    if len(parts) < 2:
+        return orig
+    first_part = parts[0]
+    # Najdi v original_text "first_part" + occurrence pattern that includes víc dat
+    # Pattern: first_part + .* + "ČR" / "AV" / "UK"
+    pattern = re.compile(
+        re.escape(first_part) + r".{0,80}?(?:ČR|AV|UK)\b",
+        re.DOTALL,
+    )
+    m = pattern.search(original_text)
+    if m:
+        return m.group(0)
+    return orig
     # ISSN format
     if re.match(r"^ISSN\s+\d{4}-\d{3}[\dX]$", s):
         return True
@@ -136,6 +201,8 @@ _CONTEXT_PREFIX_TOKENS = frozenset({
     "VIN", "SPZ", "UČO", "ISIC", "ORCID", "IBAN",
     "LV", "k.ú.", "ku.", "č.p.", "č.or.",
     "IČZ",  # č. pojištěnce kód lékaře
+    "parcela", "Parcela", "parc.", "Parc.", "EudraCT", "NCT",
+    "IZO",  # identifikátor zařízení (školy)
 })
 
 # Pattern pro pickup OSOBA/MESTO/ENTITA placeholders
@@ -337,7 +404,7 @@ def revert_preserved_acronyms(
     # Sloučit rozdělené granty: "GA STAT1" / "GA OSOBA3" pokud STAT1/OSOBA="ČR/AV/UK"
     # → "GA ČR" / "GA AV". Pokrývá fragmented grant agency names.
     GRANT_SUFFIXES = {"ČR", "AV", "UK", "AVČR", "AV ČR"}
-    for grant_prefix in ("GA", "TA"):
+    for grant_prefix in ("GA", "TA", "AZV", "AV"):
         m_pattern = re.compile(
             r"\b(" + grant_prefix + r")\s+(STAT\d+|INSTITUCE\d+|ENTITA\d+|OSOBA\d+|FIRMA\d+|MESTO\d+)\b"
         )
@@ -371,7 +438,10 @@ def revert_preserved_acronyms(
         # Case B: FIRMA orig EXACTLY matches preserve acronym
         # (NEnumel "ALFA-OMEGA s.r.o." revertovat jen proto že obsahuje "s.r.o.")
         if _is_preserve_acronym(orig_s):
-            anonymized = re.sub(r"\b" + re.escape(plc) + r"\b", orig_s, anonymized)
+            # Pokud orig je compound malformovaný ("GA ČR , ČR" = AZV se ztratilo),
+            # zkus restoreovat z originálu se delším spanem.
+            restored = _try_restore_compound_grants(orig_s, original_text)
+            anonymized = re.sub(r"\b" + re.escape(plc) + r"\b", restored, anonymized)
 
     return anonymized
 
