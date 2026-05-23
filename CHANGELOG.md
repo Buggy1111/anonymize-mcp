@@ -2,6 +2,44 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.28] — 2026-05-23
+
+### 🎯 Karlovka MCP retest fixes — laťka 100% pro první MCP pro ÚFAL
+
+5 kritických bugů zjištěných při retestu v0.7.27 přes live MCP server
+(checkpoint: `ufal-mcp-v0727-restart-checkpoint.md`). Předáno před
+Po 26.5. Zoom call s ředitelkou ÚFAL doc. B. V. Hladkou.
+
+> Poznámka: v0.7.27 dostal git tag, ale pyproject.toml zůstal na 0.7.26
+> (omylem nepushnutá hláška o bumpu). v0.7.28 obsahuje 0.7.27 fixy + těchto 5.
+
+### 🔐 Security (P1)
+
+1. **Aadhaar vs Visa/MC card collision** — Aadhaar regex `\b[2-9]\d{3}\s\d{4}\s\d{4}\b` chytala prvních 12 cifer ze 16-místné karty (Visa "4111 1111 1111 1111" → AADHAAR1 + leak " 1111"). **Fix:** přidán lookbehind `(?<![\dA-Z][\s-])` (NE pokračování IBAN) a lookahead `(?![\s-]?\d)` (NE pokračování karty).
+2. **Aadhaar kontextový pattern příliš striktní** — `[2-9]\d{3}\s?\d{4}\s?\d{4}` missnul test/fake čísla začínající 1. **Fix:** s "Aadhaar" prefixem stačí `\d{4}\s?\d{4}\s?\d{4}` — kontext je silný signál.
+3. **IBAN s mezerami fragmentován** — country-specific patterns (GB/DE/CZ/SK/FR/...) byly bez mezer, takže `GB29 NWBK 6016 1331 9268 19` rozbil na 5 INSTITUCE + AADHAAR fragment. **Fix:** všechny country patterns nyní podporují optional `\s?` mezi skupinami.
+4. **`github_pat_` regex příliš striktní (přesně 82 chars)** — kratší/leaked tokeny v dev logu neanonymizovány. **Fix:** rozsah `{40,90}` pro safety; prefix `github_pat_` je dostatečně unikátní, false positive risk ~nulový.
+
+### 🇩🇪 DE patterns (P1)
+
+5. **PSČ DE konzumovalo trailing whitespace** — pattern `\b\d{5}\s+(?=[A-Z][a-z]{2,})` sežral mezeru za PSČ, takže "10117 Berlin" → "PSC2Berlin" bez separátoru. Rebuild regex pak greedy-matchnul "PSC2Brno" jako jeden fake placeholder → **Berlin leakoval**. **Fix:** `\b\d{5}(?=\s+[A-Z][a-z]{2,})` — jen lookahead, mezera zůstává v textu.
+
+### 🌍 RU coverage (P2)
+
+6. **RU adresa (улица, дом, квартира)** — "ул. Тверская, д. 15, кв. 42" nebylo anonymizováno; retest dostal 5 PII místo 8+. **Fix:** 3 nové patterny — `RU ulice` (ул./улица + Cyrillic name), `RU dům` (д./дом + číslo), `RU byt` (кв./квартира + číslo).
+
+### 🧪 Tests
+
+- 15 nových regression testů v `tests/test_v0728_fixes.py` — všechny PASS
+- 131/131 unit testů PASS celkem (předtím 116, nyní 131)
+
+### Retest přes MCP (post-fix)
+
+Live MCP retest 5 kategorií z checkpoint: PII dump (Visa/MC, Aadhaar, github_pat_,
+IBAN, Berlin), HU langdetect, CZ langdetect, RU multilingual anonymize.
+
+---
+
 ## [0.7.27] — 2026-05-23
 
 ### 🎯 Ultimate stress test fixes — first MCP server for Charles University
