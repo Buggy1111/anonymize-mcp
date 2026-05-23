@@ -53,15 +53,77 @@ _CITY_CONNECTORS = ("za", "u", "nad", "pod", "při", "ve", "v")
 # Pokud je v finálním textu najdeme jako placeholder, revertneme je zpátky.
 _PRESERVE_ACRONYMS = frozenset({
     # Grantové agentury CZ
-    "GA ČR", "GAČR", "TA ČR", "TAČR", "AZV", "MŠMT", "MPSV", "MPO",
-    "GA AV", "GAAV", "GA UK", "GAUK",
-    # Evropské granty
+    "GA ČR", "GAČR", "TA ČR", "TAČR", "AZV", "AZV ČR", "MŠMT", "MPSV", "MPO",
+    "GA AV", "GAAV", "GA AV ČR", "GAAVČR",
+    "GA UK", "GAUK", "AV ČR", "AVČR",
+    # Evropské granty + programy
     "ERC", "Horizon Europe", "Horizon 2020", "H2020", "FP7", "FP8",
+    "ESA", "CERN", "EMBL", "EMBO",
     # Klinické kódy / katalogy
-    "MKN-10", "MKN-11", "ICD-10", "ICD-11",
+    "MKN-10", "MKN-11", "ICD-10", "ICD-11", "ICD-10-PCS", "SNOMED",
     # Vědecké standardy
-    "ISO", "ISBN", "ISSN", "DOI",
+    "ISO", "ISBN", "ISSN", "DOI", "ORCID", "PMID", "PMCID",
+    # Zdravotní pojišťovny CZ
+    "VZP", "ZP MV", "OZP", "VoZP", "RBP", "ČPZP",
+    # Banky CZ — public brand reference (preserve, ne PII)
+    "ČSOB", "KB", "ČS", "Česká spořitelna", "Komerční banka",
+    "Československá obchodní banka", "ČNB", "Česká národní banka",
+    "Fio banka", "Fio", "Air Bank", "mBank", "Moneta", "Moneta Money Bank",
+    "Raiffeisen", "Raiffeisenbank", "UniCredit", "UniCredit Bank",
+    "Sberbank", "Equa bank", "Wüstenrot", "Wüstenrot hypoteční banka",
+    "Hypoteční banka",
+    # Pojišťovny CZ — public brand reference
+    "ČSOB Pojišťovna", "Generali", "Generali Česká pojišťovna",
+    "Česká pojišťovna", "Allianz", "Kooperativa", "ČPP",
+    "Česká podnikatelská pojišťovna", "Direct", "Direct pojišťovna",
+    "AXA", "ERV Evropská pojišťovna",
+    # Card brands
+    "Visa", "VISA", "MasterCard", "Mastercard", "AMEX", "American Express",
+    "Discover", "JCB", "Maestro", "UnionPay",
+    # Legal forms (NEJSOU entity per se, jen označení)
+    "s.r.o.", "a.s.", "k.s.", "v.o.s.", "OSVČ", "SE", "družstvo",
+    "spol. s r.o.", "SE Société",
 })
+
+
+def _is_preserve_acronym(text: str) -> bool:
+    """Check if text matches preserve acronym (incl. format patterns).
+
+    Handles: known acronyms (MKN-10, ICD-10, GA AV ČR), ISSN format,
+    BIC/SWIFT codes, plus trailing legal forms (, a.s. / , s.r.o. / , a. s.).
+    """
+    if not text:
+        return False
+    s = text.strip()
+    if s in _PRESERVE_ACRONYMS:
+        return True
+    # Strip leading "Grant ", "Projekt ", "Project " prefix
+    no_prefix = re.sub(r"^(?:Grant|Projekt|Project|Program|Programme)\s+", "", s)
+    if no_prefix != s and no_prefix in _PRESERVE_ACRONYMS:
+        return True
+    # Strip trailing legal form (", a.s." / ", s.r.o." / ", a. s." / ", spol. s r.o.")
+    stripped = re.sub(
+        r",?\s*(?:a\.?\s*s\.?|s\.?\s*r\.?\s*o\.?|spol\.?\s*s\s*r\.?\s*o\.?|"
+        r"k\.?\s*s\.?|v\.?\s*o\.?\s*s\.?|družstvo|SE)\s*\.?$",
+        "",
+        s,
+    ).strip()
+    if stripped and stripped in _PRESERVE_ACRONYMS:
+        return True
+    # Combine: Grant prefix + legal form trailing
+    s_no_pre = re.sub(r"^(?:Grant|Projekt|Project|Program|Programme)\s+", "", s)
+    s_no_pre_no_suf = re.sub(
+        r",?\s*(?:a\.?\s*s\.?|s\.?\s*r\.?\s*o\.?)\s*\.?$", "", s_no_pre,
+    ).strip()
+    if s_no_pre_no_suf and s_no_pre_no_suf in _PRESERVE_ACRONYMS:
+        return True
+    # ISSN format
+    if re.match(r"^ISSN\s+\d{4}-\d{3}[\dX]$", s):
+        return True
+    # BIC/SWIFT format — 8-11 caps with CZ midfix
+    if re.match(r"^[A-Z]{4}CZ[A-Z0-9]{2,5}$", s):
+        return True
+    return False
 
 # Kontextové prefixy které se NEMOHOU vyskytovat samy jako PII — jen
 # uvozují další PII (NZ 45/2024, č.j. 5C/2024). Pokud je MasKIT klasifikuje
@@ -264,33 +326,52 @@ def revert_preserved_acronyms(
     revert_targets: dict[str, str] = {}
     for plc, orig in plc_map.items():
         orig_stripped = orig.strip()
-        if orig_stripped in _PRESERVE_ACRONYMS or orig_stripped in _CONTEXT_PREFIX_TOKENS:
+        if _is_preserve_acronym(orig_stripped) or orig_stripped in _CONTEXT_PREFIX_TOKENS:
             revert_targets[plc] = orig_stripped
-
-    if not revert_targets:
-        return anonymized
 
     # Replace each placeholder with original (word boundary to avoid e.g. OSOBA1 in OSOBA12)
     for plc, orig in revert_targets.items():
         pattern = re.compile(r"\b" + re.escape(plc) + r"\b")
         anonymized = pattern.sub(orig, anonymized)
 
-    # Sloučit rozdělené granty: "GA STAT1" pokud STAT1=="ČR" → "GA ČR"
-    # (pokrývá případy kdy "GA" zůstal plain ale "ČR" se anonymizoval samostatně)
+    # Sloučit rozdělené granty: "GA STAT1" / "GA OSOBA3" pokud STAT1/OSOBA="ČR/AV/UK"
+    # → "GA ČR" / "GA AV". Pokrývá fragmented grant agency names.
+    GRANT_SUFFIXES = {"ČR", "AV", "UK", "AVČR", "AV ČR"}
     for grant_prefix in ("GA", "TA"):
-        # Pattern: prefix + space + STAT placeholder kde original je "ČR" / "AV" / "UK"
         m_pattern = re.compile(
-            r"\b(" + grant_prefix + r")\s+(STAT\d+|INSTITUCE\d+|ENTITA\d+)\b"
+            r"\b(" + grant_prefix + r")\s+(STAT\d+|INSTITUCE\d+|ENTITA\d+|OSOBA\d+|FIRMA\d+|MESTO\d+)\b"
         )
         def _maybe_join(m: re.Match[str]) -> str:
             prefix = m.group(1)
             plc = m.group(2)
             orig = plc_map.get(plc, "").strip()
-            # Acceptovat jen kdyby orig je validní suffix grantové agentury
-            if orig in ("ČR", "AV", "UK", "AVČR", "AV ČR"):
+            if orig in GRANT_SUFFIXES:
                 return f"{prefix} {orig}"
             return m.group(0)
         anonymized = m_pattern.sub(_maybe_join, anonymized)
+
+    # Sloučit "FIRMA\d+ STAT\d+" pokud FIRMA orig OBSAHUJE "GA"/"TA" a STAT=ČR/AV/UK
+    # Pokrývá: "Grant GA" (entire span) + "ČR" → revert na "Grant GA ČR"
+    for plc, orig in plc_map.items():
+        if not plc.startswith("FIRMA"):
+            continue
+        orig_s = orig.strip()
+        # Case A: FIRMA orig ENDS WITH "GA" or "TA" (= compound s prefixem)
+        if re.search(r"\b(GA|TA)$", orig_s):
+            inst_pattern = re.compile(
+                r"\b" + re.escape(plc) + r"\s+(STAT\d+|OSOBA\d+|INSTITUCE\d+|ENTITA\d+)\b"
+            )
+            def _maybe_revert_firma(m: re.Match[str], _orig=orig_s) -> str:
+                suffix_plc = m.group(1)
+                suffix_orig = plc_map.get(suffix_plc, "").strip()
+                if suffix_orig in GRANT_SUFFIXES:
+                    return f"{_orig} {suffix_orig}"
+                return m.group(0)
+            anonymized = inst_pattern.sub(_maybe_revert_firma, anonymized)
+        # Case B: FIRMA orig EXACTLY matches preserve acronym
+        # (NEnumel "ALFA-OMEGA s.r.o." revertovat jen proto že obsahuje "s.r.o.")
+        if _is_preserve_acronym(orig_s):
+            anonymized = re.sub(r"\b" + re.escape(plc) + r"\b", orig_s, anonymized)
 
     return anonymized
 

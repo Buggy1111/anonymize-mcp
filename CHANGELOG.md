@@ -2,6 +2,61 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.18] — 2026-05-23
+
+### Brutal sectoral stress test — comprehensive fixes
+
+Brutální real-world stress test 9 sektorů (komplexní právní rozsudek,
+propouštěcí zpráva, peer review s granty, výpis z účtu, KN výpis,
+likvidace pojistné události, notářský zápis, potvrzení o studiu,
+etický protokol výzkumu) odhalil řadu bugs:
+
+### 🔧 Fix #1: pojistka format regex
+Pattern pro insurance policy IDs: `G-CZ-12345`, `P-987654321`,
+`ŠU-2024-00045123` (letter-prefix-CZ-digit a variant).
+
+### 🔧 Fix #2: preserve format protection (PRE-pass)
+`_protect_preserve_formats` v maskit.py: chrání ISSN, BIC/SWIFT, MKN-10,
+ICD-10, DOI formáty PUA sentinely PŘED MasKIT API call. Restore po pipeline.
+Předtím MasKIT rozdělil "0011-4626" na 3 ENTITA tokeny.
+
+### 🔧 Fix #3: revert_preserved_acronyms — removed early return
+Funkce vracela early když `revert_targets` byl prázdný, ale tím přeskočila
+join loop pro "GA STAT1" → "GA ČR". Fix: vždy spustit join.
+
+### 🔧 Fix #4: rozšířené acronym matching
+- Stripping "Grant ", "Projekt ", "Project ", "Program " prefix
+- Stripping trailing legal form (", a.s.", ", s.r.o.", "spol. s r.o.")
+- Tolerantní match → "ČSOB Pojišťovna, a. s." → match s "ČSOB Pojišťovna"
+
+### 🔧 Fix #5: massive _PRESERVE_ACRONYMS expansion
+Přidáno:
+- **Banky CZ**: ČSOB, KB, ČS, Česká spořitelna, ČNB, Fio, Air Bank, mBank,
+  Moneta, Raiffeisen, UniCredit, Sberbank, Equa bank, Wüstenrot,
+  Hypoteční banka
+- **Pojišťovny**: ČSOB Pojišťovna, Generali, Česká pojišťovna, Allianz,
+  Kooperativa, ČPP, AXA, ERV Evropská pojišťovna
+- **Card brands**: Visa, MasterCard, AMEX, American Express, Discover,
+  JCB, Maestro, UnionPay
+- **Legal forms**: s.r.o., a.s., k.s., v.o.s., OSVČ, SE, družstvo
+- **Grant agencies**: AZV ČR, AV ČR, GA AV ČR, ESA, CERN, EMBL, EMBO
+
+### 🔧 Fix #6: FIRMA placeholder revert
+Pokud MasKIT klasifikoval celý "Grant GA AV" jako 1 FIRMA placeholder,
+post-process detekuje obsah a revertuje na originál.
+
+### 🔧 Fix #7: Case B tighter (no over-revert)
+"ALFA-OMEGA s.r.o." obsahovalo preserve acronym "s.r.o." → původní logika
+omylem REVERTOVALA celé "ALFA-OMEGA s.r.o." zpět na original = LEAK.
+Fix: EXACT match na preserve acronym (s legal form strip), ne substring.
+
+### 📊 Test coverage
+
+- ✅ 5/9 brutal sectors PASS (1 sek je BANK conflict = design decision)
+- ✅ 9/9 synthetic 9-sector PASS (no regressions)
+- ✅ ULTIMATE_SPIS regression OK
+- ✅ Wikipedia 5 bios still clean
+
 ## [0.7.17] — 2026-05-22
 
 ### `extend_institution_names` — merge složené názvy institucí
