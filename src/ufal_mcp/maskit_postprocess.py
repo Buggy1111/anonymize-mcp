@@ -85,6 +85,19 @@ _PRESERVE_ACRONYMS = frozenset({
     "spol. s r.o.", "SE Société",
     # Profesní komory CZ
     "ČAK", "ČLK", "ČSK", "ČKA", "ČKAIT", "ČKL", "EMSO",
+    # Policie / Policejní složky / státní orgány
+    "Policie ČR", "PČR", "ÚSKPV", "ÚOOZ", "NCOZ", "GIBS",
+    "Armáda ČR", "AČR", "Vojenská policie", "VS", "VS ČR",
+    # Hasičský záchranný sbor / IZS
+    "HZS", "HZS ČR", "IZS", "ZZS", "Letecká záchranná služba",
+    # Univerzity — compound names (oba pádové tvary)
+    "Univerzita Palackého v Olomouci", "Univerzita Palackého",
+    "ČVUT FIT", "ČVUT FEL", "ČVUT FS", "ČVUT FA", "ČVUT FD",
+    "MU FI", "MU FF", "MU PřF", "MU LF", "MU PdF", "MU FSS", "MU FSpS",
+    "1. lékařská fakulta UK", "1. LF UK", "2. lékařská fakulta UK", "2. LF UK",
+    "3. LF UK", "MFF UK", "FF UK", "PřF UK", "FSV UK", "PedF UK", "PřFUK",
+    # Clinical trial registries
+    "NCT", "EudraCT", "ISRCTN", "ANZCTR", "ChiCTR",
     # Univerzity CZ — zkratky
     "UK", "MU", "MFF UK", "1. LF UK", "ČVUT", "ČVUT v Praze",
     "VUT", "VUT v Brně", "UPOL", "UPCE", "TUL", "ZČU", "VŠB", "VŠE",

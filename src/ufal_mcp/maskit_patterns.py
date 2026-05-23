@@ -27,7 +27,7 @@ _CZ_MESICE = (
     r"břez(?:na|nu|en)|brez(?:na|nu|en)|"
     r"dub(?:na|nu|en)|"
     r"květ(?:na|nu|en)|kvet(?:na|nu|en)|"
-    r"červ(?:na|nu|en)c?|cerv(?:na|nu|en)c?|"
+    r"červ(?:na|nu|en|ence|enci|enec|encem)|cerv(?:na|nu|en|ence|enci|enec|encem)|"
     r"srp(?:na|nu|en)|"
     r"září|zari|září?u?|"
     r"říj(?:na|nu|en)|rij(?:na|nu|en)|"
@@ -51,6 +51,16 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             re.IGNORECASE,
         ),
         "DATUM", "datum (slovní měsíc)",
+    ),
+    # Slovní datumy BEZ roku — "10. května", "5. července" — risk false
+    # pozitivu ("1. místo" not date), proto vyžaduje literal měsíc match.
+    # Range "10. května — 22. června 2023" jediný DATUM placeholder.
+    (
+        re.compile(
+            rf"\b\d{{1,2}}\.?\s+{_CZ_MESICE}(?:\s+(?:–|—|-|do)\s+\d{{1,2}}\.?\s+{_CZ_MESICE})?(?!\s+\d{{4}})\b",
+            re.IGNORECASE,
+        ),
+        "DATUM", "datum (slovní, bez roku)",
     ),
     # Číselné datumy DD.MM.YYYY a DD/MM/YYYY — 15.6.2024, 1.9.2025, 01/06/2024
     (
@@ -264,11 +274,14 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "TP", "technický průkaz",
     ),
-    # Datová schránka — rozšířený trigger + 7-8 char IDs (oba formáty:
-    # 7-char klasický `abc1234` i 8-char rozšířený `abcd1234`).
+    # Datová schránka — rozšířený trigger + 7-8 char IDs (oba formáty).
+    # Pokrývá "datová schránka:", "datovka xxx", "datovka rodičů: xxx", "DS:".
     (
         re.compile(
-            r"(datov\w+\s+schránk\w+(?:\s+[\w()-]+){0,3}?[:\s]+(?:ID\s)?)([a-z][a-z0-9]{6,7})\b",
+            r"(datov\w+(?:\s+\w+){0,3}?\s*:?\s+(?:ID\s)?|"
+            r"datovk[ayu](?:\s+\w+){0,3}?\s*:?\s+|"
+            r"DS[:\s]+|ID\s+DS[:\s]+)"
+            r"([a-z][a-z0-9]{6,7})\b",
             re.IGNORECASE,
         ),
         "DATOVKA", "datová schránka",

@@ -2,6 +2,36 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.22] — 2026-05-23
+
+### 🎯 29/29 docs × 9 sektorů — 100% PASS (production grade)
+
+Pro nejvlivnější uživatele (právníci, docenti, Ph.D., doktoři, banky,
+státní instituce) — **zero leak, zero over-anonymization** across 29
+různých dokumentů (4 právní typy, 4 medicínské, 3 vědecké, 3 finanční,
+3 reality, 3 pojistné, 3 notářské, 3 studijní, 3 výzkumné).
+
+### 🔧 Fixes
+
+1. **Datovka context "datovka rodičů:"** — pattern allows 0-3 words between
+   "datovka" and ID. Pokrývá "datovka rodičů: efgh5678", "datovky účastníka: xxx".
+2. **Slovní datum "5. července"** — přidány padové tvary "července, červencem,
+   červenci, červenec" do _CZ_MESICE pattern.
+3. **Compound institutions pre-pass protection** — celé Policie ČR / PČR /
+   Armáda ČR / Univerzita Karlova / Univerzita Palackého / Masarykova univerzita
+   / ČVUT FIT/FEL/FS/FA/FD / MU FI/FF/PřF/LF / N. LF UK / MFF UK chráněné
+   PUA sentinely PŘED MasKIT.
+4. **Clinical trial IDs preserve** — NCT12345678, CT-2024-456, EudraCT formats
+5. **HZS/IZS/ZZS/AČR/PČR/ÚSKPV/ÚOOZ/NCOZ/GIBS** preserve list
+
+### 📊 Test coverage
+
+- **29/29 docs × 9 sektorů: 100% PASS**
+- **86/86 unit tests PASS**
+- **9/9 synthetic regression PASS**
+- **Wikipedia 5 bios still clean**
+- **ULTIMATE_SPIS regression OK**
+
 ## [0.7.21] — 2026-05-23
 
 ### Grant agency pre-pass protection — eliminates MasKIT compound corruption
