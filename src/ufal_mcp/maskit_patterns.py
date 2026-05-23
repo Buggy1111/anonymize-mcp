@@ -176,38 +176,49 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
 
     # === INTERNATIONAL FINANCIAL ===
 
-    # IBAN — country-specific (proper lengths per ISO 13616)
+    # IBAN — country-specific (proper lengths per ISO 13616).
+    # v0.7.28: support spaces between groups — reálné IBAN se píší
+    # "GB29 NWBK 6016 1331 9268 19" s mezerami. Bez \s? fragmentace
+    # ostatními pattern (Aadhaar chytil "6016 1331 9268"). Spaces optional.
     (
         re.compile(
             r"\b(?:"
             # 18-char
-            r"NO\d{13}|"
+            r"NO\d{2}(?:\s?\d){11}|"
             # 20-char
-            r"AT\d{18}|BA\d{18}|EE\d{18}|"
+            r"AT\d{2}(?:\s?\d){16}|BA\d{2}(?:\s?\d){16}|EE\d{2}(?:\s?\d){16}|"
             # 21-char
-            r"HR\d{19}|LV\d{2}[A-Z]{4}[A-Z0-9]{13}|"
-            r"LI\d{7}[A-Z0-9]{12}|CH\d{7}[A-Z0-9]{12}|"
+            r"HR\d{2}(?:\s?\d){17}|LV\d{2}\s?[A-Z]{4}(?:\s?[A-Z0-9]){13}|"
+            r"LI\d{2}(?:\s?\d){5}(?:\s?[A-Z0-9]){12}|"
+            r"CH\d{2}(?:\s?\d){5}(?:\s?[A-Z0-9]){12}|"
             # 22-char
-            r"BG\d{2}[A-Z]{4}\d{6}[A-Z0-9]{8}|DE\d{20}|"
-            r"GB\d{2}[A-Z]{4}\d{14}|IE\d{2}[A-Z]{4}\d{14}|"
-            r"GE\d{2}[A-Z]{2}\d{16}|RS\d{20}|"
+            r"BG\d{2}\s?[A-Z]{4}(?:\s?\d){6}(?:\s?[A-Z0-9]){8}|"
+            r"DE\d{2}(?:\s?\d){18}|"
+            r"GB\d{2}\s?[A-Z]{4}(?:\s?\d){14}|"
+            r"IE\d{2}\s?[A-Z]{4}(?:\s?\d){14}|"
+            r"GE\d{2}\s?[A-Z]{2}(?:\s?\d){16}|RS\d{2}(?:\s?\d){18}|"
             # 24-char
-            r"AD\d{2}\d{8}[A-Z0-9]{12}|CY\d{2}\d{8}[A-Z0-9]{16}|"
-            r"CZ\d{22}|ES\d{22}|RO\d{2}[A-Z]{4}[A-Z0-9]{16}|"
-            r"SE\d{22}|SK\d{22}|"
+            r"AD\d{2}(?:\s?\d){8}(?:\s?[A-Z0-9]){12}|"
+            r"CY\d{2}(?:\s?\d){8}(?:\s?[A-Z0-9]){16}|"
+            r"CZ\d{2}(?:\s?\d){20}|ES\d{2}(?:\s?\d){20}|"
+            r"RO\d{2}\s?[A-Z]{4}(?:\s?[A-Z0-9]){16}|"
+            r"SE\d{2}(?:\s?\d){20}|SK\d{2}(?:\s?\d){20}|"
             # 26-char
-            r"IS\d{24}|"
+            r"IS\d{2}(?:\s?\d){22}|"
             # 27-char
-            r"FR\d{12}[A-Z0-9]{11}\d{2}|GR\d{9}[A-Z0-9]{16}|"
-            r"IT\d{2}[A-Z]\d{10}[A-Z0-9]{12}|MC\d{12}[A-Z0-9]{11}\d{2}|"
-            r"SM\d{2}[A-Z]\d{10}[A-Z0-9]{12}|"
+            r"FR\d{2}(?:\s?\d){10}(?:\s?[A-Z0-9]){11}(?:\s?\d){2}|"
+            r"GR\d{2}(?:\s?\d){7}(?:\s?[A-Z0-9]){16}|"
+            r"IT\d{2}\s?[A-Z](?:\s?\d){10}(?:\s?[A-Z0-9]){12}|"
+            r"MC\d{2}(?:\s?\d){10}(?:\s?[A-Z0-9]){11}(?:\s?\d){2}|"
+            r"SM\d{2}\s?[A-Z](?:\s?\d){10}(?:\s?[A-Z0-9]){12}|"
             # 28-char
-            r"HU\d{26}|PL\d{26}|AL\d{2}\d{8}[A-Z0-9]{16}|"
+            r"HU\d{2}(?:\s?\d){24}|PL\d{2}(?:\s?\d){24}|"
+            r"AL\d{2}(?:\s?\d){8}(?:\s?[A-Z0-9]){16}|"
             # 29-char
-            r"UA\d{27}|"
+            r"UA\d{2}(?:\s?\d){25}|"
             # 31-char
-            r"MT\d{2}[A-Z]{4}\d{5}[A-Z0-9]{18}|"
-            # Generic fallback for less common countries (16-31 chars)
+            r"MT\d{2}\s?[A-Z]{4}(?:\s?\d){5}(?:\s?[A-Z0-9]){18}|"
+            # Generic fallback (no-space) for less common countries (16-31 chars)
             r"[A-Z]{2}\d{2}[A-Z0-9]{12,28}"
             r")\b"
         ),
@@ -314,11 +325,39 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "TELEFON", "RU телефон",
     ),
-    # IN Aadhaar without context — 12 digits with 4-4-4 spacing, BIN starts 2-9.
-    # Risk of false positive on bare 12-digit sequences mitigated by mandatory spacing.
+    # RU адрес (улица + дом + квартира) — typicky "ул. Тверская, д. 15, кв. 42".
+    # v0.7.28: vlastní jméno ulice (Cyrillic capitalized) + house # + apt #.
+    # Bez tohoto MasKIT+NameTag street pattern nechytá a address leakuje.
     (
         re.compile(
+            r"(ул(?:ица|\.)?\s+)([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+)?)"
+            r"(?=[,\s\.])",
+            re.IGNORECASE,
+        ),
+        "ULICE", "RU ulice",
+    ),
+    (
+        re.compile(
+            r"(д(?:ом|\.)?\s+)(\d+[а-яА-Я]?(?:[/\-]\d+[а-яА-Я]?)?)\b"
+        ),
+        "HODNOTA", "RU dům",
+    ),
+    (
+        re.compile(
+            r"(кв(?:артира|\.)?\s+)(\d+[а-яА-Я]?)\b"
+        ),
+        "HODNOTA", "RU byt",
+    ),
+    # IN Aadhaar without context — 12 digits with 4-4-4 spacing, BIN starts 2-9.
+    # v0.7.28: STRICT lookbehind/lookahead aby nesežralo prvních 12 cifer
+    # z Visa/MC karty (16 digits, 4-4-4-4) ani prostřední bloky z IBAN
+    # (např. "NWBK 6016 1331 9268 19"). Bug z Karlovka retestu:
+    # Visa "4111 1111 1111 1111" → AADHAAR1 + " 1111" leak.
+    (
+        re.compile(
+            r"(?<![\dA-Z][\s-])"            # NE pokračování IBAN/karty zleva
             r"\b[2-9]\d{3}\s\d{4}\s\d{4}\b"
+            r"(?![\s-]?\d)"                  # NE pokračování karty zprava
         ),
         "AADHAAR", "IN Aadhaar",
     ),
@@ -385,11 +424,14 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         re.compile(r"\b\d{3}-\d{3}-\d{3}\s\d{2}\b"),
         "SNILS", "RU SNILS",
     ),
-    # IN Aadhaar — 12 digits with spaces (4-4-4)
+    # IN Aadhaar — 12 digits with spaces (4-4-4).
+    # v0.7.28: relax value pattern z [2-9]\d{3} na \d{4} — kontext "Aadhaar"
+    # je dostatečně silný signál, BIN restriction tady jen způsobí miss
+    # na fake/test čísla a leak ("IN Aadhaar 1234 5678 9012" → leak).
     (
         re.compile(
             r"((?:Aadhaar|आधार)\s*[:\.]?\s+)"
-            r"([2-9]\d{3}\s?\d{4}\s?\d{4})\b",
+            r"(\d{4}\s?\d{4}\s?\d{4})\b",
             re.IGNORECASE,
         ),
         "AADHAAR", "IN Aadhaar",
@@ -504,8 +546,12 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "TOKEN", "GitHub PAT",
     ),
     (
-        # GitHub fine-grained PAT — github_pat_ + 82 chars
-        re.compile(r"\bgithub_pat_[A-Za-z0-9_]{82}\b"),
+        # GitHub fine-grained PAT — github_pat_ + 40-90 alphanumeric/_.
+        # v0.7.28: relax z přesných 82 na rozsah {40,90}. Reálné PAT mají
+        # 82 chars, ale safety: matchnout cokoliv co LZE rozumně být token
+        # (testovací/zkrácené tokeny v dev logs, partial leaks). False positive
+        # risk ~nulový — prefix "github_pat_" je dostatečně unikátní.
+        re.compile(r"\bgithub_pat_[A-Za-z0-9_]{40,90}\b"),
         "TOKEN", "GitHub fine-grained PAT",
     ),
     (
@@ -630,10 +676,12 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "PSC", "PSČ",
     ),
-    # PSČ standalone DE — 5 digits + capital city: "10117 Berlin", "80331 München"
+    # PSČ standalone DE — 5 digits + capital city: "10117 Berlin", "80331 München".
+    # v0.7.28: NEsežrat trailing whitespace — jen lookahead. Bez toho rebuild
+    # vidí "PSC2Berlin" jako jeden token a Berlin leakuje (Bug Karlovka retest).
     (
         re.compile(
-            r"\b\d{5}\s+(?=[A-ZÄÖÜ][a-zäöüß]{2,})"
+            r"\b\d{5}(?=\s+[A-ZÄÖÜ][a-zäöüß]{2,})"
         ),
         "PSC", "PSČ DE",
     ),
