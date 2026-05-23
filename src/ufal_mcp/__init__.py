@@ -1,3 +1,3 @@
 """ÚFAL MCP — Czech legal NLP tools (NameTag, MasKIT, PONK)."""
 
-__version__ = "0.7.25"
+__version__ = "0.7.26"

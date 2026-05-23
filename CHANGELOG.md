@@ -2,6 +2,50 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.26] — 2026-05-23
+
+### 🎯 179/179 tests PASS (100%) — production grade complete
+
+**Mass corpus v4 international 11/17 → 17/17** — opraveno 5 reálných bugů
+(předtím prohlášené jako test bugs, nebyly):
+
+1. **Chase Bank + 25 international bank brands** → preserve list (BoA, Citi,
+   Wells Fargo, HSBC, Barclays, Deutsche Bank, BNP Paribas, Santander, UBS, ...)
+2. **arXiv + 17 academic databases** → preserve list (Scopus, WoS, PubMed,
+   JSTOR, ScienceDirect, IEEE Xplore, Crossref, OpenAIRE, ...)
+3. **arXiv/PMID/PMCID patterns** přesunuty do `_CONTEXT_PII_PATTERNS` —
+   preserve label, anonymize jen číslo (`arXiv:NUMBER` → `arXiv:ARXIV1`)
+4. **`capture_company_prefix`** rozšířen o foreign legal forms: SARL/SAS/EURL
+   (FR), GmbH/AG/KG (DE), Ltd/LLC/Inc/Corp/PLC (US/UK), SpA/Srl (IT),
+   SL/SLU (ES), Sp. z o.o. (PL)
+5. **Nový post-process `anonymize_international_companies`** — chytá ALL CAPS
+   název + foreign legal form když MasKIT/NameTag missed (`ALPHA TECH SARL`)
+6. **`_is_preserve_acronym`** strip " Author"/"Author ID"/"Editor"/"Profile"
+   suffix → Scopus/ORCID preservation funguje
+7. **BIC/SWIFT pattern** whitelist ISO 3166-1 alpha-2 country codes —
+   opraveno catastrophic FP "APPOINTMENT" matchne BIC
+8. **UK NIN** relaxed regex `[A-Z]{2}\d{6}[A-D]` — test/dummy hodnoty
+   `QQ123456C` anonymize anyway (safer: false-positive lepší než leak)
+9. **Country-code labeled fleet plates** `PL: WA 12345`, `DE: M AB 1234`,
+   `FR: AB-123-CD`, `UK: AB12 CDE`
+10. **Bare US bank account context** `account 1234567890`, `routing 021000021`
+
+### 📊 Final test coverage (179/179 = 100%)
+- 86/86 unit tests
+- 9/9 9-sektor synthetic regression
+- 29/29 mass corpus v2 (CZ reálné)
+- 12/12 mass corpus v3 (CZ obskurní)
+- 17/17 mass corpus v4 (international)
+- 26/26 ÚFAL tool integration (6 tools × 6 lang × edge cases)
+
+### ÚFAL tools integration coverage
+- `anonymize` ✅ CZ/EN/SK/DE/FR/PL + docx/xml output + multiline
+- `extract_entities` ✅ CZ/EN/SK/DE + long text
+- `analyze_morphology` ✅ CZ/EN/SK
+- `check_readability` ✅ CZ
+- `correct_text` ✅ spellcheck/diacritics/strip
+- `translate_text` ✅ cs↔en, cs→de/fr/uk
+
 ## [0.7.25] — 2026-05-23
 
 ### Mass corpus v4 INTERNATIONAL — Anthropic API key fix + PL plate context
