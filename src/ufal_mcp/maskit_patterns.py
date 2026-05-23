@@ -405,8 +405,16 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "TOKEN", "OpenAI API key",
     ),
     (
-        re.compile(r"\bsk-ant-[A-Za-z0-9_-]{90,}\b"),
+        re.compile(r"\bsk-ant-(?:api\d{2}-)?[A-Za-z0-9_-]{30,}\b"),
         "TOKEN", "Anthropic API key",
+    ),
+    # Polish license plate — needs context to avoid clash s "LV 1234" (CZ KN)
+    (
+        re.compile(
+            r"((?:SPZ\s+PL|polská\s+SPZ|license\s+plate\s+PL|PL\s+(?:SPZ|RZ))\s*[:\.]?\s+)"
+            r"([A-Z]{2,3}\s+[A-Z0-9]{4,5})\b"
+        ),
+        "SPZ", "SPZ PL",
     ),
     (
         re.compile(r"\bsk-or-v1-[a-f0-9]{64}\b"),
