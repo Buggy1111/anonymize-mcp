@@ -83,9 +83,13 @@ _PRESERVE_FORMAT_PATTERNS = [
     re.compile(r"\bMKN-1[01]\b|\bICD-1[01](?:-PCS)?\b"),
     # DOI — "10.1063/1.5142345"
     re.compile(r"\b10\.\d{4,9}/[A-Z0-9._;()/:%-]+\b", re.IGNORECASE),
-    # Grant agency codes ("21-12345S", "M22-987XYZ") — alphanumeric grant IDs
-    # Pattern: prefix(letter/digit) + dash + alphanumeric (typický format)
-    # NOT included by default — moc generic, false-positives risk
+    # CZ akreditovaný studijní program (CZ MŠMT format): "B0322A100021"
+    # B=bachelor, M=master, P=PhD, N=other; 4-digit field + 1 letter + 6-digit
+    re.compile(r"\b[BMPN]0\d{3}[A-Z]\d{6}\b"),
+    # IZO (identifikátor zařízení škol): 9 digits standalone
+    # Match only after "IZO" prefix (already in CONTEXT prefixes)
+    # Grant IDs — "21-12345S", "M22-987XYZ", "NV21-08-00125" patterns
+    # NOT broadly included — context-dependent (grant agency surrounds)
 ]
 
 

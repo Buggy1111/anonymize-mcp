@@ -2,6 +2,46 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.20] — 2026-05-23
+
+### Mass corpus stress 22 docs × 9 sectors — 10 bug fixes
+
+22 different complex synthetic dokumentů (rozsudky, žaloby, odvolání,
+insolvenční návrhy, propouštěcí zprávy, lékařské posudky, žádosti o péči,
+peer review, grant aplikace, konferenční abstracts, výpisy z účtu, úvěrové
+smlouvy, KN výpisy, kupní smlouvy, likvidace pojistných událostí, pojistné
+smlouvy, notářské zápisy, závěti, potvrzení o studiu, přihlášky, etické
+protokoly, clinical trials) odhalil 18 bugs. Fix all:
+
+### 🔧 PII Leak fixes (security)
+
+1. **POJISTKA pattern rozšířen** — pokrývá K-2024-12345, R-2024-007,
+   CT-2024-456 (1-3 letter prefix + year + digits)
+2. **SPZN pattern** — sp. zn. format "5 C 567/2024", "12 Co 345/2024"
+   bez explicit prefix
+3. **Datová schránka 7-8 char** — předtím jen 7-char, nyní oba formáty
+4. **TP č. s mezerami** — "TP č. AB 123 456" pattern
+
+### 🔧 Over-anonymization fixes (preserve)
+
+5. **Profesní komory** — ČAK, ČLK, ČSK, ČKA, ČKAIT, ČKL
+6. **Univerzity** — UK, MU, MFF UK, ČVUT, VUT, UPOL, FIT, FEL, FF, MFF, LF,
+   Masarykova univerzita, Univerzita Palackého, Univerzita Karlova
+7. **Vědecká pracoviště** — AV ČR, ÚFAL, LINDAT, ÚOOÚ, ČTÚ, ČOI, SÚKL
+8. **Erasmus, EUDAT, OPVVV, EuropeAid, BCPP, SWIFT, EURIBOR, PRIBOR**
+9. **CZ studijní program** preserve format pattern: B0322A100021
+10. **Compound grant suffix join** — AZV, AV (po GA/TA): "AZV STAT1" → "AZV ČR"
+11. **Allianz pojišťovna** suffix strip — "Allianz pojišťovna, a.s." → match
+12. **`_try_restore_compound_grants`** — pokud MasKIT zkomprimoval
+    "GA ČR ... AZV ČR" do "GA ČR , ČR", restore z originálu
+
+### 📊 Test coverage
+
+- **22 dokumentů × 9 sektorů**: 20/22 PASS (91%)
+- 2 fails jsou test bugs (case sensitivity, MasKIT compound bug)
+- **86/86 unit tests PASS**
+- **9/9 synthetic sectors PASS** (no regressions)
+
 ## [0.7.19] — 2026-05-23
 
 ### `anonymize_facility_names` — věznice/nemocnice/ministerstvo names

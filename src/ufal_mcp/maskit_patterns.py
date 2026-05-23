@@ -73,16 +73,29 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
     # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
     (re.compile(r"\b\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
-    # Pojistka — letter-prefix-CZ-digit format ("G-CZ-12345", "P-987654321",
-    # "ŠU-2024-00045123"). Pokrývá insurance policy IDs s context-less formátem.
-    # Hierarchický format: [letters]-[letters]-[digits] nebo [letters]-[digits]
+    # Pojistka / čísla smluv / studie IDs — letter-(letters?)-year?-digits format.
+    # Pokrývá: G-CZ-12345, P-987654321, ŠU-2024-00045123, K-2024-12345,
+    # R-2024-007, CT-2024-456 a podobné. 1-3 letters + dash + structured ID.
     (
         re.compile(
             r"\b(?:[A-ZÁ-Ž]{1,3}-[A-Z]{2}-\d{4,12}|"  # G-CZ-12345
+            r"[A-ZÁ-Ž]{1,3}-\d{4}-\d{3,12}|"          # K-2024-12345, R-2024-007
             r"[A-ZÁ-Ž]{2,3}-\d{4}-\d{4,12}|"          # ŠU-2024-00045123
             r"P-\d{8,12})\b"                            # P-987654321
         ),
-        "POJISTKA", "číslo pojistky",
+        "POJISTKA", "číslo pojistky / smlouvy",
+    ),
+    # Spis. zn. / číslo jednací — formát DIGIT(s) LETTER(S) DIGIT(s)/YEAR
+    # "5 C 567/2024", "12 Co 345/2024", "18 C 234/2024", "5C/2024"
+    (
+        re.compile(
+            r"\b\d{1,3}\s+(?:C|Co|T|To|Cm|Cmo|Ts|Tmo|"
+            r"Ad|Ads|Az|Azs|EU|Ed|Eds|Em|EM|Komp|Konf|Nco|Nco|Nu|Nss|Pc|Plc|"
+            r"Pp|R|Ro|Rs|Sm|So|Spr|St|Sto|U|Us|Vp|Vps|Vyk)"
+            r"\s+\d+/\d{2,4}\b|"
+            r"\b\d{1,3}[A-Z][a-z]?\d+/\d{2,4}\b"  # 5C/2024, 11Pc/99/2030
+        ),
+        "SPZN", "spisová značka",
     ),
     # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
     # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
@@ -234,6 +247,15 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "OP", "občanský průkaz",
     ),
+    # Technický průkaz s mezerami: "TP č. AB 123 456" / "TP č. ČR 987 654"
+    (
+        re.compile(
+            r"((?:T(?:echnický)?\s*P(?:růkaz)?\s+č\.?|TP\s+č\.?)\s+)"
+            r"([A-ZÁ-Ž]{2,3}\s+\d{3}\s+\d{3})\b",
+            re.IGNORECASE,
+        ),
+        "TP", "technický průkaz",
+    ),
     # Technický průkaz vozidla (TP): AB1234567 or numeric
     (
         re.compile(
@@ -242,11 +264,11 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "TP", "technický průkaz",
     ),
-    # Datová schránka — rozšířený trigger: "Datová schránka FNO: gh4nqpr",
-    # "datová schránka (bezpečnostní kód): ab7c2dx", "ID datové schránky: ud4abqd"
+    # Datová schránka — rozšířený trigger + 7-8 char IDs (oba formáty:
+    # 7-char klasický `abc1234` i 8-char rozšířený `abcd1234`).
     (
         re.compile(
-            r"(datov\w+\s+schránk\w+(?:\s+[\w()-]+){0,3}?[:\s]+(?:ID\s)?)([a-z][a-z0-9]{6})\b",
+            r"(datov\w+\s+schránk\w+(?:\s+[\w()-]+){0,3}?[:\s]+(?:ID\s)?)([a-z][a-z0-9]{6,7})\b",
             re.IGNORECASE,
         ),
         "DATOVKA", "datová schránka",
