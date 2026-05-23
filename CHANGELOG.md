@@ -1104,8 +1104,8 @@ Anonymize v `placeholder_mode=True`: 11 wrapper-placeholder + 2 wrapper-strict +
 
 ### Robustness patch — production-grade safety net
 
-Po self-audit byly identifikovány 3 risk areas. Tato verze je řeší před tím
-než to najde někdo jiný (komunita / ÚFAL ředitelka před Po 25.5. Zoom).
+Po self-audit byly identifikovány 3 risk areas. Tato verze je řeší před
+zveřejněním komunitě.
 
 ### Přidáno
 
