@@ -2,6 +2,29 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.23] — 2026-05-23
+
+### Mass corpus v3 — 12 obscure docs + employee number + company prefix
+
+12 obscure dokumentů (HR pracovní smlouva/výpověď/mzdový list,
+dávkový důchodový výměr, lab. výsledky, anamnéza, žádanka, OP žádost,
+stavební povolení, ÚOOÚ rozhodnutí, 3000-char composite spis) — 100% PASS.
+
+### Fixes
+- **Zaměstnanecké číslo** "os. č. 4567" → ZAMC pattern
+- **`capture_company_prefix`** — "BETA-GAMMA Trading FIRMA1" → unified
+  FIRMA placeholder (NameTag vynechal company prefix, MasKIT klasifikoval
+  jen legal form)
+- **Preserve list**: ČSSZ, Synlab, Magistrát měst, krajské/městské úřady,
+  Pplk. Sochora, Nejvyšší/Ústavní/NSS soud, OS/KS/VS
+
+### 📊 Combined coverage
+- Mass corpus v2: 29/29 ✅
+- Mass corpus v3: 12/12 ✅
+- **Total: 41/41 docs PASS** napříč 9 sektorech + obscure typů
+- 86/86 unit tests PASS
+- 9/9 synthetic regression PASS
+
 ## [0.7.22] — 2026-05-23
 
 ### 🎯 29/29 docs × 9 sektorů — 100% PASS (production grade)

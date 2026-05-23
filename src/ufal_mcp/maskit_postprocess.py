@@ -584,6 +584,79 @@ def anonymize_middle_names(
     return anonymized, replacements
 
 
+def capture_company_prefix(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Capture Capitalized words PŘED FIRMA placeholder pokud FIRMA orig
+    je jen legal form ("s.r.o.", "sr.o.", "a.s.", "spol.s r.o.").
+
+    Pattern: "BETA-GAMMA Trading FIRMA1" kde FIRMA1=s.r.o. → "FIRMA1"
+    (kompletní company name). NameTag občas vynechá company prefix
+    a klasifikuje jen legal form.
+
+    Safe: vyžaduje FIRMA placeholder + LEGAL form orig + Capitalized prefix.
+    """
+    plc_map = _build_placeholder_map(replacements)
+    firma_nums = [int(m.group(1)) for r in replacements
+                  if (m := re.match(r"FIRMA(\d+)", r.get("placeholder", "")))]
+    next_num = (max(firma_nums) if firma_nums else 0) + 1
+
+    # Legal form orig patterns
+    LEGAL_FORMS = re.compile(
+        r"^(?:s\.?\s*r\.?\s*o\.?|sr\.o\.|a\.?\s*s\.?|"
+        r"spol\.\s*s\s*r\.?\s*o\.?|k\.\s*s\.?|v\.\s*o\.\s*s\.?|"
+        r"družstvo|SE)$"
+    )
+
+    added: list[dict[str, Any]] = []
+    dedup: dict[str, str] = {}
+
+    def _process(plc: str, orig: str):
+        nonlocal next_num, anonymized
+        # Find this FIRMA placeholder in anonymized
+        # Pattern: 1-4 Capitalized words (s opcionálním dashem) + WHITESPACE + plc
+        pattern = re.compile(
+            r"((?:[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]*"
+            r"(?:[\s-][A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][\wáéěíóúůýžščřňťďj]*)?){1,3})"
+            r"\s+" + re.escape(plc) + r"\b"
+        )
+        def _replace(m: re.Match[str]) -> str:
+            nonlocal next_num
+            prefix = m.group(1).strip()
+            # Skip pokud prefix obsahuje placeholders
+            if re.search(r"[A-Z]+\d+", prefix):
+                return m.group(0)
+            # Validate: full string "prefix + orig" je v original_text
+            full = f"{prefix} {orig}"
+            if full not in original_text and prefix not in original_text:
+                return m.group(0)
+            full_name = f"{prefix} {orig}".strip()
+            norm = full_name.lower()
+            if norm in dedup:
+                return dedup[norm]
+            new_plc = f"FIRMA{next_num}"
+            next_num += 1
+            dedup[norm] = new_plc
+            added.append({
+                "original": full_name,
+                "placeholder": new_plc,
+                "type": "firma (compound)",
+                "source": "wrapper-postprocess-firma",
+            })
+            return new_plc
+        anonymized = pattern.sub(_replace, anonymized)
+
+    for plc, orig in list(plc_map.items()):
+        if plc.startswith("FIRMA") and LEGAL_FORMS.match(orig.strip()):
+            _process(plc, orig)
+
+    if added:
+        replacements = replacements + added
+    return anonymized, replacements
+
+
 def anonymize_facility_names(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -674,4 +747,5 @@ def postprocess(
     anonymized = extend_institution_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_facility_names(anonymized, replacements, original_text)
+    anonymized, replacements = capture_company_prefix(anonymized, replacements, original_text)
     return anonymized, replacements

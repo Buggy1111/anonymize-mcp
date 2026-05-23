@@ -257,6 +257,27 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "OP", "občanský průkaz",
     ),
+    # Zaměstnanecké číslo: "os. č. 4567", "osobní číslo 12345",
+    # "č. zaměstnance 4567", "ID zaměstnance: 234"
+    (
+        re.compile(
+            r"((?:os\.\s*č\.?|osobní\s+číslo|"
+            r"č\.\s+zaměstnance|číslo\s+zaměstnance|"
+            r"ID\s+zaměstnance|zaměstnanecké\s+číslo)\s*[:\.]?\s+)"
+            r"(\d{2,8})\b",
+            re.IGNORECASE,
+        ),
+        "ZAMC", "zaměstnanecké číslo",
+    ),
+    # Číslo úřednika: "č. zaměstnance 234", "č. úředníka 567"
+    (
+        re.compile(
+            r"((?:č\.\s+úředníka|číslo\s+úředníka|úředník\s+č\.)\s*[:\.]?\s+)"
+            r"(\d{2,8})\b",
+            re.IGNORECASE,
+        ),
+        "URADC", "číslo úředníka",
+    ),
     # Technický průkaz s mezerami: "TP č. AB 123 456" / "TP č. ČR 987 654"
     (
         re.compile(
