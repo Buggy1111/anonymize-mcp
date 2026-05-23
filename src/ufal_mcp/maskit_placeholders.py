@@ -17,14 +17,20 @@ from .http import NAMETAG_URL, post_form
 from .maskit_constants import _TYPE_TO_PREFIX
 from .nametag import parse_conll
 
-# CNEC entity types které se anonymizují v NameTag fallback.
+# Entity types které se anonymizují v NameTag fallback.
+# CZ CNEC: P/pf/ps (osoby), gu/gs/gc/gr (geo), io/if/ic/i_ (instituce/firmy),
+# at/az (telefon/PSČ), om (měna).
+# Multilingvální UNER (v0.7.27): PER (osoby), LOC (lokace), ORG (organizace).
 # Vynecháváme čísla (nc/A/ah) aby nedošlo k over-anonymization.
 _NAMETAG_ANON_TYPES = frozenset({
+    # CZ CNEC 2.0
     "P", "pf", "ps",          # osoby
     "gu", "gs", "gc", "gr",   # geografické
     "io", "if", "ic", "i_",   # instituce/firmy
     "at", "az",               # telefon, PSČ
     "om",                     # měna
+    # Multilingual UNER
+    "PER", "LOC", "ORG",
 })
 
 # Wrapper placeholder prefixy — pokud original začíná některým z nich,
@@ -37,6 +43,32 @@ _WRAPPER_PREFIXES = (
     "CISLO", "HODNOTA", "DATUM", "STAVBA", "UDALOST", "ZAKON",
     "MEDIA", "OBJEKT", "PRODUKT", "ENTITA",
 )
+
+# Preserve list (v0.7.27) — známé krátké zkratky / nepravé entity které
+# NameTag občas klasifikuje jako firmu/stát/instituci. NIKDY anonymizovat.
+# Důvod: 2-3 letter country abbreviations (USA, UK, IT, PL, EU) v kontextu
+# sekce labels jsou typové markery, ne entity. Slova "Bitcoin", "Ethereum"
+# jsou label kryptoměny, anonymizujeme jen adresu, ne název.
+_PRESERVE_TOKENS = frozenset({
+    # Country codes (2-3 letters)
+    "us", "usa", "uk", "gb", "eu", "de", "fr", "it", "es", "pl", "sk",
+    "cz", "ru", "ua", "hu", "ro", "bg", "gr", "se", "no", "dk", "fi",
+    "nl", "be", "pt", "at", "ch", "ie", "lt", "lv", "ee", "si", "hr",
+    "in", "cn", "jp", "kr", "vn", "th", "tr", "il", "br", "mx", "ar",
+    # ISO 4217 currency codes (uppercase 3-letter)
+    "czk", "eur", "usd", "gbp", "chf", "pln", "huf", "jpy", "cny",
+    "rub", "uah", "inr", "krw", "ron", "bgn", "sek", "nok", "dkk",
+    # Crypto labels
+    "bitcoin", "ethereum", "monero", "ripple", "xrp", "tron", "litecoin",
+    "btc", "eth", "xmr", "ltc", "doge", "ada", "sol",
+    # Common tags
+    "ssn", "ein", "vat", "iban", "bic", "swift", "cvv", "cvc", "pan",
+    "id", "no", "nr", "tax", "ico", "dic", "url", "url:",
+    # Card brand names
+    "visa", "mastercard", "amex", "discover", "jcb", "unionpay",
+    # Common payment/financial words
+    "card", "carta", "karta", "ucet", "učet", "konto", "bank",
+})
 
 # Akademické a profesní tituly NEjsou PII — NameTag je často klasifikuje
 # jako osoba (P/ps) protože stojí před jménem. Tady je drop-list.
@@ -132,9 +164,18 @@ async def nametag_fallback(
     žádosti) kde MasKIT často vrátí 0 replacementů i přesto že NameTag
     najde 20+ entit.
 
+    v0.7.27: Multilingvální fallback — pokud text není CZ/SK, použij UNER
+    model (PER/ORG/LOC tagset). Bez tohoto pro RU/PL/HU texty NameTag s CZ
+    CNEC defaultem vrátil 0 entit a anonymize ponechal full leak.
+
     Vrací: (updated_anonymized_text, fallback_replacements)
     """
-    nt_data = await post_form(NAMETAG_URL, {"data": text, "output": "conll"})
+    from .nametag import resolve_model
+    actual_model, _ = resolve_model("auto", text)
+    payload: dict[str, str] = {"data": text, "output": "conll"}
+    if actual_model:
+        payload["model"] = actual_model
+    nt_data = await post_form(NAMETAG_URL, payload)
     nt_entities = parse_conll(nt_data.get("result", ""))
 
     already_replaced = {
@@ -152,7 +193,17 @@ async def nametag_fallback(
         # klasifikuje jako osoba protože stojí před jménem. Skip.
         if _is_title_only(original):
             continue
-        norm = original.lower()
+        norm = original.lower().rstrip(",.:;")
+        # Preserve list (v0.7.27): krátké country codes (USA/UK/EU), crypto
+        # labels (Bitcoin/Ethereum), card brands (Visa/Mastercard) a finanční
+        # tagy (VAT/IBAN) — NameTag je občas tag jako entity, ale jsou to
+        # typové markery, ne PII.
+        if norm in _PRESERVE_TOKENS:
+            continue
+        # Skip entity obsahující strukturní artefakty (čárka, dvojtečka,
+        # uvnitř) — typicky false positives jako "2024, doi: " → PSČ.
+        if "," in original or ":" in original:
+            continue
         if norm in already_replaced:
             continue
         if any(original.startswith(p) for p in _WRAPPER_PREFIXES):

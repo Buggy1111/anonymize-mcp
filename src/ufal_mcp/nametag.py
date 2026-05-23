@@ -206,6 +206,26 @@ _ROMANCE_DE_PLACE = re.compile(
     r"^(.+?)\s+(de|del|della|do|da)\s+([A-ZÁ-Ž][a-zá-ž]{2,})$"
 )
 
+# v0.7.27: Whitelist jmenných součástí — "X da/de Y" je často **součást jména**,
+# ne PER + LOC. Real-world examples:
+# - "Lula da Silva" — "Silva" je rodinné jméno, NE město
+# - "de Souza", "de la Cruz", "del Toro", "do Carmo", "dos Santos", "das Neves"
+# - Italian "della Rovere", "dei Medici"
+# - French "de Gaulle", "de Beauvoir", "du Maurier"
+# Tyto zachovat jako celé PER, NErozdělit.
+_PT_ES_NAME_WHITELIST_PARTS: frozenset[str] = frozenset({
+    "silva", "souza", "santos", "carmo", "santa", "graça", "almeida",
+    "oliveira", "cruz", "neves", "rocha", "lima", "costa", "pereira",
+    "fonseca", "azevedo", "lemos", "abreu", "barros", "ribeiro", "moraes",
+    "andrade", "araújo", "araujo", "aguiar", "amaral", "queiroz",
+    # FR
+    "gaulle", "beauvoir", "maurier", "tocqueville", "musset",
+    # IT
+    "rovere", "medici", "rossi", "vinci",
+    # ES
+    "toro", "vega", "leon", "león", "garcía", "garcia", "fuentes", "campos",
+})
+
 
 def split_romance_de_place(entities: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
     """U PER entit detekuje pattern 'X de Place' a rozdělí na PER + LOC.
@@ -226,6 +246,15 @@ def split_romance_de_place(entities: list[dict[str, Any]]) -> tuple[list[dict[st
         person_part = m.group(1).strip()
         connector = m.group(2)
         place_part = m.group(3).strip()
+        # v0.7.27: Whitelist surname check — "Lula da Silva" → "Silva" je
+        # příjmení, ne místo. Skip rozdělení.
+        if place_part.lower() in _PT_ES_NAME_WHITELIST_PARTS:
+            result.append(ent)
+            warnings.append(
+                f"PT/ES whitelist: PER entita {text!r} ponechána celá — "
+                f"'{place_part}' je v jmenném whitelistu (rodinné jméno)."
+            )
+            continue
         person_tokens = person_part.split()
         place_tokens = [place_part]
         result.append({

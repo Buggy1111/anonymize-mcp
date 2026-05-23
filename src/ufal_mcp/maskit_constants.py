@@ -55,6 +55,13 @@ _TYPE_TO_PREFIX: dict[str, str] = {
     "O": "OBJEKT",
     "om": "MENA",
     "or": "PRODUKT",
+    # Multilingual UNER tagset (v0.7.27 — pro RU/PL/HU/EN/DE/FR/... texty)
+    "PER": "OSOBA",
+    "LOC": "MESTO",
+    "ORG": "INSTITUCE",
+    "osoba (UNER)": "OSOBA",
+    "lokace/místo": "MESTO",
+    "organizace": "INSTITUCE",
     # Pre-pass / wrapper types (zachované)
     "e-mail": "EMAIL",
     "URL/web": "URL",

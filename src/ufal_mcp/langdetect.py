@@ -82,14 +82,26 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
     # a meg/fel/le/el/be (kolize s DE/NL/krátká common slova) a \w+ja\b (kolize
     # s vlastními jmény "Anja", "Vondračka", apod.). Ponechány jen typicky
     # uherské sufixy s minimalní delkou 4 znaků pred koncovkou.
+    # v0.7.27: přidány sufixy -on/ön/-en (locative), -ig, -tól/től, -nál,
+    # -hoz/hez/höz, +slova született/szerzett/diplomát/Magyar-/jogi/-fok.
+    # Threshold snížen z 3 na 2 protože unique chars ő/ű nejsou v každém HU textu.
     ("hungarian", re.compile(
-        r"\b(egy|nincs|vannak|hogy|igen|után|által|"
-        r"benyújt\w+|bíróság\w*|kereset\w*|ítélet\w*|törvény\w*|"
-        r"ők|én|"
+        r"\b(egy|nincs|vannak|hogy|igen|után|által|miatt|"
+        r"benyújt\w+|bíróság\w*|kereset\w*|ítélet\w*|törvény\w*|jogi|jogász\w*|"
+        r"ők|én|született|szerzett|szerez\w+|diplomá\w+|"
+        r"magyar\w*|Magyar\w+|Budapest\w*|gimnázium\w*|egyetem\w*|"
+        r"szolgálat\w*|elnök\w*|kormány\w*|alapít\w+|"
         r"\w{4,}nak\b|\w{4,}nek\b|\w{4,}ban\b|\w{4,}ben\b|"
-        r"\w{4,}ról\b|\w{4,}ből\b|\w{4,}vel\b)",
+        r"\w{4,}ról\b|\w{4,}ből\b|\w{4,}vel\b|"
+        # HU locative -on/-ön/-en (super common): Magyarországon, Székesfehérváron
+        r"\w{5,}or(?:szág)?on\b|\w{4,}váron\b|\w{4,}városban\b|"
+        r"\w{5,}ön\b|\w{4,}úton\b|\w{4,}dobozon\b|"
+        # HU ablative -tól/-től, allative -hoz/-hez/-höz, sublative -ra/-re
+        r"\w{4,}t[óő]l\b|\w{4,}h[eo]z\b|\w{4,}höz\b|"
+        # HU translative -ul/-ül, terminative -ig
+        r"\w{4,}[uü]l\b|\w{4,}ig\b)",
         re.IGNORECASE,
-    ), 3),
+    ), 2),
     # FI — finština, velmi distinktivní aglutinace + skandinávské znaky
     ("finnish", re.compile(
         r"\b(että|joka|jonka|jolla|ovat|olen|olet|olemme|olette|on|ei|"
@@ -355,6 +367,20 @@ _LANG_UNIQUE_CHARS: dict[str, "re.Pattern[str]"] = {
     # NL nemá unique char ani ij digraf je v word pattern už
 }
 
+# v0.7.27: Super-strong CZ markers — IČO/DIČ/RČ/SPZ/OP/datovka/PSČ jsou
+# 100% CZ-specifické zkratky. Žádný anglický text je nemá. Pokud krátký text
+# obsahuje aspoň 2 z nich → silný CZ signál (boost +10).
+_CZECH_STRONG_TAGS = re.compile(
+    r"\b(IČO|DIČ|RČ|SPZ|OP|datovka|datová\s+schránka|"
+    r"PSČ|sp\.\s?zn\.|č\.j\.|čj\.|"
+    r"Ing\.|Bc\.|Mgr\.|MUDr\.|JUDr\.|MVDr\.|PhDr\.|RNDr\.|Ph\.?D\.?|"
+    r"a\.s\.|s\.r\.o\.|spol\.\s+s\s+r\.o\.|v\.o\.s\.|"
+    r"Kč|korun\s+čes\w+|"
+    r"krajský\s+soud|okresní\s+soud|městský\s+soud|nejvyšší\s+soud|"
+    r"ústavní\s+soud|vrchní\s+soud)",
+    re.IGNORECASE,
+)
+
 
 def detect_language(text: str) -> str:
     """Vrátí jméno jazyka (czech default), použitelné jako UDPipe model alias.
@@ -451,6 +477,12 @@ def detect_language(text: str) -> str:
     cz_unique = sum(1 for c in text if c in "řěůŘĚŮ")
     if cz_unique >= 1:
         scores["czech"] = max(scores.get("czech", 0), cz_unique * 3)
+    # v0.7.27: CZ-strong tags (IČO/DIČ/RČ/SPZ/PSČ/sp.zn./Kč/Ing./a.s./...) jsou
+    # 100% CZ-specifické. Každý tag = boost +5. Tohle fixuje case kdy krátký text
+    # s "Wenceslas Square" + tagy byl mis-detected jako english (LOC overshadowed CZ).
+    cz_tags = len(_CZECH_STRONG_TAGS.findall(text))
+    if cz_tags >= 1:
+        scores["czech"] = max(scores.get("czech", 0), cz_tags * 5)
 
     # Score-based winner (highest score nad threshold)
     if scores:

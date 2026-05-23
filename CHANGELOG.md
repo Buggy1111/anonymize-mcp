@@ -2,6 +2,70 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.27] — 2026-05-23
+
+### 🎯 Ultimate stress test fixes — first MCP server for Charles University
+
+10 kritických bugů z **23.5.2026 ultimate stress testu** (Wikipedia bios 15+ jazyků,
+80+ PII patternů, social media, medical, banking). Předáno před Po 26.5. Zoom call
+s doc. B. V. Hladkou (ředitelka ÚFAL) + J. Mírovským (MasKIT) + J. Valachem.
+
+### 🔐 Security (P1)
+
+1. **OpenAI `sk-proj-` tokeny** — regex rozšířen z `sk-` + 48 chars na `sk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}` zachycuje `sk-proj-`, `sk-svcacct-`, `sk-admin-` formáty s 20-100+ znaky.
+2. **GitHub PAT 36-40 znaků** — `{36}` → `{36,40}` zachycuje PAT s extra znaky. Přidány `gho_`, `ghu_`, `ghs_`, `ghr_` tokeny.
+3. **AWS Secret Access Key** — nový pattern: kontextový (`aws_secret_access_key:`) + adjacent k AKIA-key (`AKIA... / wJalrXUtnFEMI/...`). Předtím leak.
+4. **Kreditní karty Visa/MC/Amex/Discover/JCB** — separátní patterns per BIN range, Amex 4-6-5 format. **Karty MUSÍ být PŘED ORCID** v patterns sequence.
+5. **ORCID anchor `000X-`** — pattern zpřísněn na `\b000\d-\d{4}-\d{4}-\d{3}[\dX]\b`. Předtím Visa 4532-1488-0343-6467 byla klasifikována jako ORCID.
+6. **CVV, expiration date** — nové patterns s kontextovým prefixem.
+
+### 🌍 National IDs (P2)
+
+7. **UK NIN s mezerami** — `AB 12 34 56 C` formát (předtím jen compact `AB123456C`).
+8. **FR INSEE/NIR** — nový pattern: 13 digit `S YY MM DD CC NNN KK` + 2 control.
+9. **RU ИНН** — kontextový pattern (10/12 cifer), předtím "ИНН 770401001234" → false TELEFON1.
+10. **RU паспорт + телефон +7** — formát "паспорт серия 4505 номер 123456" + "+7 (495) 123-45-67".
+11. **IN Aadhaar** — standalone 4-4-4 spacing (s BIN start [2-9]).
+
+### 🇩🇪 DE patterns (P2)
+
+12. **DE PSČ** — 5 digit + capitalized city ("10117 Berlin"). Předtím fragmentováno.
+13. **DE telefon +49** — mezinárodní formát `+49 30 12345678` celý jako TELEFON1. Předtím rozdělený.
+
+### 🌐 Language detection (P2)
+
+14. **Maďarština** — char-class boost `őű` + nové markery (locative `-on/-ön`, ablative `-tól/-től`, allative `-hoz/-hez`, sublative, terminative `-ig`, slova "született", "szerzett", "Magyarországon"). Threshold 3 → 2.
+15. **CZ silné tagy** — nový boost `+5` per IČO/DIČ/RČ/SPZ/PSČ/sp.zn./Kč/Ing./a.s./MUDr./Krajský soud. Předtím krátký CZ text s "Wenceslas Square" mis-detected as English.
+
+### 🎯 Multilingual anonymize (P1)
+
+16. **NameTag fallback s auto-detect modelem** — `nametag_fallback` v `maskit_placeholders.py` nyní volá `resolve_model("auto", text)` místo defaultu (CZ CNEC). Pro RU/UK/PL/HU/EN/DE/FR/... texty se použije multilingvální UNER (PER/ORG/LOC). Předtím RU text → 0 entit ve fallback.
+17. **UNER tagset v `_NAMETAG_ANON_TYPES`** — přidány `PER`/`LOC`/`ORG`. `_TYPE_TO_PREFIX` mapuje na `OSOBA`/`MESTO`/`INSTITUCE`.
+
+### 🏷️ Preserve lists (P3)
+
+18. **Tag preserve v strict pre-pass** — `IČO`, `DIČ`, `USt`, `TVA`, `NIF`, `IdNr`, `Bitcoin`, `Ethereum`, `Monero`, `IBAN`, `BIC`, `CVV` (+ 30+ dalších) nikdy nesmí být anonymizovány jako firma — jsou to typové markery.
+19. **Country codes + crypto labels v nametag_fallback** — `USA`, `UK`, `EU`, `IT`, `PL`, `CZK`, `EUR`, `USD`, `Bitcoin`, `Ethereum`, `Visa`, `Mastercard`, `Amex` v preserve listu. Předtím falešně klasifikovány jako stát/firma.
+20. **Skip entit s `,` nebo `:`** v originálu — chytá artefakty jako "2024, doi: " → PSČ.
+
+### 🔧 Other (P2/P3)
+
+21. **Bank label fix** — "UK: HSBC IBAN" nesmí být SPZ. Pattern vyžaduje aspoň 2 digity v plate + negativní lookahead na `IBAN`.
+22. **PT/ES jmenný whitelist** — "Lula da Silva", "de Souza", "de la Cruz", "del Toro", "de Gaulle", "dei Medici" (+ 30 dalších) ponechány celé jako PER, nerozdělit na PER + LOC.
+23. **CVV `\bCID\b`** — slovo "CID" v "ORCID" už nematchne CVV pattern.
+
+### 🧪 Tests
+
+- **30 nových regression testů** v `tests/test_v0727_fixes.py` — všechny PASS.
+- **Celkem 116 unit testů** PASS (předtím 86 + 30 nových = 116).
+
+### 📦 Stress test reference
+
+Full ultimate stress test: `/home/buggy1111/dev/ufal-mcp-ultimate-test/results/ULTIMATE-REPORT.md`
+Real-world corpus: Wikipedia bios v 15 jazycích (CZ/EN/DE/FR/ES/IT/PL/UK/SK/RU/HU/NL/PT/HI/JP) + UDHR + syntetické 80+ PII dossier + medical CZ + banking DE + RU паспорт.
+
+---
+
 ## [0.7.26] — 2026-05-23
 
 ### 🎯 179/179 tests PASS (100%) — production grade complete
