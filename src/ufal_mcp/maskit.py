@@ -32,6 +32,8 @@ from .maskit_parsing import (
     infer_type,
     parse_maskit,
 )
+from .maskit_audit import ResidualPIILeak, audit_residual_pii, audit_summary
+from .maskit_normalize import normalize_input, normalization_summary
 from .maskit_patterns import regex_pre_pass
 from .maskit_placeholders import PlaceholderRegistry, nametag_fallback
 from .maskit_postprocess import postprocess as _final_postprocess
@@ -183,12 +185,27 @@ async def anonymize_text(
     placeholder_mode: bool = False,
     regex_pre_pass_enabled: bool = True,
     stop_list_filter: bool = True,
+    audit: bool = True,
+    strict_audit: bool = False,
+    audit_severity: Literal["critical", "high", "medium"] = "high",
+    normalize: bool = True,
 ) -> dict[str, Any]:
     """High-level anonymize pipeline (viz module docstring)."""
     if not text.strip():
         return {"anonymized": "", "raw": "", "replacements": [], "warnings": []}
 
     all_warnings: list[str] = []
+
+    # === STEP -1: Input normalization (adversariální defenses) ===
+    # NFC + zero-width strip + bidi override strip + non-Latin digit → ASCII.
+    # Brání obfuscation útoky: `J<ZWNJ>i<ZWNJ>ří`, full-width digits, RLO Trojan
+    # source, Arabic-Indic/Devanagari numerals. Bez tohoto by standardní regex
+    # `\bJiří\b` nebo `\d{11}` minul tyto PII reprezentace.
+    if normalize and output == "txt":
+        text, norm_counts = normalize_input(text)
+        summary = normalization_summary(norm_counts)
+        if summary:
+            all_warnings.append(summary)
 
     # === STEP 0: Idempotence pre-pass — detekce uz-anonymizovaneho vstupu ===
     # Pokud vstup obsahuje 3+ placeholderu (OSOBA1/FIRMA1/MESTO1/...), je to
@@ -396,6 +413,22 @@ async def anonymize_text(
         anonymized = _restore_protected_placeholders(anonymized, preserve_restore_map)
         raw = _restore_protected_placeholders(raw, preserve_restore_map)
 
+    # === STEP 10: Audit residual PII (defense-in-depth) ===
+    # Po celé pipeline scanujeme anonymized text na zbytkové PII patterny.
+    # Hit znamená že naše detekce má bug → warning (default) nebo error
+    # (strict_audit=True). Tohle je "trust but verify" safety net.
+    audit_leaks: list[dict[str, Any]] = []
+    if audit and output == "txt":
+        audit_leaks = audit_residual_pii(
+            anonymized,
+            replacements=replacements,
+            severity_threshold=audit_severity,
+        )
+        if audit_leaks:
+            all_warnings.append(audit_summary(audit_leaks))
+            if strict_audit:
+                raise ResidualPIILeak(audit_leaks)
+
     # === Output ===
     sources_count = {
         "maskit": sum(1 for r in replacements if r.get("source") == "maskit"),
@@ -414,4 +447,6 @@ async def anonymize_text(
         out["replacements"] = replacements
         out["count"] = len(replacements)
         out["sources"] = sources_count
+    if audit_leaks:
+        out["audit_leaks"] = audit_leaks
     return out
