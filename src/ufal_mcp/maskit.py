@@ -71,6 +71,46 @@ def _protect_existing_placeholders(text: str) -> tuple[str, dict[str, str]]:
     return new_text, restore_map
 
 
+# Preserve patterns — formáty/identifikátory, které NESMÍ být anonymizovány.
+# Chráníme je PUA sentinely PŘED MasKIT API call (jinak MasKIT rozdělí
+# "0011-4626" na 3 ENTITA tokeny). Restore po celé pipeline.
+_PRESERVE_FORMAT_PATTERNS = [
+    # ISSN — "ISSN 0011-4626"
+    re.compile(r"\bISSN\s+\d{4}-\d{3}[\dX]\b"),
+    # BIC/SWIFT — "GIBACZPX", "KOMBCZPP" (4 caps + CZ + 2-5 chars)
+    re.compile(r"\b[A-Z]{4}CZ[A-Z0-9]{2,5}\b"),
+    # Klinické kódy MKN-10/ICD-10 (s tečkou nebo bez): "F32.1", "K85.0", "MKN-10"
+    re.compile(r"\bMKN-1[01]\b|\bICD-1[01](?:-PCS)?\b"),
+    # DOI — "10.1063/1.5142345"
+    re.compile(r"\b10\.\d{4,9}/[A-Z0-9._;()/:%-]+\b", re.IGNORECASE),
+    # Grant agency codes ("21-12345S", "M22-987XYZ") — alphanumeric grant IDs
+    # Pattern: prefix(letter/digit) + dash + alphanumeric (typický format)
+    # NOT included by default — moc generic, false-positives risk
+]
+
+
+def _protect_preserve_formats(text: str) -> tuple[str, dict[str, str]]:
+    """Chrání ISSN/BIC/MKN-10/DOI před MasKIT pipeline PUA sentinely.
+
+    Returns: (text_with_sentinels, map: sentinel -> original_format)
+    """
+    restore_map: dict[str, str] = {}
+    next_idx = [128]  # start nad existing placeholder range (0-127)
+
+    def _replace(m: re.Match[str]) -> str:
+        original = m.group(0)
+        if next_idx[0] >= 256:
+            return original
+        sentinel = chr(_IDEMPOTENCE_SENT_BASE + next_idx[0])
+        next_idx[0] += 1
+        restore_map[sentinel] = original
+        return sentinel
+
+    for pattern in _PRESERVE_FORMAT_PATTERNS:
+        text = pattern.sub(_replace, text)
+    return text, restore_map
+
+
 def _restore_protected_placeholders(text: str, restore_map: dict[str, str]) -> str:
     """Vrati PUA sentinely zpet na puvodni placeholdery."""
     if not restore_map:
@@ -137,6 +177,13 @@ async def anonymize_text(
                 f"Vstup obsahoval {len(idem_restore_map)} existujicich placeholderu — "
                 f"chraneny PUA sentinely pred pipeline."
             )
+
+    # === STEP 0.5: Preserve format protection — ISSN/BIC/MKN-10/DOI ===
+    # Chrání standardizované identifikátory PŘED MasKIT, aby je rozdělil
+    # na fragmenty (např. "0011-4626" → 3 ENTITA tokeny). Restore po pipeline.
+    preserve_restore_map: dict[str, str] = {}
+    if output == "txt":
+        text, preserve_restore_map = _protect_preserve_formats(text)
 
     # === STEP 1: Regex pre-pass — strukturovaná PII ===
     regex_reps: list[dict[str, Any]] = []
@@ -289,6 +336,11 @@ async def anonymize_text(
     if idem_restore_map and output == "txt":
         anonymized = _restore_protected_placeholders(anonymized, idem_restore_map)
         raw = _restore_protected_placeholders(raw, idem_restore_map)
+
+    # === STEP 9.5: Preserve format restore — vrat ISSN/BIC/MKN-10/DOI ===
+    if preserve_restore_map and output == "txt":
+        anonymized = _restore_protected_placeholders(anonymized, preserve_restore_map)
+        raw = _restore_protected_placeholders(raw, preserve_restore_map)
 
     # === Output ===
     sources_count = {

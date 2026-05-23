@@ -73,6 +73,17 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
     # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
     (re.compile(r"\b\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
+    # Pojistka — letter-prefix-CZ-digit format ("G-CZ-12345", "P-987654321",
+    # "ŠU-2024-00045123"). Pokrývá insurance policy IDs s context-less formátem.
+    # Hierarchický format: [letters]-[letters]-[digits] nebo [letters]-[digits]
+    (
+        re.compile(
+            r"\b(?:[A-ZÁ-Ž]{1,3}-[A-Z]{2}-\d{4,12}|"  # G-CZ-12345
+            r"[A-ZÁ-Ž]{2,3}-\d{4}-\d{4,12}|"          # ŠU-2024-00045123
+            r"P-\d{8,12})\b"                            # P-987654321
+        ),
+        "POJISTKA", "číslo pojistky",
+    ),
     # PSČ standalone — CZ formát "XYZ AB" kde X∈[1-7] (oblastní kód):
     # "110 00 Praha", "692 01 Mikulov", "Brno 602 00." (před/po městě).
     # Lookaround: musí sousedit s velkým písmenem (město) NEBO interpunkcí.
