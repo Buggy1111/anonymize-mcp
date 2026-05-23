@@ -42,6 +42,12 @@ _WRAPPER_PREFIXES = (
     "IBAN", "SPZ", "DIC", "DATUM_NAR", "ROK", "MENA",
     "CISLO", "HODNOTA", "DATUM", "STAVBA", "UDALOST", "ZAKON",
     "MEDIA", "OBJEKT", "PRODUKT", "ENTITA",
+    # v0.7.29 — new international PII prefixes
+    "OIB", "PIVA", "CPF", "CNPJ", "CURP", "RFC", "CUIT", "DNI_AR",
+    "MYNUMBER", "RRN", "TC_KIMLIK", "VN_ID", "HETU", "ISIKUKOOD",
+    "ZH_ID", "HU_ADO", "TOKEN", "CRYPTO", "KARTA", "AADHAAR",
+    "INSEE", "SSN", "EIN", "STEUERID", "NIN", "NHS", "PESEL", "NIP",
+    "SNILS", "PAN", "DNI", "NIE", "CF", "PASS", "INN", "SIRET", "SIREN",
 )
 
 # Preserve list (v0.7.27) — známé krátké zkratky / nepravé entity které
@@ -66,8 +72,19 @@ _PRESERVE_TOKENS = frozenset({
     "id", "no", "nr", "tax", "ico", "dic", "url", "url:",
     # Card brand names
     "visa", "mastercard", "amex", "discover", "jcb", "unionpay",
-    # Common payment/financial words
-    "card", "carta", "karta", "ucet", "učet", "konto", "bank",
+    "card", "cards", "carta", "karta", "ucet", "učet", "konto", "bank",
+    # v0.7.29 — additional ISO codes that were missed
+    "sl",  # Slovenia 2-letter (full ISO is SI but SL sometimes used)
+    "is",  # Iceland
+    "lt", "lv",  # Lithuania, Latvia
+    # v0.7.29 — common English structural document words flagged as PII by
+    # NameTag in test contexts. Real legal Czech documents nemají tyhle
+    # tokeny jako entities; přidání preventivně.
+    "long", "tail", "long-tail", "edge", "case", "cases",
+    "world", "global", "regional", "national", "local",
+    "test", "tests", "data", "sample", "samples",
+    "section", "block", "blocks", "header", "footer",
+    "name", "names", "id", "ids", "type", "types",
 })
 
 # Akademické a profesní tituly NEjsou PII — NameTag je často klasifikuje
@@ -200,6 +217,14 @@ async def nametag_fallback(
         # typové markery, ne PII.
         if norm in _PRESERVE_TOKENS:
             continue
+        # v0.7.29: slash-separated country codes ("CZ/SK/DE/PL/HU/HR/SL") —
+        # když všechny části jsou v preserve tokenech (country codes/currency
+        # codes), je to header list, ne PII. Karlovka leak: anonymizace
+        # nadpisu "EU east (CZ/SK/DE/PL/HU/HR/SL)" → "EU east (MESTO7)".
+        if "/" in original:
+            parts = [p.strip().lower() for p in original.split("/") if p.strip()]
+            if parts and all(p in _PRESERVE_TOKENS for p in parts):
+                continue
         # Skip entity obsahující strukturní artefakty (čárka, dvojtečka,
         # uvnitř) — typicky false positives jako "2024, doi: " → PSČ.
         if "," in original or ":" in original:

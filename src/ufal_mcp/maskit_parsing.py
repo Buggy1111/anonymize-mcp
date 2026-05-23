@@ -10,8 +10,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Raw MasKIT output: každý placeholder má tvar "PlaceholderName_[Original Text]"
-_MASKIT_PLACEHOLDER = re.compile(r"([^\s_\[\]]+)_\[([^\]]+)\]")
+# Raw MasKIT output: každý placeholder má tvar "PlaceholderName_[Original Text]".
+# v0.7.29: dvě varianty placeholder formátu:
+#   1) Slovanské jméno: `Jan_[Jiří]`, `Brně_[Praze]` (regular alphanumeric + diacritics)
+#   2) Fallback unicode bracket form: `[pf_#10]_[Juan]`, `[ps_#11]_[Smith]`
+#      (MasKIT generuje když nemá vhodný fake substitute pro non-CZ jméno)
+# Předchozí pattern `[^\s_\[\]]+` chytal `{"name":"Jan_[Jiří]` celé (group(1) =
+# `{"name":"Jan`), výsledkem byl `OSOBA1...` a `{"name":"` zmizel. Karlovka leak.
+_MASKIT_PLACEHOLDER = re.compile(
+    r"(\[[\w#]+\]|[\wÀ-žÀ-ɏ]+)_\[([^\]]+)\]"
+)
 
 # Type inference patterns
 _PLACEHOLDER_PATTERN_TYPES: list[tuple[re.Pattern[str], str]] = [

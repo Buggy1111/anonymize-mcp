@@ -36,6 +36,11 @@ _TAG_PRESERVE: frozenset[str] = frozenset({
     "iban", "bic", "swift", "iban.", "vs", "ks", "ss",
     # Card
     "cvv", "cvc", "cid", "pan",
+    # v0.7.29 — Card brand names (legitimní v real legal text, NameTag občas
+    # tag jako firm). Preserve aby nedošlo k FIRMA placeholder.
+    "visa", "mastercard", "mc", "amex", "discover", "jcb", "diners",
+    "unionpay", "maestro", "american express", "american", "express",
+    "cards", "card",
     # Crypto labels (label preserve — anonymize jen adresu)
     "bitcoin", "ethereum", "monero", "ripple", "xrp",
     "tron", "litecoin", "btc", "eth", "xmr", "ltc",

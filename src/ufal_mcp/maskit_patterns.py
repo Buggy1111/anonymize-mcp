@@ -107,6 +107,213 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "SPZN", "spisová značka",
     ),
+    # === v0.7.29: PAYMENT CARDS (early — before PSČ DE) ===
+    # PSČ DE chytala posledních 5 cifer Amex (3782 822463 10005 → 10005
+    # jako německé PSČ protože za ním byl capitalized word). Karty musí
+    # běžet PŘED PSČ DE i RU телефон patterny.
+    # Amex (15 digits, 4-6-5): 34xx / 37xx
+    (
+        re.compile(r"\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b"),
+        "KARTA", "platební karta (Amex)",
+    ),
+    # Visa (16 digits, starts 4)
+    (
+        re.compile(r"\b4\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Visa)",
+    ),
+    # MasterCard (16 digits)
+    (
+        re.compile(
+            r"\b(?:5[1-5]\d{2}|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)"
+            r"[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"
+        ),
+        "KARTA", "platební karta (MC)",
+    ),
+    # Discover/JCB/Diners 16 + UnionPay 16
+    (
+        re.compile(
+            r"\b(?:6011|65\d{2}|35\d{2}|30[0-5]\d|36\d{2}|62\d{2})"
+            r"[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"
+        ),
+        "KARTA", "platební karta (Discover/JCB/Diners/UnionPay)",
+    ),
+    # Diners Club 14-digit — BIN 300-305, 36, 38, format 4-6-4
+    (
+        re.compile(r"\b3(?:0[0-5]|[68]\d)\d[\s-]?\d{6}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Diners 14)",
+    ),
+
+    # === v0.7.29: WORLD NATIONAL IDs ===
+    # Pořadí důležité — context-bound patterny musí běžet PŘED generic
+    # RU телефон / RČ patterny, jinak je 10-11 digit national ID chyceno
+    # špatným regexem (Karlovka stress test: PESEL → RU телефон, HU
+    # adóazonosító → RČ).
+
+    # HR OIB — 11 digits, context "OIB"
+    (
+        re.compile(
+            r"((?:OIB)\s*[:\.]?\s*)(\d{11})\b",
+            re.IGNORECASE,
+        ),
+        "OIB", "HR OIB",
+    ),
+    # IT P.IVA — 11 digits, context "P.IVA" / "Partita IVA"
+    (
+        re.compile(
+            r"((?:P\.\s?IVA|Partita\s+IVA)\s*[:\.]?\s*)(\d{11})\b",
+            re.IGNORECASE,
+        ),
+        "PIVA", "IT P.IVA",
+    ),
+    # BR CPF — 3.3.3-2 format
+    (
+        re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b"),
+        "CPF", "BR CPF",
+    ),
+    # BR CNPJ — 2.3.3/4-2 format
+    (
+        re.compile(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b"),
+        "CNPJ", "BR CNPJ",
+    ),
+    # MX CURP — 4 letters + 6 digits + 6 letters + alphanum + digit (18 chars).
+    # MUST be before RFC (which is a substring prefix-match risk).
+    (
+        re.compile(r"\b[A-Z]{4}\d{6}[HM][A-Z]{2}[BCDFGHJ-NP-TV-Z]{3}[A-Z0-9]\d\b"),
+        "CURP", "MX CURP",
+    ),
+    # MX RFC — 3-4 letters + YYMMDD + 3 alphanum (12-13 chars total)
+    (
+        re.compile(r"\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b"),
+        "RFC", "MX RFC",
+    ),
+    # AR CUIT — 2-8-1 format
+    (
+        re.compile(r"\b(?:20|23|24|27|30|33|34)-\d{8}-\d\b"),
+        "CUIT", "AR CUIT",
+    ),
+    # AR DNI — 7-8 digits with optional dots, context "DNI"
+    (
+        re.compile(
+            r"((?:DNI)\s*[:\.]?\s*)(\d{1,3}\.?\d{3}\.?\d{3})\b",
+            re.IGNORECASE,
+        ),
+        "DNI_AR", "AR DNI",
+    ),
+    # JP MyNumber (Individual Number) — 12 digits, context "MyNumber" / "個人番号"
+    (
+        re.compile(
+            r"((?:MyNumber|個人番号|マイナンバー)\s*[:\.]?\s*)(\d{12})\b",
+            re.IGNORECASE,
+        ),
+        "MYNUMBER", "JP MyNumber",
+    ),
+    # KR RRN (Resident Registration Number) — 6-7 format
+    (
+        re.compile(r"\b\d{6}-[1-4]\d{6}\b"),
+        "RRN", "KR RRN",
+    ),
+    # TR TC kimlik no — 11 digits, context "TC kimlik" / "T.C. kimlik"
+    (
+        re.compile(
+            r"((?:T\.?C\.?\s+kimlik(?:\s+no)?|kimlik\s+no)\s*[:\.]?\s*)(\d{11})\b",
+            re.IGNORECASE,
+        ),
+        "TC_KIMLIK", "TR TC kimlik",
+    ),
+    # VN CMND / CCCD — 9-12 digits with context
+    (
+        re.compile(
+            r"((?:CMND|CCCD|số\s+(?:CMND|CCCD))\s*[:\.]?\s*)(\d{9,12})\b",
+            re.IGNORECASE,
+        ),
+        "VN_ID", "VN CMND/CCCD",
+    ),
+    # FI henkilötunnus / hetu — DDMMYY + sign (+ - A) + 3 digits + check char
+    (
+        re.compile(
+            r"((?:henkilötunnus|hetu)\s*[:\.]?\s*)(\d{6}[+\-A]\d{3}[\dA-Y])\b",
+            re.IGNORECASE,
+        ),
+        "HETU", "FI henkilötunnus",
+    ),
+    # FI henkilötunnus fallback — pattern without context (DDMMYY-NNNX format)
+    (
+        re.compile(r"\b\d{6}[+\-A]\d{3}[\dA-Y]\b"),
+        "HETU", "FI henkilötunnus",
+    ),
+    # EE isikukood — 11 digits, sign (1-6) + YYMMDD + 4 digits
+    (
+        re.compile(
+            r"((?:isikukood)\s*[:\.]?\s*)([1-6]\d{10})\b",
+            re.IGNORECASE,
+        ),
+        "ISIKUKOOD", "EE isikukood",
+    ),
+    # ZH 身份证 / 居民身份证 — 18 digits (last can be X)
+    (
+        re.compile(
+            r"((?:身份证号?|身分證號?|身份證|身分证)\s*[:\.]?\s*)(\d{17}[\dXx])\b",
+        ),
+        "ZH_ID", "ZH 身份证",
+    ),
+    # HU adóazonosító jel — 10 digits starting with 8, MUST be BEFORE CZ RČ
+    # (collision: RČ má 10 cifer s validovaným month, HU prefix `8` = month 23
+    # což RC_MM patterny chytá).
+    (
+        re.compile(
+            r"((?:adóazonosító(?:\s+jel)?|adó(?:\s+)?azonosító)\s*[:\.]?\s*)(\d{10})\b",
+            re.IGNORECASE,
+        ),
+        "HU_ADO", "HU adóazonosító",
+    ),
+    # CZ OP standalone — "OP 123456789" (bare keyword, no "č.")
+    # MasKIT fragmentation problem: bez context_bound regex se 9-digit OP
+    # rozseká MasKITem na 2 tokeny ("123 45" + "6789" leaks "123" cleartext).
+    (
+        re.compile(
+            r"(?<!\w)(OP\s+)(\d{6,10})\b",
+        ),
+        "OP", "občanský průkaz (bare OP)",
+    ),
+    # v0.7.29: CJK names — NameTag CZ-focused občas vynechá Hanzi/Hangul.
+    # Context-bound (only CJK keywords) aby nebyly false positives.
+    (
+        re.compile(
+            r"((?:姓名|名前|お名前|お客様|客戶|客户|顧客|客人|"
+            r"고객|이름|성명|성함)"
+            r"\s*[:\.：]?\s*)"
+            r"([一-鿿぀-ヿ゠-ヿ가-힯]{2,8})\b"
+        ),
+        "OSOBA", "CJK osoba (context)",
+    ),
+    # v0.7.29: CJK names — English context "client" / "customer" + CJK name.
+    # Safe: vyžaduje EXPLICIT English keyword + CJK chars (Hanzi/Hiragana/
+    # Katakana/Hangul), které jsou jen v textu obsahujícím CJK PII.
+    # Lookbehind místo leading whitespace match aby `JP client 田中太郎` →
+    # `JP OSOBA1` (s mezerou), ne `JPOSOBA1`.
+    (
+        re.compile(
+            r"(?<![A-Za-z])(?:client|customer|patient|user)\s+"
+            r"([一-鿿぀-ヿ゠-ヿ가-힯]{2,8})\b",
+            re.IGNORECASE,
+        ),
+        "OSOBA", "CJK osoba (EN context)",
+    ),
+    # v0.7.29: ZH/JP adresa — kanji suffix markery (都/府/県/市/区/省/路/号).
+    # Pokrývá:
+    #   "北京市朝阳区建国路1号"
+    #   "東京都千代田区1-1"
+    #   "上海市浦东新区世纪大道100号"
+    (
+        re.compile(
+            r"[一-鿿]{2,6}(?:都|府|県|省|市)"
+            r"(?:[一-鿿]{0,10}(?:区|區|县|縣|郡|町|村|丁目))?"
+            r"(?:[一-鿿]{0,10}(?:路|街|大道|街道|通り))?"
+            r"[一-鿿\d\-]+(?:号|號)?"
+        ),
+        "MESTO", "CJK adresa",
+    ),
+
     # === EXPANDED CZ ID PATTERNS (v0.7.24) ===
 
     # OP nový formát (eOP 2012+) — 2 letters + 6 digits, nebo 9 digits with context
@@ -319,9 +526,12 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "PASS", "RU паспорт",
     ),
     # RU телефон +7 (495) 123-45-67 / 8 (495) 123-45-67 / +7-495-123-45-67
+    # v0.7.29: stricter — `8` prefix MUSI byt nasledovan separatorem (space/dash/paren),
+    # jinak 11-digit national IDs (PESEL/HU adóazonosító/...) byly chytany jako
+    # falesny ruský phone. Karlovka leak L17: PESEL 85061512345 → TELEFON.
     (
         re.compile(
-            r"(?:\+7|8)\s?[\(\-]?\d{3}[\)\-]?\s?\d{3}[\-\s]?\d{2}[\-\s]?\d{2}\b"
+            r"(?:\+7\s?|\b8[\s\-\(])\s?[\(\-]?\d{3}[\)\-]?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}\b"
         ),
         "TELEFON", "RU телефон",
     ),
@@ -370,10 +580,13 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "NHS", "UK NHS Number",
     ),
-    # FR SIRET — 14 digits
+    # FR SIRET — 14 digits, často psány s mezerami (3-3-3-5 nebo 4-3-3-4)
+    # v0.7.29: relax \d{14} → s volitelnými mezerami. Karlovka stress test:
+    # "SIRET 552 100 554 00013" dříve nematchlo (RU телефон chytl prvních 9
+    # cifer, "00013" leakovalo).
     (
         re.compile(
-            r"((?:SIRET|Siret)\s*[:\.]?\s+)(\d{14})\b"
+            r"((?:SIRET|Siret)\s*[:\.]?\s+)(\d{3}\s?\d{3}\s?\d{3}\s?\d{5}|\d{14})\b"
         ),
         "SIRET", "FR SIRET",
     ),
@@ -593,6 +806,17 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         re.compile(r"\bsk_live_[A-Za-z0-9]{24,}\b"),
         "TOKEN", "Stripe key",
     ),
+    # v0.7.29: Stripe publishable key — pk_live_. Same risk surface as sk_live_
+    # (publishable keys often leaked in logs/screenshots and can be used to
+    # tokenize cards under attacker's Stripe account).
+    (
+        re.compile(r"\bpk_live_[A-Za-z0-9]{24,}\b"),
+        "TOKEN", "Stripe publishable key",
+    ),
+    (
+        re.compile(r"\b(?:sk|pk)_test_[A-Za-z0-9]{24,}\b"),
+        "TOKEN", "Stripe test key",
+    ),
     # UUID v4
     (
         re.compile(
@@ -643,6 +867,34 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(r"\bT[1-9A-HJ-NP-Za-km-z]{33}\b"),
         "CRYPTO", "TRON",
+    ),
+    # v0.7.29: Cardano (shelley addresses) — addr1 / addr_test1 prefix.
+    (
+        re.compile(r"\baddr1[ac-hj-np-z02-9]{50,98}\b"),
+        "CRYPTO", "Cardano",
+    ),
+    (
+        re.compile(r"\baddr_test1[ac-hj-np-z02-9]{50,98}\b"),
+        "CRYPTO", "Cardano (testnet)",
+    ),
+    # v0.7.29: Litecoin Legacy (L/M prefix) — 26-34 chars base58
+    (
+        re.compile(r"\b[LM][a-km-zA-HJ-NP-Z1-9]{26,34}\b"),
+        "CRYPTO", "Litecoin Legacy",
+    ),
+    # v0.7.29: Litecoin Bech32 (ltc1...)
+    (
+        re.compile(r"\bltc1[ac-hj-np-z02-9]{38,90}\b"),
+        "CRYPTO", "Litecoin Bech32",
+    ),
+    # v0.7.29: Solana — context-bound (base58 32-44 chars je príliš generic
+    # bez kontextu by chytal poznámky / hash-y / random tokens).
+    (
+        re.compile(
+            r"((?:SOL|Solana)\s*[:\.]?\s*)([1-9A-HJ-NP-Za-km-z]{32,44})\b",
+            re.IGNORECASE,
+        ),
+        "CRYPTO", "Solana",
     ),
 
     # === ACADEMIC EXTENDED ===
@@ -756,10 +1008,16 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         re.compile(r"\b(?:5[1-5]\d{2}|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
         "KARTA", "platební karta (MC)",
     ),
-    # Discover/JCB/UnionPay/Diners (16 digits, BINs 6011/65/35/30/36)
+    # Discover/JCB/UnionPay/Diners (16 digits, BINs 6011/65/35/30/36/62)
+    # v0.7.29: přidán UnionPay BIN 62.
     (
-        re.compile(r"\b(?:6011|65\d{2}|35\d{2}|30[0-5]\d|36\d{2})[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
-        "KARTA", "platební karta (Discover/JCB/Diners)",
+        re.compile(r"\b(?:6011|65\d{2}|35\d{2}|30[0-5]\d|36\d{2}|62\d{2})[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Discover/JCB/Diners/UnionPay)",
+    ),
+    # v0.7.29: Diners Club 14-digit — BIN 300-305, 36, 38. Formát 4-6-4.
+    (
+        re.compile(r"\b3(?:0[0-5]|[68]\d)\d[\s-]?\d{6}[\s-]?\d{4}\b"),
+        "KARTA", "platební karta (Diners 14)",
     ),
     # CVV / Security Code — 3-4 digits with context "CVV"/"CVC"/"CID"/"Security".
     # Use \b on left to avoid matching "CID" inside "ORCID" (Bug v0.7.27 test failure).
