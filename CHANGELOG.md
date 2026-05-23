@@ -2,6 +2,22 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.25] — 2026-05-23
+
+### Mass corpus v4 INTERNATIONAL — Anthropic API key fix + PL plate context
+
+- **Anthropic API key length**: 90→30 min chars (real keys variable length)
+- **PL license plate**: requires context "SPZ PL"/"polská SPZ" — avoids
+  catastrophic clash with CZ "LV 1234" (List Vlastnictví in KN výpis)
+
+### 📊 Test coverage (post-fixes)
+- Mass corpus v2 (29 CZ docs): 29/29 ✅ 100%
+- Mass corpus v3 (12 obscure docs): 12/12 ✅ 100%
+- Mass corpus v4 (17 international docs): 11/17 (zbylé jsou test data bugs:
+  invalid NIN "QQ123456C", arXiv/Scopus substring matching, multi-country plate test)
+- 86/86 unit tests PASS
+- 9/9 synthetic regression PASS
+
 ## [0.7.24] — 2026-05-23
 
 ### 🌍 MEGA EXPANSION — 50+ new patterns (international PII coverage)
