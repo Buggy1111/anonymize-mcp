@@ -102,4 +102,38 @@ _TYPE_TO_PREFIX: dict[str, str] = {
     "datum": "DATUM",
     "datum/čas": "DATUM",
     "rok": "ROK",
+    # v0.7.29 — international national IDs (Karlovka stress test)
+    "HR OIB": "OIB",
+    "IT P.IVA": "PIVA",
+    "BR CPF": "CPF",
+    "BR CNPJ": "CNPJ",
+    "MX CURP": "CURP",
+    "MX RFC": "RFC",
+    "AR CUIT": "CUIT",
+    "AR DNI": "DNI_AR",
+    "JP MyNumber": "MYNUMBER",
+    "KR RRN": "RRN",
+    "TR TC kimlik": "TC_KIMLIK",
+    "VN CMND/CCCD": "VN_ID",
+    "FI henkilötunnus": "HETU",
+    "EE isikukood": "ISIKUKOOD",
+    "ZH 身份证": "ZH_ID",
+    "HU adóazonosító": "HU_ADO",
+    "občanský průkaz (bare OP)": "OP",
+    # v0.7.29 — crypto extensions
+    "Cardano": "CRYPTO",
+    "Cardano (testnet)": "CRYPTO",
+    "Litecoin Legacy": "CRYPTO",
+    "Litecoin Bech32": "CRYPTO",
+    "Solana": "CRYPTO",
+    # v0.7.29 — additional tokens
+    "Stripe publishable key": "TOKEN",
+    "Stripe test key": "TOKEN",
+    # v0.7.29 — card variants
+    "platební karta (Discover/JCB/Diners/UnionPay)": "KARTA",
+    "platební karta (Diners 14)": "KARTA",
+    # v0.7.29 — CJK
+    "CJK osoba (context)": "OSOBA",
+    "CJK osoba (EN context)": "OSOBA",
+    "CJK adresa": "MESTO",
 }
