@@ -2,6 +2,30 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.21] — 2026-05-23
+
+### Grant agency pre-pass protection — eliminates MasKIT compound corruption
+
+Mass corpus test 9A (etický protokol) odhalil že MasKIT občas
+zkomprimuje "GA ČR ... AZV ČR" do compound entity "GA ČR , ČR"
+— AZV se ztratilo už v MasKIT klasifikaci.
+
+### Fix: rozšířený `_PRESERVE_FORMAT_PATTERNS`
+
+Pre-pass chrání **celé** grant agency acronyms (GA ČR, TA ČR, AZV ČR,
+GA AV ČR, GA AV, Horizon Europe, H2020, FP7, FP8, ERC, MŠMT, MPSV,
+MPO, ČNB, ČAK, ČLK, ČKAIT, SÚKL, ČTÚ, ÚOOÚ, ÚFAL, LINDAT) PUA
+sentinely PŘED MasKIT pipeline.
+
+MasKIT nemůže rozdělit ani zkomprimovat to co nevidí (= sentinel).
+
+### 📊 Test coverage
+
+- **22 docs × 9 sektorů: 21/22 PASS (95%)** — předtím 20/22
+- 1 fail (5A) je test bug (case sensitivity: output "Parcela" vs test "parcela")
+- 86/86 unit tests PASS
+- 9/9 synthetic sectors PASS
+
 ## [0.7.20] — 2026-05-23
 
 ### Mass corpus stress 22 docs × 9 sectors — 10 bug fixes
