@@ -86,6 +86,16 @@ _PRESERVE_FORMAT_PATTERNS = [
     # CZ akreditovaný studijní program (CZ MŠMT format): "B0322A100021"
     # B=bachelor, M=master, P=PhD, N=other; 4-digit field + 1 letter + 6-digit
     re.compile(r"\b[BMPN]0\d{3}[A-Z]\d{6}\b"),
+    # Grant agencies — protect celé "GA ČR", "TA ČR", "AZV ČR", "AV ČR",
+    # "GA AV ČR", "GA AV", "TA AV", "Horizon Europe", "Horizon 2020"
+    # PŘED MasKIT, aby je nespojil do compoundu typu "GA ČR , ČR".
+    re.compile(
+        r"\b(?:GA\s+(?:AV\s+)?ČR|TA\s+(?:AV\s+)?ČR|AZV\s+ČR|"
+        r"AV\s+ČR|GAUK|GAAV|GA\s+UK|GA\s+AV|TAČR|GAČR|AZV|"
+        r"Horizon\s+Europe|Horizon\s+2020|H2020|FP[78]|ERC|"
+        r"MŠMT|MPSV|MPO|ČNB|ČAK|ČLK|ČKAIT|SÚKL|ČTÚ|ÚOOÚ|"
+        r"ÚFAL|LINDAT)\b"
+    ),
     # IZO (identifikátor zařízení škol): 9 digits standalone
     # Match only after "IZO" prefix (already in CONTEXT prefixes)
     # Grant IDs — "21-12345S", "M22-987XYZ", "NV21-08-00125" patterns
