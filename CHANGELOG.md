@@ -2,6 +2,32 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.7.19] — 2026-05-23
+
+### `anonymize_facility_names` — věznice/nemocnice/ministerstvo names
+
+David Rath Wikipedia stress odhalil leak: "věznici Pankrác" — NameTag
+neklasifikoval "Pankrác" (specifické místní jméno) jako geo entity.
+
+### Pattern: facility keyword + Capitalized word(s)
+
+`facility_keywords` = věznice, nemocnice, klinika, úřad, ministerstvo,
+ústav, institut, školka, gymnázium, obecní/městský úřad (case insensitive).
+Následující 1-2 Capitalized slova → MESTO placeholder.
+
+**Strict Capitalized check** — předtím `re.IGNORECASE` flag matchoval i
+lowercase nouns ("zdravotnictví", "vydalo"), což over-anonymizovalo
+"Ministerstvo zdravotnictví". Fix: inline `(?i:...)` jen pro facility
+keyword, ne pro Capitalized words.
+
+### 📊 Test coverage
+
+- ✅ "věznici Pankrác" → "věznici MESTO1"
+- ✅ "Nemocnice Motol je největší" → "Nemocnice MESTO2 je největší"
+- ✅ "Ministerstvo zdravotnictví vydalo nařízení" → unchanged (no over)
+- ✅ 51/51 unit testů PASS
+- ✅ 9/9 synthetic sektorů PASS
+
 ## [0.7.18] — 2026-05-23
 
 ### Brutal sectoral stress test — comprehensive fixes

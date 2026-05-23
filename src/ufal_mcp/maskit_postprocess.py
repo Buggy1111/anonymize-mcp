@@ -501,6 +501,76 @@ def anonymize_middle_names(
     return anonymized, replacements
 
 
+def anonymize_facility_names(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+    original_text: str,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Detekuj a anonymizuj specific facility names ("věznice Pankrác", "nemocnice Motol").
+
+    NameTag občas přeskočí specific facility/místo jméno když je přídomek.
+    Pattern: facility keyword + 1-2 Capitalized slov.
+
+    Safe — vyžaduje EXPLICIT facility keyword před jménem.
+    """
+    osoba_nums = [int(m.group(1)) for r in replacements
+                  if (m := re.match(r"MESTO(\d+)", r.get("placeholder", "")))]
+    next_num = (max(osoba_nums) if osoba_nums else 0) + 1
+
+    facility_keywords = (
+        r"(?:věznic[ie]|věznicí|nemocnic[ie]|nemocnicí|"
+        r"klinik[aey]|klinikou|"
+        r"úřad[uem]?|ministerstv[oíuem]|"
+        r"ústav[uem]?|institut[uem]?|"
+        r"školk[aey]?|gymnázi[aiu]|"
+        r"obecní\s+úřad|městský\s+úřad)"
+    )
+    # Facility keyword case-insensitive, ale Capitalized word strictly case-sensitive
+    # (chrání proti matchování lowercase nouns like "zdravotnictví", "vydalo")
+    pattern = re.compile(
+        rf"\b(?i:{facility_keywords})\s+([A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+)(?:\s+([A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+))?\b"
+    )
+
+    dedup: dict[str, str] = {}
+    added: list[dict[str, Any]] = []
+
+    def _replace(m: re.Match[str]) -> str:
+        nonlocal next_num
+        # Groups: facility=m.group(1) doesn't exist (no outer group), word1=group(1), word2=group(2)
+        # (po odebrání outer group facility keyword)
+        # Najdi facility prefix z match start
+        full_match = m.group(0)
+        word1 = m.group(1)
+        word2 = m.group(2) or ""
+        # Facility = vše před word1
+        facility = full_match[:full_match.find(word1)].rstrip()
+        # Skip pokud word je už placeholder
+        if re.match(r"^[A-Z]+\d+$", word1):
+            return m.group(0)
+        # Skip common Czech words after facility (např. "ústav řekl", "věznice byl")
+        if word1.lower() in {"byl", "byla", "bylo", "také", "tedy", "jako", "ale", "není"}:
+            return m.group(0)
+        full_name = word1 if not word2 else f"{word1} {word2}"
+        norm = full_name.lower()
+        if norm in dedup:
+            return f"{facility} {dedup[norm]}"
+        new_plc = f"MESTO{next_num}"
+        next_num += 1
+        dedup[norm] = new_plc
+        added.append({
+            "original": full_name,
+            "placeholder": new_plc,
+            "type": "místo (facility)",
+            "source": "wrapper-postprocess-facility",
+        })
+        return f"{facility} {new_plc}"
+
+    anonymized = pattern.sub(_replace, anonymized)
+    if added:
+        replacements = replacements + added
+    return anonymized, replacements
+
+
 def postprocess(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -520,4 +590,5 @@ def postprocess(
     anonymized = revert_preserved_acronyms(anonymized, replacements, original_text)
     anonymized = extend_institution_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
+    anonymized, replacements = anonymize_facility_names(anonymized, replacements, original_text)
     return anonymized, replacements
