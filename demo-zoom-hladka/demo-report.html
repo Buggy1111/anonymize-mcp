@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="cs"><head><meta charset="UTF-8">
+<title>ÚFAL MCP v0.7.10 — Demo pro dr. Hladká</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", sans-serif; max-width: 980px; margin: 30px auto; padding: 0 24px; line-height: 1.6; color: #1a1a1a; }
+h1 { font-size: 26px; border-bottom: 3px solid #2563eb; padding-bottom: 8px; }
+h2 { font-size: 19px; color: #1e40af; margin-top: 32px; }
+h3 { font-size: 16px; color: #475569; }
+.meta { background: #eff6ff; border-left: 4px solid #2563eb; padding: 14px 18px; margin: 16px 0; font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; }
+.stat { background: #f1f5f9; padding: 10px 14px; border-radius: 6px; }
+.stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+.stat-value { font-size: 22px; font-weight: 700; color: #0f172a; }
+pre { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.col-label { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
+.types { display: flex; flex-wrap: wrap; gap: 6px; }
+.type-tag { background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+.footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #64748b; }
+.badge { display: inline-block; background: #16a34a; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+</style></head><body>
+<h1>ÚFAL MCP <span class="badge">v0.7.10</span> — Demo pro dr. Hladká</h1>
+<div class="meta">
+  <strong>Datum testu</strong>: 22. května 2026, 23:00<br>
+  <strong>Autor</strong>: Michal Bürgermeister (michalbugy12@gmail.com)<br>
+  <strong>Repo</strong>: <a href="https://github.com/Buggy1111/ufal-mcp">github.com/Buggy1111/ufal-mcp</a><br>
+  <strong>PyPI</strong>: <code>pip install ufal-mcp==0.7.10</code> (build ready, publish pending)<br>
+  <strong>Use case</strong>: Anonymizace CZ právních / biografických textů PŘED odesláním do LLM
+</div>
+
+<h2>📊 Stress test výsledky (3 reálné texty)</h2>
+
+
+<h3>Wikipedia: Petr Pavel</h3>
+<div class="meta"><strong>Zdroj</strong>: cs.wikipedia.org/wiki/Petr_Pavel</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Vstup</div><div class="stat-value">3,501 chars</div></div>
+  <div class="stat"><div class="stat-label">Slov</div><div class="stat-value">501</div></div>
+  <div class="stat"><div class="stat-label">PII zachycené</div><div class="stat-value">52</div></div>
+  <div class="stat"><div class="stat-label">Latence</div><div class="stat-value">4.20s</div></div>
+  <div class="stat"><div class="stat-label">PII / 100 chars</div><div class="stat-value">1.5</div></div>
+</div>
+<div class="col-label">Placeholders by type</div>
+<div class="types">
+<span class="type-tag">INSTITUCE × 23</span>
+<span class="type-tag">MESTO × 10</span>
+<span class="type-tag">OSOBA × 7</span>
+<span class="type-tag">DATUM × 5</span>
+<span class="type-tag">ENTITA × 4</span>
+<span class="type-tag">STAT × 3</span>
+</div>
+<div class="col-label" style="margin-top:14px">Anonymizovaný výstup (prvních 1500 chars)</div>
+<pre>OSOBA1 ENTITA1 (* DATUM1 MESTO1) je český politik a armádní generál ve výslužbě, od března 2023 čtvrtý prezident STAT1. Úřadu se ujal složením slibu DATUM2 na společné schůzi obou komor Parlamentu.
+V letech 2012–2015 byl náčelníkem INSTITUCE10 INSTITUCE15 STAT1 a mezi roky 2015 a 2018 působil ve funkci předsedy vojenského výboru INSTITUCE16; stal se tak prvním zástupcem zemí bývalé INSTITUCE11, který nastoupil do nejvyšší vojenské funkce INSTITUCE6. Se ziskem 35,40 % hlasů vyhrál první kolo přímé prezidentské volby v roce 2023. Ve druhém rozhodujícím kole zvítězil s 58,32 % hlasů nad OSOBA2 OSOBA3.
+
+
+Rodina
+OSOBA1 ENTITA1 se narodil roku 1961 v MESTO2 do rodiny příslušníka INSTITUCE3, pocházejícího ze MESTO3 . Otec, plukovník OSOBA4 ENTITA1 DATUM4, působil jako zpravodajec a měl na starost i elektronický průzkum, mimo jiné zachycování a analyzování zpráv armád INSTITUCE16; v letech 1973 až 1989 působil v MESTO4 na tamním velitelství INSTITUCE4. Matka OSOBA5 DATUM5 pocházela z rodiny živnostníků a byla absolventkou INSTITUCE5 MESTO5.
+
+
+Vojenská kariéra
+
+
+1975–1983: první studia
+V letech 1975 až 1979 studoval na INSTITUCE9 Jana Žižky z Trocnova v MESTO6. Po jeho absolvování pokračoval v letech 1979–1983 studiem na INSTITUCE2 ve MESTO7, kde absolvoval obor průzkum.
+
+
+1983–1988: služba
+Po ukončení vyškovské vojenské školy roku 1983 začínal u výsadkového vojska. Od roku 1983 do roku 1988 působil u elitního 22. výsadkového pluku speciálního určení v MESTO8 (roku 1987 reorganizován </pre>
+
+<h3>Wikipedia: Andrej Babiš</h3>
+<div class="meta"><strong>Zdroj</strong>: cs.wikipedia.org/wiki/Andrej_Babiš</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Vstup</div><div class="stat-value">3,001 chars</div></div>
+  <div class="stat"><div class="stat-label">Slov</div><div class="stat-value">470</div></div>
+  <div class="stat"><div class="stat-label">PII zachycené</div><div class="stat-value">55</div></div>
+  <div class="stat"><div class="stat-label">Latence</div><div class="stat-value">3.51s</div></div>
+  <div class="stat"><div class="stat-label">PII / 100 chars</div><div class="stat-value">1.8</div></div>
+</div>
+<div class="col-label">Placeholders by type</div>
+<div class="types">
+<span class="type-tag">OSOBA × 17</span>
+<span class="type-tag">INSTITUCE × 15</span>
+<span class="type-tag">STAT × 9</span>
+<span class="type-tag">FIRMA × 9</span>
+<span class="type-tag">DATUM × 2</span>
+<span class="type-tag">MESTO × 2</span>
+<span class="type-tag">ENTITA × 1</span>
+</div>
+<div class="col-label" style="margin-top:14px">Anonymizovaný výstup (prvních 1500 chars)</div>
+<pre>OSOBA1 OSOBA2 (* DATUM1 MESTO1) je český politik a podnikatel slovenského původu, v letech 2017–2021 a znovu od roku 2025 předseda vlády STAT1. Od října 2013 je poslancem INSTITUCE6 ENTITA1 republiky a v letech 2014–2017 působil jako první místopředseda vlády a ministr financí v kabinetu OSOBA3 OSOBA4. Je zakladatelem koncernu FIRMA3. Kvůli využívání své značné ekonomické, politické a mediální moci ve svůj prospěch bývá označován za oligarchu. Kvůli čerpání dotací z veřejných zdrojů a státním zakázkám byl obviňován ze střetu zájmů. V říjnu 2022 oznámil kandidaturu na prezidenta STAT1 do volby v lednu 2023. V prvním kole získal 34,99 % hlasů a postoupil do druhého kola, v němž prohrál ziskem 41,67 % hlasů s OSOBA5 OSOBA6.
+V souvislosti s postavením svého otce strávil OSOBA2 část svého dětství a mládí ve STAT2 a ve STAT3. Po studiích na tehdejší bratislavské INSTITUCE2 začal pracovat v podniku zahraničního obchodu FIRMA4. V roce 1980 se stal členem INSTITUCE3 STAT4 (INSTITUCE9). V roce 1985 byl vyslán jako zahraniční delegát do STAT5, kde strávil šest let.
+V roce 1980 jej začala INSTITUCE5 (INSTITUCE10) evidovat jako svého důvěrníka a od roku 1982 jako agenta s krycím jménem OSOBA7“. V roce 2021 byla objevena slovenská karta agenta OSOBA8. OSOBA2 jakoukoli vědomou spolupráci s INSTITUCE10 popírá. V říjnu 2024 slovenské vnitro uznalo, že byl OSOBA2 v dokumentech INSTITUCE10 evidován neoprávněně jako její agent a vědomě s ní nespolupracoval, a to i přes to, že OSOBA2 dříve o své </pre>
+
+<h3>Smlouva o dílo (synthetic)</h3>
+<div class="meta"><strong>Zdroj</strong>: —</div>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Vstup</div><div class="stat-value">487 chars</div></div>
+  <div class="stat"><div class="stat-label">Slov</div><div class="stat-value">71</div></div>
+  <div class="stat"><div class="stat-label">PII zachycené</div><div class="stat-value">23</div></div>
+  <div class="stat"><div class="stat-label">Latence</div><div class="stat-value">2.36s</div></div>
+  <div class="stat"><div class="stat-label">PII / 100 chars</div><div class="stat-value">4.7</div></div>
+</div>
+<div class="col-label">Placeholders by type</div>
+<div class="types">
+<span class="type-tag">OSOBA × 4</span>
+<span class="type-tag">DATUM × 3</span>
+<span class="type-tag">PSC × 2</span>
+<span class="type-tag">MESTO × 2</span>
+<span class="type-tag">FIRMA × 2</span>
+<span class="type-tag">ULICE × 1</span>
+<span class="type-tag">RC × 1</span>
+<span class="type-tag">OP × 1</span>
+<span class="type-tag">EMAIL × 1</span>
+<span class="type-tag">TELEFON × 1</span>
+<span class="type-tag">UCET × 1</span>
+<span class="type-tag">ICO × 1</span>
+<span class="type-tag">DIC × 1</span>
+<span class="type-tag">CISLO × 1</span>
+<span class="type-tag">SPZN × 1</span>
+</div>
+<div class="col-label" style="margin-top:14px">Anonymizovaný výstup (prvních 1500 chars)</div>
+<pre>Žalobce Ing. OSOBA1 OSOBA2, Ph.D., narozen DATUM1, bytem ULICE1 HODNOTA1ENTITA1, PSC1 MESTO1,
+RČ RC1, č. OP: OP1, email: EMAIL1, tel.: TELEFON1,
+č. účtu: UCET1 (FIRMA1), proti žalovanému FIRMA2, IČO ICO1,
+DIČ: DIC1, sídlo: CISLO1 HODNOTA2HODNOTA3a, PSC2 MESTO2. Spis sp. zn. SPZN1 ze dne DATUM2.
+Otec žalobce, plukovník OSOBA3 OSOBA2 DATUM3, pocházel ze CISLO2za .</pre>
+
+<h2>🛠 Architektura pipeline (v0.7.10)</h2>
+<ol>
+  <li><strong>Idempotence pre-pass</strong> — chrání existující placeholdery</li>
+  <li><strong>Regex pre-pass</strong> (maskit_patterns.py) — strukturovaná PII (e-mail, telefon, RČ, IČO, IBAN, slovní/číselné datumy, range roky, UCET, OP, PSČ + city)</li>
+  <li><strong>Strict pre-pass</strong> (maskit_strict.py) — NameTag najde io/if/ic instituce</li>
+  <li><strong>MasKIT API call</strong> — quest.ms.mff.cuni.cz/maskit/api/process</li>
+  <li><strong>Stoplist filter</strong> — false-positive removal</li>
+  <li><strong>PlaceholderRegistry assign</strong> — deduplikace</li>
+  <li><strong>NameTag fallback</strong> — chytá entity co MasKIT vynechal</li>
+  <li><strong>Post-process layer (NOVÉ v0.7.10)</strong> — institutional revert + compound city merge + connector leak strip</li>
+  <li><strong>Idempotence restore</strong> — vrátí chráněné placeholdery</li>
+</ol>
+
+<h2>✅ Co řešíme dobře</h2>
+<ul>
+  <li>Strukturovaná PII (RČ, IČO, DIČ, IBAN, UCET, OP, datová schránka, ORCID)</li>
+  <li>Kontaktní údaje (e-mail, telefon CZ/SK, adresa s PSČ)</li>
+  <li>Datumy ve všech formátech (slovní měsíce, DD.MM.YYYY, range roky v parens)</li>
+  <li>Osoby, firmy, instituce (NameTag 3, 30+ jazyků)</li>
+  <li>Historic jména v názvech institucí ("gymnázium Jana Žižky") — preserved, ne false-OSOBA</li>
+  <li>Compound city names ("Lhoty za Červeným Kostelcem") — merged do 1 placeholderu</li>
+  <li>Akademické tituly (Ing., Bc., MUDr., Ph.D., MgA., DiS.) — preserved, ne false-OSOBA</li>
+</ul>
+
+<h2>⚠️ Známé limity</h2>
+<ul>
+  <li>"Univerzitě Karlově v Praze" — MasKIT klasifikuje "Karlově" a "Praze" jako P/ps (adjectival names). Existující bug v MasKIT pipeline, vyžaduje refactor.</li>
+  <li>Sentinel cosmetic leaks v ojedinělých případech (uvozovky, internal placeholders)</li>
+  <li>SK podpora částečná — pro NER/anonymize OK (přes CZ fallback), pro Korektor a Morphology selhává</li>
+</ul>
+
+<div class="footer">
+  Vygenerováno 22.5.2026 23:00. Tato anonymizace je provádí lokálně (Hermes Agent + MCP).
+  Plain text je posílán JEN do oficiálních ÚFAL endpointů (lindat.mff.cuni.cz, quest.ms.mff.cuni.cz).
+  Žádný komerční LLM nevidí původní PII.
+</div>
+</body></html>
