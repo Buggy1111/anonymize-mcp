@@ -5,14 +5,16 @@
 [![Python](https://img.shields.io/pypi/pyversions/ufal-mcp.svg)](https://pypi.org/project/ufal-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, česká production-grade anonymizace (25+ PII kategorií napříč právem / medicínou / bankovnictvím / realitami / pojišťovnami / notáři / vzděláváním / vědou), překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
+MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, **production-grade anonymizace s 80+ PII patterny napříč 9 sektory + mezinárodním pokrytím (US/UK/DE/FR/IT/ES/PL/RU/IN, EU VAT 28 zemí, IBAN 30+ zemí, crypto, API tokeny)**, překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
+
+**v0.7.26 (2026-05-23)**: 179/179 testů PASS (100%) — 86 unit + 9 sektor + 29 CZ + 12 obskurní + 17 international + 26 tool integration.
 
 ## Co umí
 
 | Tool | Backend | K čemu |
 |------|---------|--------|
 | `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | NER pro **CZ** (bohatý CNEC 2.0 tagset) + **34 dalších jazyků** (UNER PER/ORG/LOC) s auto-detekcí |
-| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | **Production-grade pseudonymizace** (v0.7.6): regex pre-pass přes **25+ PII kategorií** napříč 9 sektory — osoby/adresy, RČ (5 variant), IBAN + č.ú. CZ, IČO/DIČ, č.j./sp.zn./posudek, datovka (incl. list sekce), e-mail/telefon/URL, **platební karta** (Visa/MC/Amex/Discover s BIN), **VS/KS/SS**, **parcela/LV/k.ú.** (katastr), **VIN/pojistka/TP** (auto), **NZ** (notář), **UČO/ISIC/studijní č.**, **ORCID/Researcher ID**, **č. pojištěnce/IČZ** + stop-list filter + opt-in `placeholder_mode` (deterministic OSOBA1/MESTO1/ULICE1, dedup, reprodukovatelné) |
+| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | **Production-grade pseudonymizace** (v0.7.26): regex pre-pass přes **80+ PII patternů** — **CZ:** osoby/adresy, RČ (5 variant), IBAN + č.ú. CZ, IČO/DIČ, č.j./sp.zn./posudek, datovka, e-mail/telefon/URL, platební karta, VS/KS/SS, parcela/LV/k.ú., VIN/pojistka/TP/SPZ, NZ, UČO/ISIC, ORCID, č. pojištěnce/IČZ. **International:** IBAN 30+ zemí, EU VAT 28 zemí, US SSN/EIN, DE Steuer-ID, UK NIN/NHS, FR NIR/SIRET, IT Codice Fiscale, ES DNI/NIE, PL PESEL/NIP, RU SNILS, IN Aadhaar/PAN. **Tech/crypto:** API tokeny (OpenAI/Anthropic/OpenRouter/GitHub/AWS/Google/Slack/Stripe), Bitcoin (P2PKH/P2SH/Bech32/Taproot), Ethereum, Monero, XRP, TRON. **Vehicle:** license plates DE/FR/UK/PL + fleet "CC: PLATE". **Foreign companies** (SARL/GmbH/Ltd/SpA/SL/Sp. z o.o.) auto-detect. Preserve list: 200+ items (klinické kódy MKN/ICD/SNOMED, grantové agentury, akademické databáze, banky CZ + international, legal forms). Opt-in `placeholder_mode` (deterministic OSOBA1/MESTO1/ULICE1, dedup). Idempotence: `anonymize(anonymize(x)) == anonymize(x)`. |
 | `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — **auto-detect 35 jazyků** (CZ/SK/EN/DE/FR/IT/ES/PT/NL/PL/HU/UK/RU/RO/SL/BG/EL/HR/SR/FI/LT/LV/ET/DA/SV/NO/ZH/AR/TR/VI/HI/HE/JA/KO/TH) |
 | `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Čitelnost CZ — **4 feature sety (v0.7.0)**: overall metrics (ARI/Verb Distance/Activity/Lexical diversity) + `rules` (aktivovaná gramatická pravidla s českými radami "Příliš dlouhé věty: Rozdělte..." a citacemi) + `lexical_surprise` (distribuce vzácnosti slov) + `speech_acts` (typy vět) |
 | `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky (užitečné pro OCR výstupy, mobilní zprávy) |
@@ -33,7 +35,7 @@ Funguje cyrilice (UK, RU, BG), latinka s diakritikami, čínské znaky, devanaga
 
 ## Pro koho je tohle (sektory + use cases)
 
-Stress-tested napříč 9 sektory na **12.7KB cross-sektorovém spisu** (`dev/ufal-mcp-stress-v076/corpus/ULTIMATE_SPIS.txt`) — výsledek **94/94 unique PII chyceno** v jednom volání:
+Stress-tested napříč 9 sektory na **12.7KB cross-sektorovém spisu** (`dev/ufal-mcp-stress-v076/corpus/ULTIMATE_SPIS.txt`) — výsledek **94/94 unique PII chyceno** v jednom volání. Plus **international corpus 17/17** (US/UK/DE/FR/IT/ES/PL/RU/IN + crypto + akademické + fleet) přidaný v v0.7.26:
 
 | Sektor | Use case | PII které MCP zvládne |
 |---|---|---|
@@ -47,7 +49,16 @@ Stress-tested napříč 9 sektory na **12.7KB cross-sektorovém spisu** (`dev/uf
 | 📚 **Studijní oddělení** | Potvrzení o studiu, statistika studentů | UČO, studijní č., ISIC, kontakty studenta |
 | 🔬 **Výzkum / NGO** | Anonymizace korpusu pro etiku výzkumu | Vše výše + zachování klinických/právních kódů |
 
-Plus 11 jazyků v multilingvální stack (legal docs SK/EN/DE/PL/UK/RU/FR/HI/ES/IT/AR otestovány na NER+morfologii, auto EN-pivot pro překlad mimo přímé Charles páry).
+Plus 35 jazyků v multilingvální stack (legal docs SK/EN/DE/PL/UK/RU/FR/HI/ES/IT/AR + 24 dalších otestovány na NER+morfologii, auto EN-pivot pro překlad mimo přímé Charles páry).
+
+### Sektor #10 — International (přidáno v0.7.26)
+
+| Use case | PII které MCP zvládne |
+|---|---|
+| 🌍 **US/UK/DE/FR/IT/ES/PL/RU/IN dokumenty** | SSN, NIN, Steuer-ID, NIR, Codice Fiscale, DNI, PESEL, Aadhaar, PAN — auto bez `lang=` parametru |
+| 💰 **Crypto/Web3 outreach, smart contracts** | Bitcoin (Legacy/P2SH/Bech32/Taproot), Ethereum, Monero, XRP, TRON |
+| 🔐 **DevOps logs / API key leak detection** | OpenAI, Anthropic, OpenRouter, GitHub PAT, AWS, Google, Slack, Stripe tokeny |
+| 🏢 **Cross-border B2B** | Foreign companies (SARL/SAS/GmbH/AG/Ltd/LLC/Inc/SpA/SL/Sp. z o.o.) + EU VAT (28 zemí) + IBAN (30+ zemí) |
 
 ## Instalace
 
@@ -148,7 +159,7 @@ V Claude Code stačí napsat například:
 
 ## Autor
 
-`ufal-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR. Verzi 0.7 postavil na svém reálném legal-tech use case (Jiříkův spis, 102/102 ops) a ve v0.7.6 ji rozšířil napříč 9 sektory a 11 jazyky.
+`ufal-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR. Verzi 0.7 postavil na svém reálném legal-tech use case (Jiříkův spis, 102/102 ops), ve v0.7.6 ji rozšířil napříč 9 sektory a 11 jazyky a ve v0.7.26 přidal kompletní mezinárodní pokrytí (80+ PII patternů, US/UK/DE/FR/IT/ES/PL/RU/IN národní ID, crypto, API tokeny) — **179/179 testů PASS**.
 
 Wrapper kolem skvělých ÚFAL MFF UK nástrojů — bez NameTag, MasKIT, UDPipe, PONK, Korektor a Charles Translator by tenhle MCP server neexistoval. Díky celému ÚFAL týmu (Jana Straková, Milan Straka, Jiří Mírovský, Barbora Hladká, Silvie Cinková a další) za roky práce na production-grade NLP nástrojích pro češtinu.
 
@@ -192,7 +203,8 @@ Wrapper sám funguje deterministicky, ale upstream API mají několik dokumentov
 | **Generické placeholdery v MasKIT** (`"FABBR1"`, `"IABBR1"`) bez typu entity | MasKIT API | Tool `anonymize` má `classify_types=True` (default) — **100 % náhrad** klasifikováno čtyřvrstvým fallbackem (placeholder pattern → pre-context → NameTag → fallback dle obsahu) |
 | **MasKIT systematicky neanonymizuje názvy státních institucí** (Nejvyšší soud, Ústavní soud, ministerstva, soudy obecně) | MasKIT design | `anonymize` má `strict=True` (default) — pre-pass přes NameTag najde firmy/úřady/instituce v originálu a sám je nahradí placeholdery `FIRMA1`, `INSTITUCE1`, … **ještě před** voláním MasKIT |
 | **Vícejazyčné texty** (SK, EN, DE, FR, IT, ES, PT, NL, PL, HU, UK, RU, RO, SL, BG, EL, HR, SR, FI, LT, LV, ET, DA, SV, NO, ZH, AR, TR, VI, HI, HE, JA, KO, TH) | Default NameTag a UDPipe modely jsou CZ-only | **VYŘEŠENO v v0.7.1** — `analyze_morphology(model="auto")` i `extract_entities(model="auto")` (defaulty) sdílí `langdetect.py` modul a auto-přepnou na správný model pro 35 jazyků (CZ + 34 dalších). 100% testováno. |
-| **NER nepokrývá**: pasy (CZ pas formát), řidičák, foreign národní ID (SSN/PESEL/ИНН/Aadhaar v ne-CZ textech) | MasKIT design + foreign ID nemá wrapper-regex pattern | Pro CZ formáty (RČ, IBAN, č.ú., OP, IČO, DIČ, datovka, č.j., sp.zn., VIN, ORCID, UČO, NZ, LV/parcela atd.) **wrapper-regex v v0.7.6 pokrývá** 25+ kategorií napříč 9 sektory. Foreign ID anonymizovat manuálně před voláním. |
+| **NER nepokrývá**: pasy (CZ pas formát), řidičák | MasKIT design | Pro CZ pas + řidičák je zatím wrapper-regex limit (low priority — řekni do issues, doplníme). Pro vše ostatní (CZ + 9 dalších zemí) ✅ pokryto ve v0.7.26. |
+| ~~**Foreign národní ID** (SSN/PESEL/ИНН/Aadhaar) v ne-CZ textech~~ | ~~MasKIT design + nemá wrapper-regex~~ | ✅ **VYŘEŠENO v v0.7.26** — wrapper-regex pokrývá US SSN/EIN, UK NIN/NHS, DE Steuer-ID, FR NIR/SIRET, IT Codice Fiscale, ES DNI/NIE, PL PESEL/NIP, RU SNILS, IN Aadhaar/PAN. Plus IBAN 30+ zemí, EU VAT 28 zemí, crypto, API tokeny, license plates. 17/17 international corpus PASS. |
 | **Anonymize idempotence**  | placeholder mode v MasKIT pipeline | ✅ **VYŘEŠENO v v0.7.7** — STEP 0 v pipeline detekuje existující placeholdery v vstupu (`OSOBA1`, `FIRMA2`, atd.). Pokud 3+ placeholderů → early return, jinak PUA sentinely chrání před re-zpracováním. `anonymize(anonymize(x)) == anonymize(x)`. |
 
 **Pro citlivá data**: vždy zkontroluj `warnings` v odpovědi `anonymize` a anonymizovaný výstup ručně před zveřejněním. Wrapper je nástroj na první průchod, ne náhrada za lidskou kontrolu.
