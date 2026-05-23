@@ -108,7 +108,23 @@ _PRESERVE_FORMAT_PATTERNS = [
         r"Masarykova\s+univerzita|Masarykov[uěo]\s+univerzit[uěo]?|"
         r"ČVUT\s+(?:v\s+Praze|FIT|FEL|FS|FA|FD)|"
         r"MU\s+(?:FI|FF|PřF|LF|PdF|FSS|FSpS)|"
-        r"\d\.\s*LF\s+UK|MFF\s+UK|FF\s+UK|PřF\s+UK|FSV\s+UK)\b"
+        r"\d\.\s*LF\s+UK|MFF\s+UK|FF\s+UK|PřF\s+UK|FSV\s+UK|"
+        # Státní orgány / města — magistrát + ministerstva
+        r"Česká\s+správa\s+sociálního\s+zabezpečení|ČSSZ|"
+        r"Magistrát\s+(?:hlavního\s+města\s+)?Prahy|"
+        r"Magistrát\s+města\s+[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+\w*|"
+        r"Krajský\s+úřad\s+[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+\w*|"
+        r"Městský\s+úřad\s+[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+\w*|"
+        # Laboratoře (medical brands)
+        r"Synlab|Synlab\s+CZ|EUC\s+Laboratoře|EUC|"
+        r"AGEL\s+Laboratoře|AGEL|"
+        # Pojišťovny zdravotní (rozšíření)
+        r"VZP\s+ČR|ZP\s+MV\s+ČR|"
+        # Soudy + Policejní akronymy
+        r"Pplk\.\s+Sochora|"
+        r"Nejvyšší\s+soud|Ústavní\s+soud|Nejvyšší\s+správní\s+soud|"
+        r"OS\s+Praha\s+\d|KS\s+Praha|KS\s+Brno|KS\s+Ostrava|"
+        r"VS\s+Praha|VS\s+Olomouc)\b"
     ),
     # IZO (identifikátor zařízení škol): 9 digits standalone
     # Match only after "IZO" prefix (already in CONTEXT prefixes)
