@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.buggy1111/wrapper-mcp",
-  "description": "MCP server wrapping LINDAT NLP tools — multilingual NER (35 languages), production-grade anonymization (80+ PII patterns), morphology (UDPipe, 961 models), translation (8 languages), readability analysis, spellcheck. Non-commercial use only.",
+  "name": "io.github.Buggy1111/wrapper-mcp",
+  "description": "Czech NLP tools: NER (35 langs), anonymization (80+ PII), morphology, translation, spellcheck",
   "repository": {
     "url": "https://github.com/Buggy1111/wrapper-mcp",
     "source": "github"
   },
-  "version": "0.8.0",
+  "version": "0.8.1",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "wrapper-mcp",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "transport": {
         "type": "stdio"
       }
