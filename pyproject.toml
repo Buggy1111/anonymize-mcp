@@ -1,15 +1,15 @@
 [project]
-name = "ufal-mcp"
-version = "0.7.31"
-description = "MCP server pro ÚFAL MFF UK NLP nástroje — production-grade anonymizace, multilingvální NER (33+ jazyků) + UDPipe (961 modelů, auto-detect 8 jazyků), Charles Translator (8 jazyků), PONK rich output (4 feature sety), Korektor, NameTag XML/vertical"
+name = "wrapper-mcp"
+version = "0.8.0"
+description = "MCP server wrapping LINDAT NLP tools — production-grade anonymization, multilingual NER (33+ languages), UDPipe (961 models), Charles Translator (8 languages), PONK readability, Korektor spellcheck. Non-commercial use only."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Michal Bürgermeister", email = "michalbugy12@gmail.com" }]
 license = { text = "MIT" }
 keywords = [
     "mcp", "model-context-protocol", "claude", "anthropic",
-    "czech", "nlp", "ner", "anonymization", "legal-tech", "ufal",
-    "nametag", "udpipe", "maskit", "ponk",
+    "czech", "nlp", "ner", "anonymization", "legal-tech",
+    "nametag", "udpipe", "maskit", "ponk", "lindat",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -32,20 +32,20 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Buggy1111/ufal-mcp"
-Repository = "https://github.com/Buggy1111/ufal-mcp"
-Issues = "https://github.com/Buggy1111/ufal-mcp/issues"
-"ÚFAL MFF UK" = "https://ufal.mff.cuni.cz/"
+Homepage = "https://github.com/Buggy1111/wrapper-mcp"
+Repository = "https://github.com/Buggy1111/wrapper-mcp"
+Issues = "https://github.com/Buggy1111/wrapper-mcp/issues"
+"LINDAT" = "https://lindat.mff.cuni.cz/"
 
 [project.scripts]
-ufal-mcp = "ufal_mcp.server:main"
+wrapper-mcp = "wrapper_mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ufal_mcp"]
+packages = ["src/wrapper_mcp"]
 
 [tool.hatch.build.targets.sdist]
 include = [

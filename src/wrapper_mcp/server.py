@@ -1,6 +1,6 @@
-"""ÚFAL MCP server — multilingvální NER, anonymizace, překlad, morfologie, čitelnost a korektura.
+"""Wrapper MCP server — multilingvální NER, anonymizace, překlad, morfologie, čitelnost a korektura.
 
-Wrappuje 6 REST API:
+Wrappuje 6 LINDAT/ÚFAL REST API:
 - **NameTag 3**        — NER pro CZ (bohatý CNEC 2.0 tagset) + 30+ dalších jazyků (UNER)
 - **MasKIT**           — pseudonymizace osobních údajů (CZ právní texty)
 - **UDPipe 2**         — tokenizace, lemmatizace, POS tagging, dependency parse
@@ -8,8 +8,7 @@ Wrappuje 6 REST API:
 - **Korektor**         — CZ spell checker + auto-doplnění diakritiky
 - **Charles Translator** — překlad mezi 8 jazyky (CZ/EN/FR/DE/PL/RU/UK/HI), 17 párů včetně doc módu
 
-Modely jsou pod CC BY-NC-SA, takže výsledky **nesmí být použity komerčně**
-bez explicitního písemného svolení autorů.
+Modely jsou pod CC BY-NC-SA — pouze pro nekomerční použití.
 """
 
 from __future__ import annotations
@@ -27,15 +26,13 @@ from . import translator as _translator
 from . import udpipe as _udpipe
 from .validation import ValidationError, validate_input
 
-# Setup logging — default INFO to stderr (visible v Claude Code logs).
-# Uživatel může přepsat přes UFAL_MCP_LOG_LEVEL env var.
 import os
-_log_level = os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO").upper()
+_log_level = os.environ.get("WRAPPER_MCP_LOG_LEVEL", os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO")).upper()
 logging.basicConfig(
     level=_log_level,
-    format="%(asctime)s [%(levelname)s] ufal-mcp: %(message)s",
+    format="%(asctime)s [%(levelname)s] wrapper-mcp: %(message)s",
 )
-logger = logging.getLogger("ufal_mcp")
+logger = logging.getLogger("wrapper_mcp")
 
 
 def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:
@@ -55,7 +52,7 @@ def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:
     return cleaned, warnings
 
 
-mcp = FastMCP("ufal")
+mcp = FastMCP("wrapper")
 
 
 @mcp.tool()

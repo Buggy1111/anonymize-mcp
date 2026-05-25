@@ -1,12 +1,12 @@
 """Regression tests for v0.7.27 fixes (Ultimate stress test bugs).
 
 Each test corresponds to a bug found in the 23.5.2026 ultimate stress test
-(see /home/buggy1111/dev/ufal-mcp-ultimate-test/results/ULTIMATE-REPORT.md).
+(see /home/buggy1111/dev/wrapper-mcp-ultimate-test/results/ULTIMATE-REPORT.md).
 """
 from __future__ import annotations
 
-from ufal_mcp.langdetect import detect_language
-from ufal_mcp.maskit_patterns import regex_pre_pass
+from wrapper_mcp.langdetect import detect_language
+from wrapper_mcp.maskit_patterns import regex_pre_pass
 
 
 def _placeholders_from(text: str) -> tuple[str, dict[str, str]]:

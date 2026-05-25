@@ -1,12 +1,12 @@
 """Regression tests for v0.7.28 fixes (Karlovka MCP retest bugs).
 
 Each test corresponds to a leak found in the 23.5.2026 v0.7.27 MCP retest
-(checkpoint: ufal-mcp-v0727-restart-checkpoint.md). The bar is 100% — first
+(checkpoint: wrapper-mcp-v0727-restart-checkpoint.md). The bar is 100% — first
 MCP server in history for UFAL Karlovka.
 """
 from __future__ import annotations
 
-from ufal_mcp.maskit_patterns import regex_pre_pass
+from wrapper_mcp.maskit_patterns import regex_pre_pass
 
 
 def _by_type(text: str) -> dict[str, list[str]]:

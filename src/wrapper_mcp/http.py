@@ -1,4 +1,4 @@
-"""HTTP klient pro ÚFAL REST API — s retry, logging, exponential backoff."""
+"""HTTP klient pro LINDAT REST API — s retry, logging, exponential backoff."""
 
 from __future__ import annotations
 

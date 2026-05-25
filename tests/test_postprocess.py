@@ -1,6 +1,6 @@
 """Unit testy pro maskit_postprocess layer (pure functions, no API calls)."""
 
-from ufal_mcp.maskit_postprocess import (
+from wrapper_mcp.maskit_postprocess import (
     _is_preserve_acronym,
     _build_placeholder_map,
     strip_compound_connector_leak,

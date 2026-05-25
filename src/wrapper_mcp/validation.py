@@ -1,7 +1,7 @@
 """Input validation — safety net před voláním upstream API.
 
 Brání:
-1. Příliš velké vstupy (DoS proti ÚFAL serverům + naším timeoutům)
+1. Příliš velké vstupy (DoS proti upstream serverům + naším timeoutům)
 2. PUA znaky v textu (U+E100-E2FF) které by kolidovaly s našimi sentinely
    v `maskit.anonymize_text` placeholder_mode
 3. C0 control chars (NUL byte, atd.) které rozsekávají NameTag tokenizaci
@@ -41,11 +41,11 @@ _ZW_RE = re.compile(r"[​-‍⁠﻿]")
 
 
 class ValidationError(ValueError):
-    """Raised when input is invalid / dangerous to send to ÚFAL API."""
+    """Raised when input is invalid / dangerous to send to upstream API."""
 
 
 def validate_input(text: str) -> tuple[str, list[str]]:
-    """Zvaliduj input před odesláním na ÚFAL API.
+    """Zvaliduj input před odesláním na LINDAT API.
 
     Args:
         text: Uživatelský vstup.
@@ -84,7 +84,7 @@ def validate_input(text: str) -> tuple[str, list[str]]:
 
     if text_bytes > SOFT_WARN_BYTES:
         warnings.append(
-            f"Velký vstup: {text_bytes:,} bytes. ÚFAL API může být pomalé "
+            f"Velký vstup: {text_bytes:,} bytes. LINDAT API může být pomalé "
             f"(zvaž timeout >180s) a Charles Translator může selhat pro doc mode."
         )
 

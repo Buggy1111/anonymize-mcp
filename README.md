@@ -1,96 +1,65 @@
-# ufal-mcp
+# wrapper-mcp
 
-[![CI](https://github.com/Buggy1111/ufal-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Buggy1111/ufal-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/ufal-mcp.svg)](https://pypi.org/project/ufal-mcp/)
-[![Python](https://img.shields.io/pypi/pyversions/ufal-mcp.svg)](https://pypi.org/project/ufal-mcp/)
+[![CI](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP server obalující NLP nástroje [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, **production-grade anonymizace s 80+ PII patterny napříč 9 sektory + mezinárodním pokrytím (US/UK/DE/FR/IT/ES/PL/RU/IN, EU VAT 28 zemí, IBAN 30+ zemí, crypto, API tokeny)**, překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
+MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, **production-grade anonymizace s 80+ PII patterny napříč 9 sektory + mezinárodním pokrytím (US/UK/DE/FR/IT/ES/PL/RU/IN, EU VAT 28 zemí, IBAN 30+ zemí, crypto, API tokeny)**, překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
 
-**v0.7.26 (2026-05-23)**: 179/179 testů PASS (100%) — 86 unit + 9 sektor + 29 CZ + 12 obskurní + 17 international + 26 tool integration.
+> **Pouze pro nekomerční použití.** Modely NameTag a UDPipe jsou pod CC BY-NC-SA. LINDAT API je bezplatné pro akademické a osobní použití. Pro komerční nasazení kontaktujte autory nástrojů a `ufal@ufal.mff.cuni.cz`.
+
+> **Dříve `ufal-mcp`** — přejmenováno na žádost ÚFAL MFF UK (v0.8.0).
 
 ## Co umí
 
 | Tool | Backend | K čemu |
 |------|---------|--------|
 | `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | NER pro **CZ** (bohatý CNEC 2.0 tagset) + **34 dalších jazyků** (UNER PER/ORG/LOC) s auto-detekcí |
-| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | **Production-grade pseudonymizace** (v0.7.26): regex pre-pass přes **80+ PII patternů** — **CZ:** osoby/adresy, RČ (5 variant), IBAN + č.ú. CZ, IČO/DIČ, č.j./sp.zn./posudek, datovka, e-mail/telefon/URL, platební karta, VS/KS/SS, parcela/LV/k.ú., VIN/pojistka/TP/SPZ, NZ, UČO/ISIC, ORCID, č. pojištěnce/IČZ. **International:** IBAN 30+ zemí, EU VAT 28 zemí, US SSN/EIN, DE Steuer-ID, UK NIN/NHS, FR NIR/SIRET, IT Codice Fiscale, ES DNI/NIE, PL PESEL/NIP, RU SNILS, IN Aadhaar/PAN. **Tech/crypto:** API tokeny (OpenAI/Anthropic/OpenRouter/GitHub/AWS/Google/Slack/Stripe), Bitcoin (P2PKH/P2SH/Bech32/Taproot), Ethereum, Monero, XRP, TRON. **Vehicle:** license plates DE/FR/UK/PL + fleet "CC: PLATE". **Foreign companies** (SARL/GmbH/Ltd/SpA/SL/Sp. z o.o.) auto-detect. Preserve list: 200+ items (klinické kódy MKN/ICD/SNOMED, grantové agentury, akademické databáze, banky CZ + international, legal forms). Opt-in `placeholder_mode` (deterministic OSOBA1/MESTO1/ULICE1, dedup). Idempotence: `anonymize(anonymize(x)) == anonymize(x)`. |
-| `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — **auto-detect 35 jazyků** (CZ/SK/EN/DE/FR/IT/ES/PT/NL/PL/HU/UK/RU/RO/SL/BG/EL/HR/SR/FI/LT/LV/ET/DA/SV/NO/ZH/AR/TR/VI/HI/HE/JA/KO/TH) |
-| `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Čitelnost CZ — **4 feature sety (v0.7.0)**: overall metrics (ARI/Verb Distance/Activity/Lexical diversity) + `rules` (aktivovaná gramatická pravidla s českými radami "Příliš dlouhé věty: Rozdělte..." a citacemi) + `lexical_surprise` (distribuce vzácnosti slov) + `speech_acts` (typy vět) |
-| `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky (užitečné pro OCR výstupy, mobilní zprávy) |
-| `translate_text` | [Charles Translator](https://lindat.mff.cuni.cz/services/translation/) | Překlad mezi 8 jazyky (CZ/EN/FR/DE/PL/RU/UK/HI), **17 přímých párů + auto EN-pivot** pro nepřímé páry (de/pl/fr/it/es → cs automaticky přes 2 volání). Document mode pro CZ↔EN. Vlastní jména zachovává v originále. |
+| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | **Production-grade pseudonymizace** (v0.7.26): regex pre-pass přes **80+ PII patternů** — CZ + international (IBAN 30+ zemí, EU VAT 28, US SSN/EIN, DE/UK/FR/IT/ES/PL/RU/IN ID, crypto, API tokeny). Opt-in `placeholder_mode` (deterministické OSOBA1/MESTO1). |
+| `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — **auto-detect 35 jazyků** |
+| `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Čitelnost CZ — 4 feature sety: metrics + rules + lexical surprise + speech acts |
+| `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky |
+| `translate_text` | [Charles Translator](https://lindat.mff.cuni.cz/services/translation/) | Překlad mezi 8 jazyky (CZ/EN/FR/DE/PL/RU/UK/HI), 17 přímých párů + auto EN-pivot |
 
-### Podporované jazyky — NER + morfologie (35 jazyků, auto-detect, testováno 20.5.2026)
-
-**Test track record**: 35/35 jazyků správně detekováno auto-detect heuristikou (`langdetect.py`), 35/35 jazyků chytá NER entity (NameTag 3 UNER + cross-lingual transfer).
+### Podporované jazyky — NER + morfologie (35 jazyků, auto-detect)
 
 - 🇨🇿 CZ · 🇸🇰 SK · 🇬🇧 EN · 🇩🇪 DE · 🇫🇷 FR · 🇮🇹 IT · 🇪🇸 ES · 🇵🇹 PT · 🇳🇱 NL
 - 🇵🇱 PL · 🇭🇺 HU · 🇷🇴 RO · 🇸🇮 SL · 🇧🇬 BG · 🇬🇷 EL · 🇭🇷 HR · 🇷🇸 SR · 🇺🇦 UK · 🇷🇺 RU
 - 🇫🇮 FI · 🇱🇹 LT · 🇱🇻 LV · 🇪🇪 ET · 🇩🇰 DA · 🇸🇪 SV · 🇳🇴 NO (Bokmål + Nynorsk)
 - 🇨🇳 ZH · 🇦🇪 AR · 🇹🇷 TR · 🇻🇳 VI · 🇮🇳 HI · 🇮🇱 HE · 🇯🇵 JA · 🇰🇷 KO · 🇹🇭 TH
 
-**UDPipe** má modely pro **961 jazyků** celkem (téměř všechny živé jazyky světa) — explicit `model="..."` parameter dostupný pro jazyky mimo auto-detect.
-
-Funguje cyrilice (UK, RU, BG), latinka s diakritikami, čínské znaky, devanagari (HI), hebrejské/arabské/thajské skripty. Drobné limity známé u JA/KO (particles v entitách), HE/TH (chudší coverage UNER).
-
-## Pro koho je tohle (sektory + use cases)
-
-Stress-tested napříč 9 sektory na **12.7KB cross-sektorovém spisu** (`dev/ufal-mcp-stress-v076/corpus/ULTIMATE_SPIS.txt`) — výsledek **94/94 unique PII chyceno** v jednom volání. Plus **international corpus 17/17** (US/UK/DE/FR/IT/ES/PL/RU/IN + crypto + akademické + fleet) přidaný v v0.7.26:
-
-| Sektor | Use case | PII které MCP zvládne |
-|---|---|---|
-| ⚖️ **Právo** | Anonymizace spisu před AI review, GDPR compliance | Jména, RČ, adresy, č.j., sp.zn., IBAN, OP, datovky |
-| 🏥 **Medicína** | Propouštěcí zprávy pro výzkum, statistika hospitalizací | RČ, IČZ, č. pojištěnce, kontakty lékaře — klinické kódy MKN-10 zachované |
-| 🎓 **Věda / akademie** | Peer review, citace v publikaci | ORCID, Researcher ID, e-maily kolegů, granty |
-| 💳 **Bankovnictví** | Compliance, výpisy do AI, vykazování | Č.ú., karta, IBAN, VS/KS/SS, header výpisu |
-| 🏠 **Reality / katastr** | Anonymizace výpisů z KN, smluv | LV, parcely, k.ú., vlastník + RČ + adresa |
-| 🚗 **Pojišťovny** | Likvidace škod, AI analýza | VIN, SPZ, č. pojistky, TP, OP, RČ pojištěného |
-| 📜 **Notáři** | Notářské zápisy pro AI summary | NZ, OP, datovka notáře, sp. zn. |
-| 📚 **Studijní oddělení** | Potvrzení o studiu, statistika studentů | UČO, studijní č., ISIC, kontakty studenta |
-| 🔬 **Výzkum / NGO** | Anonymizace korpusu pro etiku výzkumu | Vše výše + zachování klinických/právních kódů |
-
-Plus 35 jazyků v multilingvální stack (legal docs SK/EN/DE/PL/UK/RU/FR/HI/ES/IT/AR + 24 dalších otestovány na NER+morfologii, auto EN-pivot pro překlad mimo přímé Charles páry).
-
-### Sektor #10 — International (přidáno v0.7.26)
-
-| Use case | PII které MCP zvládne |
-|---|---|
-| 🌍 **US/UK/DE/FR/IT/ES/PL/RU/IN dokumenty** | SSN, NIN, Steuer-ID, NIR, Codice Fiscale, DNI, PESEL, Aadhaar, PAN — auto bez `lang=` parametru |
-| 💰 **Crypto/Web3 outreach, smart contracts** | Bitcoin (Legacy/P2SH/Bech32/Taproot), Ethereum, Monero, XRP, TRON |
-| 🔐 **DevOps logs / API key leak detection** | OpenAI, Anthropic, OpenRouter, GitHub PAT, AWS, Google, Slack, Stripe tokeny |
-| 🏢 **Cross-border B2B** | Foreign companies (SARL/SAS/GmbH/AG/Ltd/LLC/Inc/SpA/SL/Sp. z o.o.) + EU VAT (28 zemí) + IBAN (30+ zemí) |
-
 ## Instalace
 
 Z PyPI (doporučeno):
 
 ```bash
-pip install ufal-mcp
+pip install wrapper-mcp
 ```
 
 Nebo ze source:
 
 ```bash
-git clone https://github.com/Buggy1111/ufal-mcp.git
-cd ufal-mcp
+git clone https://github.com/Buggy1111/wrapper-mcp.git
+cd wrapper-mcp
 pip install -e .
 ```
 
 ## Registrace v MCP klientovi
 
-ufal-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport) — funguje s libovolným MCP klientem. Po registraci a restartu klienta máš k dispozici 6 nástrojů:
+wrapper-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport). Po registraci a restartu klienta máš k dispozici 6 nástrojů:
 
-- `mcp__ufal__extract_entities` — multilingvální NER (35 jazyků auto-detect)
-- `mcp__ufal__anonymize` — production-grade pseudonymizace CZ (regex pre-pass + stop-list + placeholder mode)
-- `mcp__ufal__analyze_morphology` — morfologie 35 jazyků auto-detect (UDPipe 961 modelů)
-- `mcp__ufal__check_readability` — čitelnost CZ (4 feature sety: metrics + rules + lexical surprise + speech acts)
-- `mcp__ufal__correct_text` — spell check + diakritika CZ
-- `mcp__ufal__translate_text` — překlad mezi 8 jazyky (CZ↔EN/UK/RU + EN↔FR/DE/PL/HI)
+- `mcp__wrapper__extract_entities` — multilingvální NER (35 jazyků auto-detect)
+- `mcp__wrapper__anonymize` — production-grade pseudonymizace CZ (regex pre-pass + stop-list + placeholder mode)
+- `mcp__wrapper__analyze_morphology` — morfologie 35 jazyků auto-detect (UDPipe 961 modelů)
+- `mcp__wrapper__check_readability` — čitelnost CZ (4 feature sety)
+- `mcp__wrapper__correct_text` — spell check + diakritika CZ
+- `mcp__wrapper__translate_text` — překlad mezi 8 jazyky
 
 ### Claude Code (terminál)
 
 ```bash
-claude mcp add ufal -s user -- ufal-mcp
+claude mcp add wrapper -s user -- wrapper-mcp
 ```
 
 ### Claude Desktop
@@ -103,24 +72,24 @@ nebo `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 ```json
 {
   "mcpServers": {
-    "ufal": {
-      "command": "ufal-mcp"
+    "wrapper": {
+      "command": "wrapper-mcp"
     }
   }
 }
 ```
 
-**Nová Claude Desktop** (Microsoft Store / appx package, "Cowork" UI): k 05/2026 podporuje pouze **remote MCP servery přes HTTP URL** (Settings → Connectors → Add custom connector). Lokální stdio MCP servery jako `ufal-mcp` zde **přidat nelze**. Workaround: použít Claude Code CLI nebo počkat, až Anthropic přidá stdio podporu i do nového UI.
+**Nová Claude Desktop** (Microsoft Store / appx package, "Cowork" UI): k 05/2026 podporuje pouze **remote MCP servery přes HTTP URL**. Lokální stdio MCP servery jako `wrapper-mcp` zde **přidat nelze**.
 
-> Na Windows může být `ufal-mcp.exe` mimo PATH (typicky `C:\Python\Python3xx\Scripts\ufal-mcp.exe` nebo `%APPDATA%\Python\Python3xx\Scripts\ufal-mcp.exe`). V configu pak místo `"command": "ufal-mcp"` použij plnou cestu.
+> Na Windows může být `wrapper-mcp.exe` mimo PATH (typicky `C:\Python\Python3xx\Scripts\wrapper-mcp.exe`). V configu pak použij plnou cestu.
 
-### OpenAI Codex CLI _(struktura dle Codex docs, autorem netestováno)_
+### OpenAI Codex CLI _(autorem netestováno)_
 
 Edituj `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.ufal]
-command = "ufal-mcp"
+[mcp_servers.wrapper]
+command = "wrapper-mcp"
 ```
 
 ### Cursor _(autorem netestováno)_
@@ -130,8 +99,8 @@ Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "ufal": {
-      "command": "ufal-mcp"
+    "wrapper": {
+      "command": "wrapper-mcp"
     }
   }
 }
@@ -139,82 +108,56 @@ Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 
 ### Windsurf, Cline, Zed, VS Code Copilot Agent _(autorem netestováno)_
 
-Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "ufal-mcp"` (případně absolutní cesta `~/path/to/.venv/bin/ufal-mcp` pokud nemáš `ufal-mcp` v PATH).
-
-> Otestováno autorem: Claude Code (Linux/WSL2), Claude Desktop MS Store na Windows (neuspěšně — viz výše). Ostatní klienti používají standardní MCP stdio + JSON config, takže by teoreticky měli fungovat, ale nedostalo se to k otestování. Pull request s potvrzením vítaný.
+Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "wrapper-mcp"` (případně absolutní cesta).
 
 ## Použití
 
 V Claude Code stačí napsat například:
 
-> Anonymizuj text z `PRICHOZI_POSTA/2026-03-02_odpoved_na_stiznost.md` v placeholder_mode a vrať mi čistou verzi pro veřejný demo.
+> Anonymizuj text z `dokument.md` v placeholder_mode a vrať mi čistou verzi.
 
-> Vytáhni z dokumentu všechny osoby, soudy a č.j. — chystám matter intake pro `/litigation-legal:matter-intake`.
+> Vytáhni z dokumentu všechny osoby, soudy a č.j.
 
 > Klient přinesl ukrajinský dokument — přelož mi ho do češtiny, najdi entity a zanalyzuj morfologii.
 
-> Projeď moje podání přes PONK — vrať všechna aktivovaná gramatická pravidla s českým popisem, ať vím co přepsat.
+> Projeď moje podání přes PONK — vrať aktivovaná gramatická pravidla.
 
 > Klient mi posílá text bez diakritiky z mobilu — doplň diakritiku přes Korektor.
 
 ## Autor
 
-`ufal-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR. Verzi 0.7 postavil na svém reálném legal-tech use case (Jiříkův spis, 102/102 ops), ve v0.7.6 ji rozšířil napříč 9 sektory a 11 jazyky a ve v0.7.26 přidal kompletní mezinárodní pokrytí (80+ PII patternů, US/UK/DE/FR/IT/ES/PL/RU/IN národní ID, crypto, API tokeny) — **179/179 testů PASS**.
+`wrapper-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR.
 
-Wrapper kolem skvělých ÚFAL MFF UK nástrojů — bez NameTag, MasKIT, UDPipe, PONK, Korektor a Charles Translator by tenhle MCP server neexistoval. Díky celému ÚFAL týmu (Jana Straková, Milan Straka, Jiří Mírovský, Barbora Hladká, Silvie Cinková a další) za roky práce na production-grade NLP nástrojích pro češtinu.
+Wrapper kolem skvělých nástrojů ÚFAL MFF UK — bez NameTag, MasKIT, UDPipe, PONK, Korektor a Charles Translator by tenhle MCP server neexistoval. Díky celému ÚFAL týmu (Jana Straková, Milan Straka, Jiří Mírovský, Barbora Hladká, Silvie Cinková a další) za roky práce na production-grade NLP nástrojích pro češtinu.
 
-Issues, PR a feedback jsou vítané na [github.com/Buggy1111/ufal-mcp](https://github.com/Buggy1111/ufal-mcp).
+Issues, PR a feedback jsou vítané na [github.com/Buggy1111/wrapper-mcp](https://github.com/Buggy1111/wrapper-mcp).
 
 ## Licence
 
-Tento wrapper `ufal-mcp` má **MIT licenci** (viz `LICENSE`).
+Tento wrapper má **MIT licenci** (viz `LICENSE`).
 
-Pod ním jsou ale čtyři samostatné ÚFAL nástroje, každý s vlastní licencí. Pro úplný obrázek:
+Pod ním jsou čtyři samostatné nástroje, každý s vlastní licencí:
 
 | Komponenta | Autoři | Licence software | Licence modelů |
 |------------|--------|------------------|----------------|
-| **NameTag 3** | Jana Straková, Milan Straka | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
-| **UDPipe** | Milan Straka, Jana Straková | MPL 2.0 (commercial OK) | **CC BY-NC-SA** (NON-commercial) |
-| **MasKIT** | Jiří Mírovský, Barbora Hladká | MPL 2.0 (commercial OK) | (rule-based, není separátní model) |
-| **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká + autoři podaplikací: Ivan Kraus, Arnold Stanovský, Jan Černý, Ivana Kvapilíková, Tomáš Polák, Silvie Cinková | MPL 2.0 (commercial OK) | (rule-based + UDPipe pro tokenizaci → viz CC BY-NC-SA výše) |
+| **NameTag 3** | Jana Straková, Milan Straka | MPL 2.0 | **CC BY-NC-SA** (NON-commercial) |
+| **UDPipe** | Milan Straka, Jana Straková | MPL 2.0 | **CC BY-NC-SA** (NON-commercial) |
+| **MasKIT** | Jiří Mírovský, Barbora Hladká | MPL 2.0 | (rule-based) |
+| **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká + autoři podaplikací: Ivan Kraus, Arnold Stanovský, Jan Černý, Ivana Kvapilíková, Tomáš Polák, Silvie Cinková | MPL 2.0 | (rule-based + UDPipe → CC BY-NC-SA) |
 
-**Důležité**: tento wrapper nevolá lokální instalaci ÚFAL nástrojů, ale jejich **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Na použití API se vztahují podmínky LINDAT/CLARIAH-CZ a ÚFAL — krátce: bezplatné pro akademické a osobní použití, hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
-
-Pro placené (komerční) nasazení nebo vyšší zátěž doporučuji:
-1. Kontaktovat příslušné autory (viz tabulka výše) a `ufal@ufal.mff.cuni.cz`
-2. Zvážit **lokální self-host** (NameTag i UDPipe mají modely ke stažení) — pak se na tebe licence modelů (CC BY-NC-SA) vztahují přímo a víš přesně, co ti loguje co.
+**Důležité**: tento wrapper nevolá lokální instalaci, ale **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Bezplatné pro akademické a osobní použití. Hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
 
 ## Bezpečnost
 
-- **Vše posíláš na externí server ÚFAL** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`). Tento wrapper to nijak nešifruje ani neanonymizuje *před* odesláním — kromě toho, co dělá `anonymize` tool, pokud ho voláš.
-- Provoz typického HTTPS access logu na ÚFAL straně standardně eviduje minimálně čas, IP, velikost požadavku a konfigurační parametry. **K explicitnímu vyjádření ÚFAL ohledně loggingu obsahu POST body autor zatím nedohledal písemný zdroj** — chovej se proto, jako že obsah teoreticky logovat může, a před odesláním citlivých dat **nejdřív** projeď text přes `anonymize`.
-- Pro plně privátní zpracování doporučuji **lokální self-host**: NameTag i UDPipe mají modely ke stažení (CC BY-NC-SA → osobní/akademické použití OK), MasKIT a PONK mají MPL 2.0 source. Tento wrapper se zatím připojuje **jen** k veřejnému ÚFAL API; lokální backend není podporovaný (může přibýt v budoucnu).
+- **Vše posíláš na externí server** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`). Před odesláním citlivých dat **nejdřív** projeď text přes `anonymize`.
+- Pro plně privátní zpracování doporučuji **lokální self-host**: NameTag i UDPipe mají modely ke stažení (CC BY-NC-SA), MasKIT a PONK mají MPL 2.0 source.
 
-## Známé limitace
+## Použité API (6 LINDAT REST endpointů)
 
-Wrapper sám funguje deterministicky, ale upstream API mají několik dokumentovaných nedostatků. Pro každý je v této verzi přidaná detekce / warning:
-
-| Limitace | Příčina | Co s tím |
-|----------|---------|----------|
-| **Fragmentace názvů firem** (`"ZR Trade s.r.o."` → MasKIT zachytí jen `"ZR"` a `"s.r.o."`, slovo `"Trade"` zůstane neanonymizované) | MasKIT tokenizace | `anonymize` vrací `warnings` — NameTag cross-check najde celou entitu a upozorní, že MasKIT nepokryl celý název |
-| **Římské číslice v názvech soudů** (`"MS Bratislava II"` → `"II"` není anonymizováno) | MasKIT regex pattern | Detekováno warningem (viz výše) |
-| **Soudci se neanonymizují** | MasKIT záměrný whitelist | By-design — pokud potřebuješ anonymizovat soudce, použij `extract_entities` + manuální post-processing |
-| **Slovenské tvary** (`"Príkladovej"`, `"súd"`, `"sa"`) v CZ-only modelech | Default NameTag (`nametag3-czech-cnec2.0-240830`) a CZ UDPipe model jsou trénované jen na češtině | Pro NameTag použij multilingvální `nametag3-multilingual-uner-250203` — pokrývá CZ + SK + 11 dalších jazyků (UNER + cross-lingual transfer); pro UDPipe `analyze_morphology(model="auto")` přepne na SK model |
-| **Generické placeholdery v MasKIT** (`"FABBR1"`, `"IABBR1"`) bez typu entity | MasKIT API | Tool `anonymize` má `classify_types=True` (default) — **100 % náhrad** klasifikováno čtyřvrstvým fallbackem (placeholder pattern → pre-context → NameTag → fallback dle obsahu) |
-| **MasKIT systematicky neanonymizuje názvy státních institucí** (Nejvyšší soud, Ústavní soud, ministerstva, soudy obecně) | MasKIT design | `anonymize` má `strict=True` (default) — pre-pass přes NameTag najde firmy/úřady/instituce v originálu a sám je nahradí placeholdery `FIRMA1`, `INSTITUCE1`, … **ještě před** voláním MasKIT |
-| **Vícejazyčné texty** (SK, EN, DE, FR, IT, ES, PT, NL, PL, HU, UK, RU, RO, SL, BG, EL, HR, SR, FI, LT, LV, ET, DA, SV, NO, ZH, AR, TR, VI, HI, HE, JA, KO, TH) | Default NameTag a UDPipe modely jsou CZ-only | **VYŘEŠENO v v0.7.1** — `analyze_morphology(model="auto")` i `extract_entities(model="auto")` (defaulty) sdílí `langdetect.py` modul a auto-přepnou na správný model pro 35 jazyků (CZ + 34 dalších). 100% testováno. |
-| **NER nepokrývá**: pasy (CZ pas formát), řidičák | MasKIT design | Pro CZ pas + řidičák je zatím wrapper-regex limit (low priority — řekni do issues, doplníme). Pro vše ostatní (CZ + 9 dalších zemí) ✅ pokryto ve v0.7.26. |
-| ~~**Foreign národní ID** (SSN/PESEL/ИНН/Aadhaar) v ne-CZ textech~~ | ~~MasKIT design + nemá wrapper-regex~~ | ✅ **VYŘEŠENO v v0.7.26** — wrapper-regex pokrývá US SSN/EIN, UK NIN/NHS, DE Steuer-ID, FR NIR/SIRET, IT Codice Fiscale, ES DNI/NIE, PL PESEL/NIP, RU SNILS, IN Aadhaar/PAN. Plus IBAN 30+ zemí, EU VAT 28 zemí, crypto, API tokeny, license plates. 17/17 international corpus PASS. |
-| **Anonymize idempotence**  | placeholder mode v MasKIT pipeline | ✅ **VYŘEŠENO v v0.7.7** — STEP 0 v pipeline detekuje existující placeholdery v vstupu (`OSOBA1`, `FIRMA2`, atd.). Pokud 3+ placeholderů → early return, jinak PUA sentinely chrání před re-zpracováním. `anonymize(anonymize(x)) == anonymize(x)`. |
-
-**Pro citlivá data**: vždy zkontroluj `warnings` v odpovědi `anonymize` a anonymizovaný výstup ručně před zveřejněním. Wrapper je nástroj na první průchod, ne náhrada za lidskou kontrolu.
-
-## Použité API (6 LINDAT/ÚFAL REST endpointů)
-
-- `POST https://lindat.mff.cuni.cz/services/nametag/api/recognize` — NER (17 modelů)
-- `POST https://lindat.mff.cuni.cz/services/udpipe/api/process` — morfologie (961 modelů, ~všechny jazyky)
-- `POST https://lindat.mff.cuni.cz/services/korektor/api/correct` — spell check + diakritika
-- `POST https://lindat.mff.cuni.cz/services/translation/api/v2/models/{src-tgt}` — Charles Translator (17 párů)
+- `POST https://lindat.mff.cuni.cz/services/nametag/api/recognize` — NER
+- `POST https://lindat.mff.cuni.cz/services/udpipe/api/process` — morfologie
+- `POST https://lindat.mff.cuni.cz/services/korektor/api/correct` — spell check
+- `POST https://lindat.mff.cuni.cz/services/translation/api/v2/models/{src-tgt}` — překlad
 - `POST https://quest.ms.mff.cuni.cz/maskit/api/process` — anonymizace
 - `POST https://quest.ms.mff.cuni.cz/ponk/api/process` — čitelnost
 
@@ -225,7 +168,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Smoke test (volá živé ÚFAL API)
+# Smoke test (volá živé API)
 python test_live.py
 ```
 
@@ -233,22 +176,9 @@ python test_live.py
 
 PyPI publish je automatický přes [Trusted Publisher (OIDC)](https://docs.pypi.org/trusted-publishers/).
 
-**Jednorázové nastavení (PyPI strana):**
-1. Vytvořit balíček na https://pypi.org (nebo nechat workflow, ať ho vytvoří první run)
-2. PyPI → Account settings → Publishing → Add pending publisher:
-   - PyPI Project Name: `ufal-mcp`
-   - Owner: `Buggy1111`
-   - Repository: `ufal-mcp`
-   - Workflow: `release.yml`
-   - Environment: `pypi`
-
-**Release nového releasu:**
-
 ```bash
-# Bump version v pyproject.toml a src/ufal_mcp/__init__.py
+# Bump version v pyproject.toml a src/wrapper_mcp/__init__.py
 git commit -am "release: v0.X.0"
 git tag v0.X.0
 git push origin main --tags
 ```
-
-GHA workflow `release.yml` automaticky postaví distribution, publishne na PyPI a vytvoří GitHub Release s artefakty.
