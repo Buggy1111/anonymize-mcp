@@ -41,7 +41,7 @@ jobs:
 
       - name: Import smoke test
         run: |
-          python -c "from ufal_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('ufal_mcp').__version__)"
+          python -c "from wrapper_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('wrapper_mcp').__version__)"
 
       - name: Build distribution
         run: |

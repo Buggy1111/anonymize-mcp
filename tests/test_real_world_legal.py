@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pytest
 
-from ufal_mcp.maskit import anonymize_text
+from wrapper_mcp.maskit import anonymize_text
 
 
 # ============================================================================

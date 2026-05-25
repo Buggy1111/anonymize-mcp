@@ -1,6 +1,6 @@
 """Unit testy pro language detection."""
 import pytest
-from ufal_mcp.langdetect import detect_language
+from wrapper_mcp.langdetect import detect_language
 
 
 class TestCzechDetection:

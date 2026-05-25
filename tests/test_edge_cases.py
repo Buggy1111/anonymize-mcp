@@ -2,7 +2,7 @@
 Tests proti reálným bugs nalezeným při stress testu (22-23.5.2026).
 """
 import pytest
-from ufal_mcp.maskit_postprocess import (
+from wrapper_mcp.maskit_postprocess import (
     anonymize_facility_names,
     strip_compound_connector_leak,
     _is_preserve_acronym,

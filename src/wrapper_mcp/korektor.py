@@ -1,4 +1,4 @@
-"""Korektor — český spell checker + auto-doplnění diakritiky (UFAL).
+"""Korektor — český spell checker + auto-doplnění diakritiky (LINDAT).
 
 Wrapper kolem `https://lindat.mff.cuni.cz/services/korektor/api/correct`.
 Dostupné modely:
