@@ -1,5 +1,7 @@
 # wrapper-mcp
 
+<!-- mcp-name: io.github.Buggy1111/wrapper-mcp -->
+
 [![CI](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
 [![Python](https://img.shields.io/pypi/pyversions/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
