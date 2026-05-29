@@ -10,9 +10,10 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
 - **Opraven rozbitý `pytest`.** Po v0.8.0 rename importovaly `tests/legacy/*` starý modul `ufal_mcp` → collection error přerušil každý běh na čerstvém klonu. Importy opraveny na `wrapper_mcp`; legacy (manuální E2E skripty proti živému API) vyřazeny z automatické collection.
 - **Přidána pytest konfigurace** (`[tool.pytest.ini_options]`): `testpaths = ["tests"]`, ignore `tests/legacy`, registrovaný `network` marker.
 - **Síťové testy označeny** `@pytest.mark.network` (`test_real_world_legal` + 4 async v `test_v0730_features`) — volají živé LINDAT/MasKIT API, běží lokálně, v CI se přeskakují (jinak flaky).
-- Přidán `[project.optional-dependencies] test` extra (pytest, anyio, pytest-asyncio).
+- Přidán `[project.optional-dependencies] test` extra (pytest, anyio, pytest-asyncio, ruff).
+- **Přidán ruff** (lint + isort) s konfigurací v pyproject + krok v CI. Ruff odhalil a opraven **mrtvý kód v `maskit_postprocess.py`** — duplikát ISSN/BIC predikátu omylem vložený za `return` v `_try_restore_compound_grants` (unreachable, odkazoval na nedefinované `s`). Plus 2 mrtvá přiřazení (`original_len`, `bg`) a unused importy.
 
-**Výsledek:** `pytest` na čerstvém klonu → 246 passed; `pytest -m "not network"` (CI) → 217 passed za 0.4 s. `pip-audit` → 0 zranitelností.
+**Výsledek:** `pytest` na čerstvém klonu → 246 passed; `pytest -m "not network"` (CI) → 217 passed za 0.4 s. `ruff check` → All checks passed. `pip-audit` → 0 zranitelností.
 
 ## [0.8.1] — 2026-05-25
 

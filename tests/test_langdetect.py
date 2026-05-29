@@ -1,5 +1,4 @@
 """Unit testy pro language detection."""
-import pytest
 from wrapper_mcp.langdetect import detect_language
 
 

@@ -17,8 +17,7 @@ from wrapper_mcp.maskit_audit import (
     audit_residual_pii,
     audit_summary,
 )
-from wrapper_mcp.maskit_normalize import normalize_input, normalization_summary
-
+from wrapper_mcp.maskit_normalize import normalization_summary, normalize_input
 
 # ===========================================================================
 # Audit layer

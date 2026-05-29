@@ -1,17 +1,15 @@
 """Unit testy pro maskit_postprocess layer (pure functions, no API calls)."""
 
 from wrapper_mcp.maskit_postprocess import (
-    _is_preserve_acronym,
     _build_placeholder_map,
-    strip_compound_connector_leak,
-    merge_compound_cities,
-    revert_institutional_persons,
-    revert_preserved_acronyms,
-    extend_institution_names,
+    _is_preserve_acronym,
     anonymize_middle_names,
+    extend_institution_names,
+    merge_compound_cities,
     postprocess,
+    revert_preserved_acronyms,
+    strip_compound_connector_leak,
 )
-
 
 # ============================================================================
 # _is_preserve_acronym

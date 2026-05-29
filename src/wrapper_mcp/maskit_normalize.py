@@ -145,7 +145,6 @@ def normalize_input(
 
     # 4) Non-Latin digit → ASCII
     if normalize_digits and _DIGIT_TRANSLATE:
-        original_len = len(text)
         translated = text.translate(_DIGIT_TRANSLATE)
         # Count digit substitutions: scan original for non-ASCII Nd chars
         if translated != text:
