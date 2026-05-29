@@ -8,6 +8,7 @@ finálními placeholdery (TELEFON1, FIRMA1, ICO1, …).
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 from .maskit_constants import make_pii_sentinel
@@ -1402,7 +1403,7 @@ _DATOVKA_LIST_ITEM = re.compile(
 )
 
 
-def _section_pass_datovky(text: str, make_replacer):
+def _section_pass_datovky(text: str, make_replacer: Callable[[re.Match[str]], str]) -> str:
     """Pokud najde "Datové schránky:" header, replace všechny list items
     v následujícím bloku až do první prázdné řádky."""
     out_parts: list[str] = []
@@ -1436,7 +1437,7 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     # Bez dedup: 3× "800312/1234" → RC1, RC2, RC3 (bug). S dedup: → RC1, RC1, RC1.
     dedup_map: dict[tuple[str, str], tuple[str, str]] = {}  # (prefix, normalized) → (placeholder, sentinel)
 
-    def make_replacer_format(prefix: str, label: str):
+    def make_replacer_format(prefix: str, label: str) -> Callable[[re.Match[str]], str]:
         def _replace(m: re.Match[str]) -> str:
             original = m.group(0).strip()
             if not original:
@@ -1461,7 +1462,7 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
             return sentinel
         return _replace
 
-    def make_replacer_context(prefix: str, label: str):
+    def make_replacer_context(prefix: str, label: str) -> Callable[[re.Match[str]], str]:
         def _replace(m: re.Match[str]) -> str:
             prefix_text = m.group(1)
             value = m.group(2).strip()
