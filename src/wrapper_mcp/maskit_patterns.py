@@ -386,6 +386,21 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "PAS", "cestovní pas",
     ),
+    # Cestovní pas — mezinárodní (context-gated keyword v 8 jazycích + alfanum.
+    # číslo 6-12 znaků s alespoň jednou číslicí; gate drží false-positive risk
+    # nízko, lookahead `(?=...\d)` brání masce běžných slov za keywordem).
+    # Pokrývá DE Reisepass, FR passeport, ES/IT pasaporte/passaporto, PL paszport,
+    # NL paspoort, EN passport. Číslo: DE "C01X00T47", US/UK style atd.
+    (
+        re.compile(
+            r"((?:passport|reisepass|reisepas|passeport|pasaporte|passaporto|"
+            r"paszport|paspoort)"
+            r"(?:\s+(?:no\.?|nr\.?|number|n°|№|num\.?))?\s*[:\.]?\s+)"
+            r"((?=[A-Z0-9]*\d)[A-Z0-9]{6,12})\b",
+            re.IGNORECASE,
+        ),
+        "PAS", "cestovní pas (mezinárodní)",
+    ),
     # Řidičský průkaz CZ — E + letter + 6 digits ("EB123456")
     (
         re.compile(
