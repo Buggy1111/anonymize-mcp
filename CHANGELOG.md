@@ -2,6 +2,24 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.3] — 2026-05-29
+
+### 🌍 Multilingvální leak coverage + mypy --strict + coverage
+
+Ověření, že anonymizace **opravdu chytí PII i v jiných jazycích** (ne jen v češtině) — a dotažení kvality.
+
+#### Added
+- **`tests/test_multilingual_leaks.py`** — 20 testů + 1 xfail. Pro 15 jazyků s abecedním písmem (EN/US/DE/FR/ES/IT/PL/RU/UK/SK/PT/NL/EL/TR/HU/RO) + smíšený text ověřuje, že **žádné PII neprosákne**: jména, e-maily, telefony, IBANy, národní ID (SSN/DNI/PESEL/INN/CNP/codice fiscale…), karty, krypto. Pro CJK/AR ověřuje strukturní PII (e-mail/telefon).
+- **mypy `--strict`** (0 chyb napříč 21 moduly) + **coverage** (`pytest-cov`) v CI. Konfigurace v pyproject, oba kroky v CI workflow. mypy + pytest-cov v `[test]` extra.
+
+#### Fixed
+- **Mezera v pasech** — číslo cestovního pasu se maskovalo jen s českým/ruským/anglickým kontextem; nový mezinárodní pattern pokrývá i DE `Reisepass`, FR `passeport`, ES/IT `pasaporte/passaporto`, PL `paszport`, NL `paspoort` + alfanum. číslo (např. DE `C01X00T47`). Odhaleno multilingválním skenem.
+
+#### Known limitation
+- **CJK holá jména** (čínská/japonská) NameTag UNER spolehlivě netaguje — zaznamenáno jako `xfail`. Strukturní PII (e-mail/telefon/karty) v CJK textu se maskuje regex pre-passem normálně; uniká jen samotné jméno.
+
+**Výsledek:** full suite 266 passed + 1 xfail; offline (CI) 217 passed; ruff + mypy --strict clean; pip-audit 0 vulns.
+
 ## [0.8.2] — 2026-05-29
 
 ### 🧪 Test infrastructure hardening — důvěryhodnost pro ÚFAL
