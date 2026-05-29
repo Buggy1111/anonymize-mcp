@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Literal
+from typing import Any
 
 from .http import UDPIPE_URL, post_form
 

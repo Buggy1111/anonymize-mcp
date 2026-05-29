@@ -99,7 +99,6 @@ def parse_app1_rules(
         if count == 0:
             continue  # rule defined but not triggered — skip
         fg = rule_data.get("foreground_color") or {}
-        bg = rule_data.get("background_color") or {}
         color = None
         if fg:
             r, g, b = fg.get("red", 0), fg.get("green", 0), fg.get("blue", 0)

@@ -14,6 +14,7 @@ Modely jsou pod CC BY-NC-SA — pouze pro nekomerční použití.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -26,7 +27,6 @@ from . import translator as _translator
 from . import udpipe as _udpipe
 from .validation import ValidationError, validate_input
 
-import os
 _log_level = os.environ.get("WRAPPER_MCP_LOG_LEVEL", os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO")).upper()
 logging.basicConfig(
     level=_log_level,

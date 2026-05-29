@@ -220,13 +220,6 @@ def _try_restore_compound_grants(orig: str, original_text: str) -> str:
     if m:
         return m.group(0)
     return orig
-    # ISSN format
-    if re.match(r"^ISSN\s+\d{4}-\d{3}[\dX]$", s):
-        return True
-    # BIC/SWIFT format — 8-11 caps with CZ midfix
-    if re.match(r"^[A-Z]{4}CZ[A-Z0-9]{2,5}$", s):
-        return True
-    return False
 
 # Kontextové prefixy které se NEMOHOU vyskytovat samy jako PII — jen
 # uvozují další PII (NZ 45/2024, č.j. 5C/2024). Pokud je MasKIT klasifikuje

@@ -337,6 +337,6 @@ def audit_summary(leaks: list[dict[str, Any]]) -> str:
             more = f" (+{count - 3} more)" if count > 3 else ""
             parts.append(f"{sev.upper()}: {count}× — {examples}{more}")
     return (
-        f"Audit detected residual PII patterns in anonymized output: "
+        "Audit detected residual PII patterns in anonymized output: "
         + "; ".join(parts)
     )

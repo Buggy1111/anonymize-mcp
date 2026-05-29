@@ -18,7 +18,7 @@ use case spoléháme na mutual intelligibility nebo pivot přes EN.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from .http import post_form_text
 

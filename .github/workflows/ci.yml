@@ -39,6 +39,10 @@ jobs:
             python -m pip install --upgrade pip
             pip install -e ".[test]"
 
+      - name: Lint (ruff)
+        run: |
+          python -m ruff check src tests
+
       - name: Import smoke test
         run: |
           python -c "from wrapper_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('wrapper_mcp').__version__)"

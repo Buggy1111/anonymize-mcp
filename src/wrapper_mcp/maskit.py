@@ -25,15 +25,17 @@ import re
 from typing import Any, Literal
 
 from .http import MASKIT_URL, post_form
+from .maskit_audit import ResidualPIILeak, audit_residual_pii, audit_summary
 from .maskit_constants import _TYPE_TO_PREFIX
+from .maskit_normalize import normalization_summary, normalize_input
 from .maskit_parsing import (
     _MASKIT_PLACEHOLDER as _MASKIT_PLACEHOLDER_for_rebuild,
+)
+from .maskit_parsing import (
     detect_fragmentation,
     infer_type,
     parse_maskit,
 )
-from .maskit_audit import ResidualPIILeak, audit_residual_pii, audit_summary
-from .maskit_normalize import normalize_input, normalization_summary
 from .maskit_patterns import regex_pre_pass
 from .maskit_placeholders import PlaceholderRegistry, nametag_fallback
 from .maskit_postprocess import postprocess as _final_postprocess

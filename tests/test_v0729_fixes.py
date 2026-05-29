@@ -259,7 +259,7 @@ def test_json_prefix_preserved() -> None:
     punctuation z group(1). Bug v0.7.28: `{\"name\":\"Jan_[Jiří]` parsed as
     group(1)=`{\"name\":\"Jan`, output started with `OSOBA1...` and
     `{\"name\":\"` was eaten."""
-    from wrapper_mcp.maskit_parsing import _MASKIT_PLACEHOLDER, parse_maskit
+    from wrapper_mcp.maskit_parsing import parse_maskit
     raw = '{"name":"Jan_[Jiří]","ssn":"123"}'
     anonymized, reps = parse_maskit(raw)
     # JSON prefix must survive

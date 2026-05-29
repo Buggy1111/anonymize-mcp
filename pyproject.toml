@@ -36,6 +36,7 @@ test = [
     "pytest>=8",
     "anyio>=4",
     "pytest-asyncio>=0.23",
+    "ruff>=0.6",
 ]
 
 [project.urls]
@@ -71,3 +72,12 @@ addopts = "--ignore=tests/legacy"
 markers = [
     "network: test calls the live LINDAT/ÚFAL API — skipped in CI (run locally with network via `pytest`)",
 ]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# Default rules (E4/E7/E9, F) + isort. E741 ignored — single-letter `l` in
+# comprehensions over leak/label lists is idiomatic here and not worth renaming.
+extend-select = ["I"]
+ignore = ["E741"]
