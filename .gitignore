@@ -14,3 +14,9 @@ dist/
 # Working documents (not part of distribution)
 *.docx
 *:Zone.Identifier
+
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
