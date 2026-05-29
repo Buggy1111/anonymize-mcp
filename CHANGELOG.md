@@ -2,6 +2,28 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.2] — 2026-05-29
+
+### 🧪 Test infrastructure hardening — důvěryhodnost pro ÚFAL
+
+- **CI nyní spouští test suite.** Předtím CI dělalo jen `pip install` + import smoke + build — 246 leak-detection testů (jádro bezpečnosti PII nástroje) se v CI nikdy nespouštělo. Nový krok běží offline core (`pytest -m "not network"`) na všech 4 verzích Pythonu.
+- **Opraven rozbitý `pytest`.** Po v0.8.0 rename importovaly `tests/legacy/*` starý modul `ufal_mcp` → collection error přerušil každý běh na čerstvém klonu. Importy opraveny na `wrapper_mcp`; legacy (manuální E2E skripty proti živému API) vyřazeny z automatické collection.
+- **Přidána pytest konfigurace** (`[tool.pytest.ini_options]`): `testpaths = ["tests"]`, ignore `tests/legacy`, registrovaný `network` marker.
+- **Síťové testy označeny** `@pytest.mark.network` (`test_real_world_legal` + 4 async v `test_v0730_features`) — volají živé LINDAT/MasKIT API, běží lokálně, v CI se přeskakují (jinak flaky).
+- Přidán `[project.optional-dependencies] test` extra (pytest, anyio, pytest-asyncio).
+
+**Výsledek:** `pytest` na čerstvém klonu → 246 passed; `pytest -m "not network"` (CI) → 217 passed za 0.4 s. `pip-audit` → 0 zranitelností.
+
+## [0.8.1] — 2026-05-25
+
+### Added
+- MCP registry ownership marker + `server.json` (připraveno pro MCP registry, až bude potřeba). Oprava case v `server.json`.
+
+## [0.8.0] — 2026-05-25
+
+### Changed
+- **Přejmenování `ufal-mcp` → `wrapper-mcp`** (na žádost ÚFAL — viz Zoom s doc. Hladkou 25.5.2026). Balík `ufal_mcp` → `wrapper_mcp`, všechny importy, skript a URL aktualizovány. Nekomerční použití.
+
 ## [0.7.28] — 2026-05-23
 
 ### 🎯 Karlovka MCP retest fixes — laťka 100% pro první MCP pro ÚFAL

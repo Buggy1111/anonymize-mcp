@@ -37,11 +37,18 @@ jobs:
           retry_wait_seconds: 10
           command: |
             python -m pip install --upgrade pip
-            pip install -e .
+            pip install -e ".[test]"
 
       - name: Import smoke test
         run: |
           python -c "from wrapper_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('wrapper_mcp').__version__)"
+
+      - name: Run test suite (offline — PII anonymization core)
+        run: |
+          python -m pytest -m "not network" -q
+        # Network-marked tests call the live LINDAT/ÚFAL API and are run locally,
+        # not in CI (external dependency would make CI flaky). The offline suite
+        # covers the regex/MasKIT leak-detection patterns — the security core.
 
       - name: Build distribution
         run: |

@@ -1,6 +1,6 @@
 [project]
 name = "wrapper-mcp"
-version = "0.8.1"
+version = "0.8.2"
 description = "MCP server wrapping LINDAT NLP tools — production-grade anonymization, multilingual NER (33+ languages), UDPipe (961 models), Charles Translator (8 languages), PONK readability, Korektor spellcheck. Non-commercial use only."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -31,6 +31,13 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8",
+    "anyio>=4",
+    "pytest-asyncio>=0.23",
+]
+
 [project.urls]
 Homepage = "https://github.com/Buggy1111/wrapper-mcp"
 Repository = "https://github.com/Buggy1111/wrapper-mcp"
@@ -53,4 +60,14 @@ include = [
     "README.md",
     "LICENSE",
     "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+# Only collect the real test suite. tests/legacy/ holds manual end-to-end
+# scripts (live ÚFAL API + local file paths, run by hand), and dev/ holds
+# old stress-test runners — neither belongs in automated collection.
+testpaths = ["tests"]
+addopts = "--ignore=tests/legacy"
+markers = [
+    "network: test calls the live LINDAT/ÚFAL API — skipped in CI (run locally with network via `pytest`)",
 ]

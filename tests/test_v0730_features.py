@@ -93,6 +93,7 @@ def test_residual_pii_exception_class() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_strict_audit_raises_on_leak() -> None:
     """strict_audit=True raises ResidualPIILeak on any residual PII.
 
@@ -110,6 +111,7 @@ async def test_strict_audit_raises_on_leak() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_audit_warning_in_normal_mode() -> None:
     """audit=True (default) emits warning instead of raising."""
     text = "Klient SSN 123-45-6789 jako příklad."
@@ -222,6 +224,7 @@ def test_normalization_summary_combo() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_adversarial_input_anonymized() -> None:
     """Real adversarial: ZWNJ in name + full-width digits — both anonymized."""
     text = "Pacient J‌i‌ř‌í Novák, RČ ８５０６１５/１２３４"
@@ -236,6 +239,7 @@ async def test_adversarial_input_anonymized() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_real_world_with_audit() -> None:
     """Realistic Czech legal text — full pipeline + audit + no warnings."""
     text = (

@@ -29,6 +29,8 @@ import pytest
 
 from wrapper_mcp.maskit import anonymize_text
 
+pytestmark = pytest.mark.network  # all tests call live MasKIT API
+
 
 # ============================================================================
 # Corpus — 12 synthesized realistic CZ legal documents
