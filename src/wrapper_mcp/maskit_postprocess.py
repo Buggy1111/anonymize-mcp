@@ -459,7 +459,7 @@ def revert_preserved_acronyms(
             inst_pattern = re.compile(
                 r"\b" + re.escape(plc) + r"\s+(STAT\d+|OSOBA\d+|INSTITUCE\d+|ENTITA\d+)\b"
             )
-            def _maybe_revert_firma(m: re.Match[str], _orig=orig_s) -> str:
+            def _maybe_revert_firma(m: re.Match[str], _orig: str = orig_s) -> str:
                 suffix_plc = m.group(1)
                 suffix_orig = plc_map.get(suffix_plc, "").strip()
                 if suffix_orig in GRANT_SUFFIXES:
@@ -641,7 +641,7 @@ def capture_company_prefix(
     added: list[dict[str, Any]] = []
     dedup: dict[str, str] = {}
 
-    def _process(plc: str, orig: str):
+    def _process(plc: str, orig: str) -> None:
         nonlocal next_num, anonymized
         # Find this FIRMA placeholder in anonymized
         # Pattern: 1-4 Capitalized words (s opcionálním dashem) + WHITESPACE + plc

@@ -91,7 +91,8 @@ async def _post_with_retry(
 async def post_form(url: str, data: dict[str, str]) -> dict[str, Any]:
     """POST x-www-form-urlencoded → JSON response (s retry + logging)."""
     response = await _post_with_retry(url, data, HTTP_TIMEOUT)
-    return response.json()
+    result: dict[str, Any] = response.json()
+    return result
 
 
 async def post_form_text(
