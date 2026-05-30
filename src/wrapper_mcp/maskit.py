@@ -81,8 +81,9 @@ def _protect_existing_placeholders(text: str) -> tuple[str, dict[str, str]]:
 _PRESERVE_FORMAT_PATTERNS = [
     # ISSN — "ISSN 0011-4626"
     re.compile(r"\bISSN\s+\d{4}-\d{3}[\dX]\b"),
-    # BIC/SWIFT — "GIBACZPX", "KOMBCZPP" (4 caps + CZ + 2-5 chars)
-    re.compile(r"\b[A-Z]{4}CZ[A-Z0-9]{2,5}\b"),
+    # POZN: BIC/SWIFT už NEchráníme — je to finanční PII a maskuje se BIC
+    # patternem v regex pre-passu (rozhodnuto v0.8.4). Dřív tu byl
+    # re.compile(r"\b[A-Z]{4}CZ[A-Z0-9]{2,5}\b").
     # Klinické kódy MKN-10/ICD-10 (s tečkou nebo bez): "F32.1", "K85.0", "MKN-10"
     re.compile(r"\bMKN-1[01]\b|\bICD-1[01](?:-PCS|-CM)?\b"),
     # ICD-10 codes: Letter + 2 digits + optional .X — STRICT (letter only A-N,P-Z, no I/O risk)

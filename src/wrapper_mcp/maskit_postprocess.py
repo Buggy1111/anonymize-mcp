@@ -191,9 +191,8 @@ def _is_preserve_acronym(text: str) -> bool:
     # ISSN format
     if re.match(r"^ISSN\s+\d{4}-\d{3}[\dX]$", s):
         return True
-    # BIC/SWIFT format — 8-11 caps with CZ midfix
-    if re.match(r"^[A-Z]{4}CZ[A-Z0-9]{2,5}$", s):
-        return True
+    # POZN: BIC/SWIFT kódy (CEKOCZPP…) se NEpreserveují — jsou to finanční PII
+    # (BIC + IBAN prozradí banku osoby) a maskují se BIC patternem. (v0.8.4)
     return False
 
 

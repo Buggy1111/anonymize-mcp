@@ -60,10 +60,11 @@ class TestIsPreserveAcronym:
         assert _is_preserve_acronym("ISSN 0011-4626")
         assert _is_preserve_acronym("ISSN 1234-567X")
 
-    def test_bic_format(self):
-        assert _is_preserve_acronym("GIBACZPX")
-        assert _is_preserve_acronym("KOMBCZPP")
-        assert _is_preserve_acronym("CEKOCZPP")
+    def test_bic_not_preserved(self):
+        # BIC/SWIFT codes are financial PII → masked, NOT preserved (v0.8.4).
+        assert not _is_preserve_acronym("GIBACZPX")
+        assert not _is_preserve_acronym("KOMBCZPP")
+        assert not _is_preserve_acronym("CEKOCZPP")
 
     def test_negatives(self):
         assert not _is_preserve_acronym("Petr Novák")
@@ -298,3 +299,20 @@ class TestPostprocessIntegration:
         result, _ = postprocess(anon, reps, "Tomáš Garrigue Masaryk byl prezident.")
         # Garrigue → OSOBA3
         assert "Garrigue" not in result
+
+
+class TestBicMaskedByRegexPrePass:
+    """BIC/SWIFT codes are financial PII — the regex pre-pass must mask them
+    (and neither preserve layer may revert them). Regression for v0.8.4."""
+
+    def test_regex_pre_pass_masks_bic(self) -> None:
+        from wrapper_mcp.maskit_patterns import regex_pre_pass
+        out, reps, _ = regex_pre_pass("Bankovní spojení BIC/SWIFT: CEKOCZPP.")
+        assert "CEKOCZPP" not in out
+        assert any(r.get("type") == "BIC/SWIFT" for r in reps)
+
+    def test_various_cz_bics_masked(self) -> None:
+        from wrapper_mcp.maskit_patterns import regex_pre_pass
+        for bic in ("GIBACZPX", "KOMBCZPP", "CEKOCZPP", "AGBACZPP"):
+            out, _, _ = regex_pre_pass(f"SWIFT {bic} konec")
+            assert bic not in out, f"{bic} leaked"
