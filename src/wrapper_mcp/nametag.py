@@ -34,6 +34,25 @@ _NO_SPACE_BEFORE = frozenset({".", ",", ";", ":", "!", "?", ")", "]", "}", "%", 
 _NO_SPACE_AFTER = frozenset({"(", "[", "{", "/"})
 
 
+def _is_cjk_char(ch: str) -> bool:
+    """True pro CJK znak (Han / Hiragana / Katakana + rozšíření). CJK písma
+    nepíšou mezery mezi znaky uvnitř slova/jména."""
+    o = ord(ch)
+    return (
+        0x3040 <= o <= 0x30FF       # Hiragana + Katakana
+        or 0x3400 <= o <= 0x4DBF    # CJK Ext A
+        or 0x4E00 <= o <= 0x9FFF    # CJK Unified Ideographs
+        or 0xF900 <= o <= 0xFAFF    # CJK Compatibility Ideographs
+        or 0x20000 <= o <= 0x2A6DF  # CJK Ext B
+    )
+
+
+def is_cjk_text(s: str) -> bool:
+    """True pokud řetězec obsahuje aspoň jeden CJK znak a žádné mezery
+    (typické pro CJK jméno jako "王伟" / "田中健一")."""
+    return bool(s) and " " not in s and any(_is_cjk_char(c) for c in s)
+
+
 # --- Language auto-detection ---
 
 # Cyrilice (RU, UK, BG, SR-cyr, …) — pokud se v textu objeví, určitě non-CZ
@@ -140,6 +159,10 @@ def smart_join(tokens: list[str]) -> str:
         tok = tokens[i]
         prev = tokens[i - 1]
         if tok in _NO_SPACE_BEFORE or prev in _NO_SPACE_AFTER:
+            parts.append(tok)
+        elif prev and tok and _is_cjk_char(prev[-1]) and _is_cjk_char(tok[0]):
+            # CJK znaky se nelepí mezerou — NameTag vrací jméno po znacích
+            # (["王","伟"]); mezera by rozbila match s originálem "王伟".
             parts.append(tok)
         else:
             parts.append(" " + tok)

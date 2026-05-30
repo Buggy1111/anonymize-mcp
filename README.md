@@ -31,6 +31,33 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 - 🇫🇮 FI · 🇱🇹 LT · 🇱🇻 LV · 🇪🇪 ET · 🇩🇰 DA · 🇸🇪 SV · 🇳🇴 NO (Bokmål + Nynorsk)
 - 🇨🇳 ZH · 🇦🇪 AR · 🇹🇷 TR · 🇻🇳 VI · 🇮🇳 HI · 🇮🇱 HE · 🇯🇵 JA · 🇰🇷 KO · 🇹🇭 TH
 
+## Pro koho je tohle (sektory + use cases)
+
+Stress-tested napříč 9 sektory na **12.7KB cross-sektorovém spisu** — výsledek **94/94 unique PII chyceno** v jednom volání. Plus **international corpus 17/17** (US/UK/DE/FR/IT/ES/PL/RU/IN + crypto + akademické + fleet):
+
+| Sektor | Use case | PII které MCP zvládne |
+|---|---|---|
+| ⚖️ **Právo** | Anonymizace spisu před AI review, GDPR compliance | Jména, RČ, adresy, č.j., sp.zn., IBAN, OP, datovky |
+| 🏥 **Medicína** | Propouštěcí zprávy pro výzkum, statistika hospitalizací | RČ, IČZ, č. pojištěnce, kontakty lékaře — klinické kódy MKN-10 zachované |
+| 🎓 **Věda / akademie** | Peer review, citace v publikaci | ORCID, Researcher ID, e-maily kolegů, granty |
+| 💳 **Bankovnictví** | Compliance, výpisy do AI, vykazování | Č.ú., karta, IBAN, VS/KS/SS, header výpisu |
+| 🏠 **Reality / katastr** | Anonymizace výpisů z KN, smluv | LV, parcely, k.ú., vlastník + RČ + adresa |
+| 🚗 **Pojišťovny** | Likvidace škod, AI analýza | VIN, SPZ, č. pojistky, TP, OP, RČ pojištěného |
+| 📜 **Notáři** | Notářské zápisy pro AI summary | NZ, OP, datovka notáře, sp. zn. |
+| 📚 **Studijní oddělení** | Potvrzení o studiu, statistika studentů | UČO, studijní č., ISIC, kontakty studenta |
+| 🔬 **Výzkum / NGO** | Anonymizace korpusu pro etiku výzkumu | Vše výše + zachování klinických/právních kódů |
+
+Plus 35 jazyků v multilingvální stack (legal docs SK/EN/DE/PL/UK/RU/FR/HI/ES/IT/AR + 24 dalších otestovány na NER+morfologii, auto EN-pivot pro překlad mimo přímé Charles páry). **CJK jména (čínská/japonská) maskována od v0.8.4.**
+
+### Sektor #10 — International
+
+| Use case | PII které MCP zvládne |
+|---|---|
+| 🌍 **US/UK/DE/FR/IT/ES/PL/RU/IN dokumenty** | SSN, NIN, Steuer-ID, NIR, Codice Fiscale, DNI, PESEL, Aadhaar, PAN, cestovní pasy (8 jazyků) — auto bez `lang=` parametru |
+| 💰 **Crypto/Web3 outreach, smart contracts** | Bitcoin (Legacy/P2SH/Bech32/Taproot), Ethereum, Monero, XRP, TRON |
+| 🔐 **DevOps logs / API key leak detection** | OpenAI, Anthropic, OpenRouter, GitHub PAT, AWS, Google, Slack, Stripe tokeny |
+| 🏢 **Cross-border B2B** | Foreign companies (SARL/SAS/GmbH/AG/Ltd/LLC/Inc/SpA/SL/Sp. z o.o.) + EU VAT (28 zemí) + IBAN (30+ zemí) |
+
 ## Instalace
 
 Z PyPI (doporučeno):
