@@ -32,7 +32,7 @@ logging.basicConfig(
     level=_log_level,
     format="%(asctime)s [%(levelname)s] wrapper-mcp: %(message)s",
 )
-logger = logging.getLogger("wrapper_mcp")
+logger = logging.getLogger("anonymize_mcp")
 
 
 def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:

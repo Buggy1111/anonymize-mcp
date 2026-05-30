@@ -4,7 +4,7 @@ Locks the CJK fix (v0.8.4): NameTag returns CJK names character-by-character
 (["王","伟"]); they must be joined WITHOUT spaces so the result matches the
 original text and the anonymizer can find + mask it.
 """
-from wrapper_mcp.nametag import is_cjk_text, smart_join
+from anonymize_mcp.nametag import is_cjk_text, smart_join
 
 
 class TestSmartJoinCJK:

@@ -5,8 +5,8 @@ Each test corresponds to a bug found in the 23.5.2026 ultimate stress test
 """
 from __future__ import annotations
 
-from wrapper_mcp.langdetect import detect_language
-from wrapper_mcp.maskit_patterns import regex_pre_pass
+from anonymize_mcp.langdetect import detect_language
+from anonymize_mcp.maskit_patterns import regex_pre_pass
 
 
 def _placeholders_from(text: str) -> tuple[str, dict[str, str]]:

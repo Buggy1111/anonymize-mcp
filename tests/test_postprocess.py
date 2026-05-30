@@ -1,6 +1,6 @@
 """Unit testy pro maskit_postprocess layer (pure functions, no API calls)."""
 
-from wrapper_mcp.maskit_postprocess import (
+from anonymize_mcp.maskit_postprocess import (
     _build_placeholder_map,
     _is_preserve_acronym,
     anonymize_middle_names,
@@ -306,13 +306,13 @@ class TestBicMaskedByRegexPrePass:
     (and neither preserve layer may revert them). Regression for v0.8.4."""
 
     def test_regex_pre_pass_masks_bic(self) -> None:
-        from wrapper_mcp.maskit_patterns import regex_pre_pass
+        from anonymize_mcp.maskit_patterns import regex_pre_pass
         out, reps, _ = regex_pre_pass("Bankovní spojení BIC/SWIFT: CEKOCZPP.")
         assert "CEKOCZPP" not in out
         assert any(r.get("type") == "BIC/SWIFT" for r in reps)
 
     def test_various_cz_bics_masked(self) -> None:
-        from wrapper_mcp.maskit_patterns import regex_pre_pass
+        from anonymize_mcp.maskit_patterns import regex_pre_pass
         for bic in ("GIBACZPX", "KOMBCZPP", "CEKOCZPP", "AGBACZPP"):
             out, _, _ = regex_pre_pass(f"SWIFT {bic} konec")
             assert bic not in out, f"{bic} leaked"

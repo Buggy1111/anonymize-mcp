@@ -1,10 +1,10 @@
-# wrapper-mcp
+# anonymize-mcp
 
-<!-- mcp-name: io.github.Buggy1111/wrapper-mcp -->
+<!-- mcp-name: io.github.Buggy1111/anonymize-mcp -->
 
-[![CI](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Buggy1111/wrapper-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
-[![Python](https://img.shields.io/pypi/pyversions/wrapper-mcp.svg)](https://pypi.org/project/wrapper-mcp/)
+[![CI](https://github.com/Buggy1111/anonymize-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Buggy1111/anonymize-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/anonymize-mcp.svg)](https://pypi.org/project/anonymize-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/anonymize-mcp.svg)](https://pypi.org/project/anonymize-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, **production-grade anonymizace s 80+ PII patterny napříč 9 sektory + mezinárodním pokrytím (US/UK/DE/FR/IT/ES/PL/RU/IN, EU VAT 28 zemí, IBAN 30+ zemí, crypto, API tokeny)**, překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
@@ -63,32 +63,32 @@ Plus 35 jazyků v multilingvální stack (legal docs SK/EN/DE/PL/UK/RU/FR/HI/ES/
 Z PyPI (doporučeno):
 
 ```bash
-pip install wrapper-mcp
+pip install anonymize-mcp
 ```
 
 Nebo ze source:
 
 ```bash
-git clone https://github.com/Buggy1111/wrapper-mcp.git
-cd wrapper-mcp
+git clone https://github.com/Buggy1111/anonymize-mcp.git
+cd anonymize-mcp
 pip install -e .
 ```
 
 ## Registrace v MCP klientovi
 
-wrapper-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport). Po registraci a restartu klienta máš k dispozici 6 nástrojů:
+anonymize-mcp je standardní [MCP](https://modelcontextprotocol.io) server (stdio transport). Po registraci a restartu klienta máš k dispozici 6 nástrojů:
 
-- `mcp__wrapper__extract_entities` — multilingvální NER (35 jazyků auto-detect)
-- `mcp__wrapper__anonymize` — production-grade pseudonymizace CZ (regex pre-pass + stop-list + placeholder mode)
-- `mcp__wrapper__analyze_morphology` — morfologie 35 jazyků auto-detect (UDPipe 961 modelů)
-- `mcp__wrapper__check_readability` — čitelnost CZ (4 feature sety)
-- `mcp__wrapper__correct_text` — spell check + diakritika CZ
-- `mcp__wrapper__translate_text` — překlad mezi 8 jazyky
+- `mcp__anonymize__extract_entities` — multilingvální NER (35 jazyků auto-detect)
+- `mcp__anonymize__anonymize` — production-grade pseudonymizace CZ (regex pre-pass + stop-list + placeholder mode)
+- `mcp__anonymize__analyze_morphology` — morfologie 35 jazyků auto-detect (UDPipe 961 modelů)
+- `mcp__anonymize__check_readability` — čitelnost CZ (4 feature sety)
+- `mcp__anonymize__correct_text` — spell check + diakritika CZ
+- `mcp__anonymize__translate_text` — překlad mezi 8 jazyky
 
 ### Claude Code (terminál)
 
 ```bash
-claude mcp add wrapper -s user -- wrapper-mcp
+claude mcp add anonymize -s user -- anonymize-mcp
 ```
 
 ### Claude Desktop
@@ -101,24 +101,24 @@ nebo `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 ```json
 {
   "mcpServers": {
-    "wrapper": {
-      "command": "wrapper-mcp"
+    "anonymize": {
+      "command": "anonymize-mcp"
     }
   }
 }
 ```
 
-**Nová Claude Desktop** (Microsoft Store / appx package, "Cowork" UI): k 05/2026 podporuje pouze **remote MCP servery přes HTTP URL**. Lokální stdio MCP servery jako `wrapper-mcp` zde **přidat nelze**.
+**Nová Claude Desktop** (Microsoft Store / appx package, "Cowork" UI): k 05/2026 podporuje pouze **remote MCP servery přes HTTP URL**. Lokální stdio MCP servery jako `anonymize-mcp` zde **přidat nelze**.
 
-> Na Windows může být `wrapper-mcp.exe` mimo PATH (typicky `C:\Python\Python3xx\Scripts\wrapper-mcp.exe`). V configu pak použij plnou cestu.
+> Na Windows může být `anonymize-mcp.exe` mimo PATH (typicky `C:\Python\Python3xx\Scripts\anonymize-mcp.exe`). V configu pak použij plnou cestu.
 
 ### OpenAI Codex CLI _(autorem netestováno)_
 
 Edituj `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.wrapper]
-command = "wrapper-mcp"
+[mcp_servers.anonymize]
+command = "anonymize-mcp"
 ```
 
 ### Cursor _(autorem netestováno)_
@@ -128,8 +128,8 @@ Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "wrapper": {
-      "command": "wrapper-mcp"
+    "anonymize": {
+      "command": "anonymize-mcp"
     }
   }
 }
@@ -137,7 +137,7 @@ Edituj `.cursor/mcp.json` v projektu (nebo globálně `~/.cursor/mcp.json`):
 
 ### Windsurf, Cline, Zed, VS Code Copilot Agent _(autorem netestováno)_
 
-Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "wrapper-mcp"` (případně absolutní cesta).
+Stejný `mcpServers` JSON formát — viz dokumentace daného klienta. `command: "anonymize-mcp"` (případně absolutní cesta).
 
 ## Použití
 
@@ -155,15 +155,15 @@ V Claude Code stačí napsat například:
 
 ## Autor
 
-`wrapper-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR.
+`anonymize-mcp` napsal **Michal Bürgermeister** ([@Buggy1111](https://github.com/Buggy1111), michalbugy12@gmail.com) — nezávislý vývojář z ČR.
 
 Wrapper kolem skvělých nástrojů ÚFAL MFF UK — bez NameTag, MasKIT, UDPipe, PONK, Korektor a Charles Translator by tenhle MCP server neexistoval. Díky celému ÚFAL týmu (Jana Straková, Milan Straka, Jiří Mírovský, Barbora Hladká, Silvie Cinková a další) za roky práce na production-grade NLP nástrojích pro češtinu.
 
-Issues, PR a feedback jsou vítané na [github.com/Buggy1111/wrapper-mcp](https://github.com/Buggy1111/wrapper-mcp).
+Issues, PR a feedback jsou vítané na [github.com/Buggy1111/anonymize-mcp](https://github.com/Buggy1111/anonymize-mcp).
 
 ## Licence
 
-Tento wrapper má **MIT licenci** (viz `LICENSE`).
+Tento nástroj má **MIT licenci** (viz `LICENSE`).
 
 Pod ním jsou čtyři samostatné nástroje, každý s vlastní licencí:
 
@@ -174,7 +174,7 @@ Pod ním jsou čtyři samostatné nástroje, každý s vlastní licencí:
 | **MasKIT** | Jiří Mírovský, Barbora Hladká | MPL 2.0 | (rule-based) |
 | **PONK** | Jiří Mírovský, Silvie Cinková, Barbora Hladká + autoři podaplikací: Ivan Kraus, Arnold Stanovský, Jan Černý, Ivana Kvapilíková, Tomáš Polák, Silvie Cinková | MPL 2.0 | (rule-based + UDPipe → CC BY-NC-SA) |
 
-**Důležité**: tento wrapper nevolá lokální instalaci, ale **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Bezplatné pro akademické a osobní použití. Hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
+**Důležité**: tento nástroj nevolá lokální instalaci, ale **veřejné API služby** (`lindat.mff.cuni.cz`, `quest.ms.mff.cuni.cz`). Bezplatné pro akademické a osobní použití. Hromadný / placený / produkční traffic vyžaduje explicitní souhlas autorů a provozovatele API.
 
 ## Bezpečnost
 
@@ -206,7 +206,7 @@ python test_live.py
 PyPI publish je automatický přes [Trusted Publisher (OIDC)](https://docs.pypi.org/trusted-publishers/).
 
 ```bash
-# Bump version v pyproject.toml a src/wrapper_mcp/__init__.py
+# Bump version v pyproject.toml a src/anonymize_mcp/__init__.py
 git commit -am "release: v0.X.0"
 git tag v0.X.0
 git push origin main --tags
