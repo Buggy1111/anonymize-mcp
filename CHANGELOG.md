@@ -2,6 +2,11 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.9.1] — 2026-05-30
+
+### Added
+- MCP Registry **display title** „Czech PII Anonymizer & NLP" + `websiteUrl` (server.json) — registr teď ukazuje čitelný název místo syrového namespace.
+
 ## [0.9.0] — 2026-05-30
 
 ### 📛 Renamed — `wrapper-mcp` → `anonymize-mcp`
