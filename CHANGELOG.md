@@ -13,7 +13,16 @@ Multilingvální sken z v0.8.3 označil CJK holá jména jako "limit NER". **Po 
 
 Výsledek: `我叫王伟` → `我叫OSOBA1`, `田中健一` → `OSOBA1`. CJK jména přesunuta z `xfail` do asertovaných multilingválních testů; přidán offline unit test `test_nametag.py` (smart_join / is_cjk_text) → chrání fix i v CI.
 
-**Stav:** offline (CI) 231 passed; full suite 281 passed; ruff + mypy --strict clean.
+### 🏦 Fixed — BIC/SWIFT kódy se teď maskují (finanční PII)
+
+Systematický **sektorový stress** (12.7KB cross-sektorový spis, 97 PII markerů napříč 9 sektory) odhalil 1 leak: BIC/SWIFT kód `CEKOCZPP`. Codebase si odporoval — masking pattern ho maskoval, ale **dva** preserve mechanismy ho revertovaly zpět (`_is_preserve_acronym` + `_protect_preserve_formats` v MasKIT pipeline). Rozhodnutí: BIC/SWIFT = finanční PII (prozradí banku osoby) → **maskovat**. Oba preserve mechanismy pro BIC odebrány; `test_bic_format` obrácen na `test_bic_not_preserved` + nový offline test `regex_pre_pass` masking. **Sektory: 97/97 (100%).**
+
+### 🌍 Systematický jazykový stress
+
+11 jazykových korpusů (AR/DE/EN/ES/FR/HI/IT/PL/RU/SK/UK, ~1.2KB realistické dokumenty) přes anonymizaci → **11/11 clean** (0 leaků emailů/telefonů/audit residuí). Plus `test_multilingual_leaks.py` (15 jazyků + CJK). Přidán permanentní `test_sector_leaks.py` (9 sektorů + zachování klinických kódů MKN-10).
+
+### ✅ Stav
+offline (CI) 233 passed; full suite 293 passed; ruff + mypy --strict clean; build OK. **Sektory 97/97, jazyky 11/11.** README: vrácena sektorová tabulka (Právo/Medicína/Věda/Bankovnictví/Reality/Pojišťovny/Notáři/Studijní/Výzkum) odstraněná při v0.8.0 rename.
 
 ## [0.8.3] — 2026-05-29
 
