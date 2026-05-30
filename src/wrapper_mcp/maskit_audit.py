@@ -28,15 +28,11 @@ from __future__ import annotations
 import re
 from typing import Any, Literal
 
-from .maskit_constants import _TYPE_TO_PREFIX
+from .maskit_constants import build_placeholder_re
 
-# Build placeholder detection regex once (all known prefixes + their numeric suffix).
-_PLACEHOLDER_PREFIXES = sorted(
-    set(_TYPE_TO_PREFIX.values()) | {"ENTITA"}, key=len, reverse=True
-)
-_PLACEHOLDER_RE = re.compile(
-    r"\b(?:" + "|".join(re.escape(p) for p in _PLACEHOLDER_PREFIXES) + r")\d+\b"
-)
+# Placeholder detection regex (all known prefixes + numeric suffix), shared via
+# maskit_constants so maskit / maskit_audit nemají duplicitní konstrukci.
+_PLACEHOLDER_RE = build_placeholder_re()
 
 # Severity → display label
 Severity = Literal["critical", "high", "medium"]

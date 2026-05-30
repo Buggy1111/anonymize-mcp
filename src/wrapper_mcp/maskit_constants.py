@@ -7,6 +7,8 @@ Předchozí pokusy selhaly (__PIIPRE__, §§§, xqxqxq) protože MasKIT je token
 
 from __future__ import annotations
 
+import re
+
 # Single PUA character per sentinel — žádné cifry/text uvnitř které by
 # MasKIT mohl tokenizovat jako číslo nebo entitu.
 _PII_SENT_BASE = 0xE100  # Range U+E100..U+E1FF = 256 sentinely (dostatečné)
@@ -25,6 +27,11 @@ def make_strict_sentinel(idx: int) -> str:
     if idx >= 256:
         raise ValueError(f"STRICT sentinel index out of range: {idx} (max 255)")
     return chr(_STR_SENT_BASE + idx)
+
+
+def is_sentinel_char(ch: str) -> bool:
+    """True pokud je znak PUA sentinel (U+E100..U+E2FF) — PII i strict rozsah."""
+    return _PII_SENT_BASE <= ord(ch) <= _STR_SENT_BASE + 0xFF
 
 
 # Mapování CNEC entity types (a wrapper labels) na placeholder prefixy.
@@ -139,3 +146,14 @@ _TYPE_TO_PREFIX: dict[str, str] = {
     "CJK osoba (EN context)": "OSOBA",
     "CJK adresa": "MESTO",
 }
+
+
+# Všechny placeholder prefixy (OSOBA, FIRMA, MESTO, …) seřazené od nejdelších,
+# aby regex alternace nepreferovala kratší prefix. Sdíleno mezi maskit /
+# maskit_audit (detekce existujících placeholderů).
+PLACEHOLDER_PREFIXES = sorted(set(_TYPE_TO_PREFIX.values()) | {"ENTITA"}, key=len, reverse=True)
+
+
+def build_placeholder_re() -> re.Pattern[str]:
+    """Regex matchující jakýkoli placeholder + číslo (OSOBA1, FIRMA2, …)."""
+    return re.compile(r"\b(?:" + "|".join(re.escape(p) for p in PLACEHOLDER_PREFIXES) + r")\d+\b")
