@@ -15,7 +15,7 @@ from typing import Any
 
 from .http import NAMETAG_URL, post_form
 from .maskit_constants import _TYPE_TO_PREFIX
-from .nametag import parse_conll
+from .nametag import is_cjk_text, parse_conll
 
 # Entity types které se anonymizují v NameTag fallback.
 # CZ CNEC: P/pf/ps (osoby), gu/gs/gc/gr (geo), io/if/ic/i_ (instituce/firmy),
@@ -241,7 +241,13 @@ async def nametag_fallback(
         # "MESTSKÝ" se nahradí, nebo "EUR" v "europský". \w v Py3 zahrnuje
         # unicode písmena a číslice, takže pattern selže pokud original
         # sousedí s písmenem/číslicí — což je přesně co chceme.
-        pattern = re.compile(r"(?<!\w)" + re.escape(original) + r"(?!\w)")
+        # CJK jména ("王伟") ale nemají mezery a sousedí s dalšími Han znaky
+        # (我叫王伟), takže \w-guard by je nikdy nematchnul → pro CJK nahrazuj
+        # bez hranice (přesný multi-znakový řetězec, riziko false-pos nízké).
+        if is_cjk_text(original):
+            pattern = re.compile(re.escape(original))
+        else:
+            pattern = re.compile(r"(?<!\w)" + re.escape(original) + r"(?!\w)")
         new_anon, n_subs = pattern.subn(new_plc, anonymized)
         if n_subs == 0:
             # Word boundary nematchne (např. originál obsahuje non-word chars

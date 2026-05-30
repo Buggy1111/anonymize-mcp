@@ -2,6 +2,19 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.4] — 2026-05-30
+
+### 🀄 Fixed — CJK jména (čínská/japonská) se teď maskují
+
+Multilingvální sken z v0.8.3 označil CJK holá jména jako "limit NER". **Po prozkoumání to byl bug, ne limit** — NameTag UNER čínská/japonská jména taguje správně (PER), ale prosakovala kvůli dvěma chybám v sestavování:
+
+- **`smart_join` vkládal mezery mezi CJK znaky** — NameTag vrací jméno po znacích (`["王","伟"]`), výsledek `"王 伟"` nematchoval originál `"王伟"` → anonymizace ho nenašla. Fix: mezi dvěma CJK znaky se mezera nevkládá (`_is_cjk_char`).
+- **Word-boundary replace guard `(?<!\w)…(?!\w)`** nikdy nematchnul mezi Han znaky (jsou `\w`, žádná hranice). Fix: pro CJK řetězce (`is_cjk_text`) se nahrazuje bez hranice (přesný multi-znakový řetězec, riziko false-pos nízké).
+
+Výsledek: `我叫王伟` → `我叫OSOBA1`, `田中健一` → `OSOBA1`. CJK jména přesunuta z `xfail` do asertovaných multilingválních testů; přidán offline unit test `test_nametag.py` (smart_join / is_cjk_text) → chrání fix i v CI.
+
+**Stav:** offline (CI) 231 passed; full suite 281 passed; ruff + mypy --strict clean.
+
 ## [0.8.3] — 2026-05-29
 
 ### 🌍 Multilingvální leak coverage + mypy --strict + coverage

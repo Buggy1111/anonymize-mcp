@@ -9,9 +9,10 @@ marker disappears from the output.
 These hit the live LINDAT/ÚFAL API → marked `network`, skipped in CI, run
 locally with `pytest` (network available).
 
-Known limitation, recorded as xfail: NameTag UNER does not reliably tag bare
-CJK personal names (Chinese/Japanese) — structured PII in CJK text is still
-masked by the language-agnostic regex pre-pass, only the bare name leaks.
+CJK names (Chinese/Japanese): NameTag UNER *does* tag them — they were leaking
+only because token reassembly inserted spaces ("王 伟" ≠ "王伟") and the
+word-boundary replace guard never matched between Han characters. Fixed in
+v0.8.4, so CJK names are asserted here too.
 """
 from __future__ import annotations
 
@@ -85,13 +86,16 @@ LEAK_CORPUS: list[tuple[str, str, list[str]]] = [
       "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"]),
 ]
 
-# CJK / Arabic text: bare personal names are a known NER gap, but structured PII
-# (e-mail, phone) must still be caught by the language-agnostic regex pre-pass.
-CJK_STRUCTURED: list[tuple[str, str, list[str]]] = [
+# CJK / Arabic text: names + structured PII. CJK names are masked since v0.8.4
+# (smart_join / boundary fix); Arabic asserts structured PII (Arabic-name NER
+# coverage is thinner).
+CJK_CORPUS: list[tuple[str, str, list[str]]] = [
     ("ZH", "我叫王伟，电子邮件 wang.wei@example.cn，电话 +86 138 0013 8000。",
-     ["wang.wei@example.cn", "+86 138 0013 8000"]),
+     ["王伟", "wang.wei@example.cn", "+86 138 0013 8000"]),
+    ("ZH2", "联系人：王伟 和 李娜。邮箱 li.na@example.cn。",
+     ["王伟", "李娜", "li.na@example.cn"]),
     ("JA", "私の名前は田中健一です。メール tanaka.kenichi@example.jp、電話 +81 90 1234 5678。",
-     ["tanaka.kenichi@example.jp", "+81 90 1234 5678"]),
+     ["田中健一", "tanaka.kenichi@example.jp", "+81 90 1234 5678"]),
     ("AR", "اسمي أحمد الخطيب، البريد ahmed.alkhatib@mithal.sa، الهاتف +966 50 123 4567.",
      ["ahmed.alkhatib@mithal.sa", "+966 50 123 4567"]),
 ]
@@ -108,22 +112,10 @@ async def test_no_pii_leak(lang: str, text: str, must_mask: list[str]) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("lang,text,must_mask", CJK_STRUCTURED, ids=[c[0] for c in CJK_STRUCTURED])
-async def test_cjk_structured_pii_masked(lang: str, text: str, must_mask: list[str]) -> None:
-    """Even where NER misses CJK names, structured PII (e-mail/phone) is masked."""
+@pytest.mark.parametrize("lang,text,must_mask", CJK_CORPUS, ids=[c[0] for c in CJK_CORPUS])
+async def test_cjk_arabic_no_leak(lang: str, text: str, must_mask: list[str]) -> None:
+    """CJK names + structured PII (and Arabic structured PII) must all be masked."""
     res = await anonymize_text(text, placeholder_mode=True, audit=True)
     anon = res["anonymized"]
     leaked = [m for m in must_mask if m in anon]
-    assert not leaked, f"[{lang}] leaked structured PII: {leaked}\nanonymized:\n{anon}"
-
-
-@pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="NameTag UNER does not reliably tag bare CJK personal names — known "
-           "limitation; structured PII in CJK text is still masked (see above).",
-    strict=False,
-)
-async def test_cjk_bare_name_known_gap() -> None:
-    """Records the CJK bare-name gap: if this ever XPASSes, NER improved — revisit."""
-    res = await anonymize_text("我叫王伟。", placeholder_mode=True)
-    assert "王伟" not in res["anonymized"]
+    assert not leaked, f"[{lang}] leaked PII: {leaked}\nanonymized:\n{anon}"
