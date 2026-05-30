@@ -1327,7 +1327,8 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Katastrální území
     (
         re.compile(
-            r"((?:k\.\s?ú\.|katastrální\s+území)[:\s]+)([A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+(?:[\s-][A-ZÁ-Ža-záčďéěíňóřšťúůýž]+)?)",
+            r"((?:k\.\s?ú\.|katastrální\s+území)[:\s]+)(\d{6}|[A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+(?:[\s-][A-ZÁ-Ža-záčďéěíňóřšťúůýž]+)?)",
+            re.IGNORECASE,
         ),
         "KU", "katastrální území",
     ),
@@ -1371,7 +1372,7 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Studijní číslo / IČZ studenta (varies — most universities use 6-10 digit IDs)
     (
         re.compile(
-            r"((?:studijní\s+č(?:íslo)?|os\.\s+č(?:íslo)?\s+studenta|UČO|VŠ\s+ID)[:\s]+)(\d{4,10})\b",
+            r"((?:studijní\s+č(?:íslo)?|os\.\s+č(?:íslo)?\s+studenta|UČO|VŠ\s+ID)[:\s]+)([A-Z]{0,2}\d{4,10}[A-Z]?)\b",
             re.IGNORECASE,
         ),
         "STUDENT_ID", "studijní číslo",
