@@ -1,11 +1,13 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Buggy1111/anonymize-mcp",
+  "title": "Czech PII Anonymizer & NLP",
   "description": "Czech NLP tools: NER (35 langs), anonymization (80+ PII), morphology, translation, spellcheck",
   "repository": {
     "url": "https://github.com/Buggy1111/anonymize-mcp",
     "source": "github"
   },
+  "websiteUrl": "https://github.com/Buggy1111/anonymize-mcp",
   "version": "0.9.0",
   "packages": [
     {
