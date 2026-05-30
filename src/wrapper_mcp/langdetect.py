@@ -271,26 +271,6 @@ _LATIN_MARKERS: list[tuple[str, "re.Pattern[str]", int]] = [
 # 3. DETEKCE
 # ============================================================================
 
-# UDPipe model alias pro každý detekovaný jazyk
-UDPIPE_ALIASES: dict[str, str] = {
-    "czech": "czech", "slovak": "slovak",
-    "ukrainian": "ukrainian", "russian": "russian", "bulgarian": "bulgarian",
-    "polish": "polish", "german": "german", "english": "english",
-    "french": "french", "italian": "italian", "spanish": "spanish",
-    "portuguese": "portuguese", "dutch": "dutch",
-    "romanian": "romanian", "slovenian": "slovenian",
-    "croatian": "croatian", "serbian": "serbian",
-    "finnish": "finnish", "lithuanian": "lithuanian",
-    "latvian": "latvian", "estonian": "estonian",
-    "danish": "danish", "swedish": "swedish", "norwegian": "norwegian",
-    "greek": "greek", "hungarian": "hungarian",
-    "arabic": "arabic", "hebrew": "hebrew",
-    "chinese": "chinese", "japanese": "japanese", "korean": "korean",
-    "vietnamese": "vietnamese", "thai": "thai", "hindi": "hindi",
-    "turkish": "turkish",
-}
-
-
 # Vietnamština: jen JEDNOZNAČNÉ VI chars (ne ô/â/ă/ê/ố — ty sdílí SK/CZ/HR/atd.)
 # Slovak má "môj"/"môže" (U+00F4), takže ô nesmí být VI signál.
 # Distinktivní pro VI: ư/ơ/đ (s tail-háčkem), plus složeniny ễ/ử/ự/ợ/ờ/ằ/ặ/ề
@@ -497,12 +477,3 @@ def detect_language(text: str) -> str:
     if not has_latin_word:
         return "unknown"
     return "czech"
-
-
-def is_non_czech(text: str) -> bool:
-    """True pokud text NEJSPÍŠE není česky.
-
-    Použito v NameTag pro switch CZ CNEC ↔ multilingvální UNER.
-    """
-    lang = detect_language(text)
-    return lang != "czech"

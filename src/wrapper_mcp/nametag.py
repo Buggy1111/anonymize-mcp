@@ -109,16 +109,6 @@ _SLOVAK_MARKERS = re.compile(
 )
 
 
-def detect_non_czech(text: str) -> bool:
-    """Heuristika: True pokud text vypadá NEčesky.
-
-    Používá sjednocenou ``langdetect.detect_language`` (sdílenou s UDPipe).
-    Vrátí False jen pokud detekovaný jazyk je `czech`.
-    """
-    from .langdetect import is_non_czech
-    return is_non_czech(text)
-
-
 def resolve_model(model: str, text: str) -> tuple[str, str | None]:
     """Přeloží `model` na konkrétní jméno + vrátí detekovaný jazyk pro auto.
 

@@ -2,6 +2,18 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.7] — 2026-05-30
+
+### 🧹 Audit & refactoring — čistota kódu, hygiena
+
+Kompletní audit (security + kvalita). **Security čistá** (0 eval/exec/secrets, hardcoded LINDAT URL = žádný SSRF, timeouty, pip-audit 0 vulns, žádný ReDoS — pathologický vstup 20KB za 0.07s). Kvalita nadprůměrná; drobné cleanupy:
+- **Mrtvý kód smazán** (−30 ř.): `detect_non_czech` + `is_non_czech` (nepoužité) + `UDPIPE_ALIASES` (mrtvý dict po refaktoru langdetect).
+- **Dedup placeholder regexu** — sdílený `build_placeholder_re()` + `PLACEHOLDER_PREFIXES` v `maskit_constants` (dřív duplicitní v maskit.py i maskit_audit.py).
+- **`is_sentinel_char()` helper** — nahrazen magic `0xE100…0xE2FF` jediným zdrojem pravdy.
+- Aktualizovaný `postprocess` docstring (5 → 9 kroků).
+
+Žádná změna chování. Sektory 97/97, jazyky 11/11, 252 offline testů, ruff + mypy --strict clean.
+
 ## [0.8.6] — 2026-05-30
 
 ### 🔍 Fixed — gap hunt napříč všemi tooly a sektory

@@ -26,7 +26,7 @@ from typing import Any, Literal
 
 from .http import MASKIT_URL, post_form
 from .maskit_audit import ResidualPIILeak, audit_residual_pii, audit_summary
-from .maskit_constants import _TYPE_TO_PREFIX
+from .maskit_constants import build_placeholder_re, is_sentinel_char
 from .maskit_normalize import normalization_summary, normalize_input
 from .maskit_parsing import (
     _MASKIT_PLACEHOLDER as _MASKIT_PLACEHOLDER_for_rebuild,
@@ -48,10 +48,7 @@ from .nametag import classify_originals
 # aby je MasKIT/NameTag nepreznacily/nekorumpovaly. Resi H1 idempotence bug:
 # anonymize(anonymize(x)) musi == anonymize(x).
 _IDEMPOTENCE_SENT_BASE = 0xE300
-_KNOWN_PREFIXES = sorted(set(_TYPE_TO_PREFIX.values()) | {"ENTITA"}, key=len, reverse=True)
-_EXISTING_PLACEHOLDER_RE = re.compile(
-    r"\b(?:" + "|".join(re.escape(p) for p in _KNOWN_PREFIXES) + r")\d+\b"
-)
+_EXISTING_PLACEHOLDER_RE = build_placeholder_re()
 
 
 def _protect_existing_placeholders(text: str) -> tuple[str, dict[str, str]]:
@@ -356,7 +353,7 @@ async def anonymize_text(
             if r.get("source") == "maskit":
                 orig = r.get("original", "")
                 # Skip pokud MasKIT zpracoval PUA sentinel jako entitu
-                if any(0xE100 <= ord(c) <= 0xE2FF for c in orig):
+                if any(is_sentinel_char(c) for c in orig):
                     continue
                 type_label = r.get("type", "neznámé")
                 new_plc = registry.assign(orig, type_label)

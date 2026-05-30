@@ -836,7 +836,11 @@ def postprocess(
     2. Strip compound connector leak — "MESTO1za" → "MESTO1"
     3. Institutional revert — vrátit "OSOBA1 OSOBA2 z OSOBA3" v institucích zpět
     4. Preserved acronyms revert — "INSTITUCE1 STAT1" (GA ČR) → "GA ČR"
-    5. Middle name capture — "OSOBA1 Garrigue OSOBA2" → "OSOBA1 OSOBA3 OSOBA2"
+    5. Extend institution names — dotáhnout název instituce
+    6. Middle name capture — "OSOBA1 Garrigue OSOBA2" → "OSOBA1 OSOBA3 OSOBA2"
+    7. Facility names — zařízení (nemocnice, školy…)
+    8. Company prefix capture — firma před placeholderem
+    9. International companies — zahraniční právní formy (GmbH/Ltd/SARL…)
     """
     anonymized, replacements = merge_compound_cities(anonymized, replacements, original_text)
     anonymized = strip_compound_connector_leak(anonymized)
