@@ -44,6 +44,12 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"https?://[^\s\"'<>]+"), "URL", "URL/web"),
     # E-mail
     (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"), "EMAIL", "e-mail"),
+    # VIN standalone — 17 znaků, bez I/O/Q, uppercase, musí mít písmeno i
+    # číslici (struktura VIN). Chytá i bez kontextového slova ("Auto WAUZZ…").
+    (re.compile(
+        r"\b(?=[A-HJ-NPR-Z0-9]{17}\b)(?=[A-HJ-NPR-Z0-9]*[0-9])"
+        r"(?=[A-HJ-NPR-Z0-9]*[A-Z])[A-HJ-NPR-Z0-9]{17}\b"
+    ), "VIN", "VIN"),
     # Slovní datumy CZ — "23. března 1972", "1. září 2025", "15. června 2024".
     # Tečka za dnem volitelná. Mezery flexibilní.
     (
@@ -1329,7 +1335,9 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # VIN (Vehicle Identification Number) — 17 znaků, žádné I/O/Q. Context-based.
     (
         re.compile(
-            r"(VIN(?:\s+číslo)?[:\s]+)([A-HJ-NPR-Z0-9]{17})\b",
+            r"((?:VIN(?:\s+kód|\s+číslo)?|podvozkov\w+\s+číslo|"
+            r"číslo\s+(?:podvozku|karoserie)|identifikační\s+číslo\s+vozidla)"
+            r"[:\s]+)([A-HJ-NPR-Z0-9]{17})\b",
             re.IGNORECASE,
         ),
         "VIN", "VIN",
