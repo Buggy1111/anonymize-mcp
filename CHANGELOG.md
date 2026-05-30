@@ -2,6 +2,18 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.6] — 2026-05-30
+
+### 🔍 Fixed — gap hunt napříč všemi tooly a sektory
+
+Systematický průzkum děr (per-PII-typ napříč 9 sektory + robustnost 6 toolů) našel 2 near-miss leaky v `anonymize` (value group patternu moc úzký):
+- **k.ú. kód** — katastrální území se 6místným kódem (`Katastrální území 795470`) prosakovalo: pattern bral jen NÁZEV a chyběl `re.IGNORECASE` (velké K na začátku věty). Fix: `\d{6}` alternativa + IGNORECASE.
+- **studijní číslo** s písmenem (`S12345`) — pattern bral jen `\d{4,10}`. Fix: `[A-Z]{0,2}\d{4,10}[A-Z]?`.
+
+**Robustnost 6 toolů ověřena** (extract_entities / anonymize / analyze_morphology / check_readability / correct_text / translate_text) na edge vstupech (empty/whitespace/special-chars/NUL/dlouhý/non-CZ/1-znak): vše OK; empty/whitespace vrací řízenou `ValidationError` (záměr), žádný neřízený crash.
+
+Offline testy `test_misc_pii.py`. offline (CI) 252 passed; ruff + mypy --strict clean.
+
 ## [0.8.5] — 2026-05-30
 
 ### 🚗 Fixed — VIN (čísla podvozku) se maskují robustně

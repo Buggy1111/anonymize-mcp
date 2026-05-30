@@ -6,12 +6,12 @@
     "url": "https://github.com/Buggy1111/wrapper-mcp",
     "source": "github"
   },
-  "version": "0.8.5",
+  "version": "0.8.6",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "wrapper-mcp",
-      "version": "0.8.5",
+      "version": "0.8.6",
       "transport": {
         "type": "stdio"
       }
