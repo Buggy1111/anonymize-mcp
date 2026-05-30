@@ -1,5 +1,5 @@
 """Unit testy pro language detection."""
-from wrapper_mcp.langdetect import detect_language
+from anonymize_mcp.langdetect import detect_language
 
 
 class TestCzechDetection:

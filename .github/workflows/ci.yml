@@ -49,11 +49,11 @@ jobs:
 
       - name: Import smoke test
         run: |
-          python -c "from wrapper_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('wrapper_mcp').__version__)"
+          python -c "from anonymize_mcp.server import mcp, anonymize, extract_entities, analyze_morphology, check_readability; print('OK, version:', __import__('anonymize_mcp').__version__)"
 
       - name: Run test suite (offline — PII anonymization core) + coverage
         run: |
-          python -m pytest -m "not network" --cov=wrapper_mcp --cov-report=term-missing --cov-fail-under=35 -q
+          python -m pytest -m "not network" --cov=anonymize_mcp --cov-report=term-missing --cov-fail-under=35 -q
         # Network-marked tests call the live LINDAT/ÚFAL API and are run locally,
         # not in CI (external dependency would make CI flaky). The offline suite
         # covers the regex/MasKIT leak-detection patterns — the security core.

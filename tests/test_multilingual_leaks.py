@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from wrapper_mcp.maskit import anonymize_text
+from anonymize_mcp.maskit import anonymize_text
 
 pytestmark = pytest.mark.network
 

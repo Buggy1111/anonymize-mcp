@@ -16,7 +16,7 @@ Coverage:
 """
 from __future__ import annotations
 
-from wrapper_mcp.maskit_patterns import regex_pre_pass
+from anonymize_mcp.maskit_patterns import regex_pre_pass
 
 
 def _by_type(text: str) -> dict[str, list[str]]:
@@ -259,7 +259,7 @@ def test_json_prefix_preserved() -> None:
     punctuation z group(1). Bug v0.7.28: `{\"name\":\"Jan_[Jiří]` parsed as
     group(1)=`{\"name\":\"Jan`, output started with `OSOBA1...` and
     `{\"name\":\"` was eaten."""
-    from wrapper_mcp.maskit_parsing import parse_maskit
+    from anonymize_mcp.maskit_parsing import parse_maskit
     raw = '{"name":"Jan_[Jiří]","ssn":"123"}'
     anonymized, reps = parse_maskit(raw)
     # JSON prefix must survive
@@ -273,7 +273,7 @@ def test_json_prefix_preserved() -> None:
 
 
 def test_sql_prefix_preserved() -> None:
-    from wrapper_mcp.maskit_parsing import parse_maskit
+    from anonymize_mcp.maskit_parsing import parse_maskit
     raw = "INSERT INTO users VALUES ('Jan_[Jiří]', 'X');"
     anonymized, _ = parse_maskit(raw)
     assert anonymized.startswith("INSERT INTO users VALUES ('"), (
@@ -284,7 +284,7 @@ def test_sql_prefix_preserved() -> None:
 def test_maskit_placeholder_bracket_format() -> None:
     """MasKIT občas generuje `[pf_#NN]_[orig]` fallback formát pro non-CZ
     jména (Juan/João/Carlos). v0.7.29: regex podporuje OBA varianty."""
-    from wrapper_mcp.maskit_parsing import _MASKIT_PLACEHOLDER
+    from anonymize_mcp.maskit_parsing import _MASKIT_PLACEHOLDER
     m = _MASKIT_PLACEHOLDER.search("[pf_#10]_[Juan]")
     assert m is not None, "[pf_#10]_[Juan] not matched"
     assert m.group(1) == "[pf_#10]"

@@ -2,6 +2,23 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.9.0] — 2026-05-30
+
+### 📛 Renamed — `wrapper-mcp` → `anonymize-mcp`
+
+Anonymizace je hlavní (killer) feature → název ho teď reflektuje. Balík, modul, MCP namespace i server alias přejmenovány.
+
+- **PyPI balík**: `wrapper-mcp` → **`anonymize-mcp`** (`pip install anonymize-mcp`).
+- **Python modul**: `wrapper_mcp` → `anonymize_mcp` (`from anonymize_mcp.maskit import anonymize_text`).
+- **MCP registry namespace**: `io.github.Buggy1111/anonymize-mcp`.
+- **CLI/server alias** v příkladech: `anonymize` (dřív `wrapper`).
+- Aktualizovány README, server.json, CI, pyproject, repo URL.
+
+Žádná změna chování ani API toolů. Sektory 97/97, jazyky 11/11, 252 offline testů, ruff + mypy --strict clean.
+
+> **Migrace pro uživatele:** `pip uninstall wrapper-mcp && pip install anonymize-mcp`. Starý balík `wrapper-mcp` zůstává na PyPI (poslední verze 0.8.7) s odkazem sem.
+> **Historie jmen:** `ufal-mcp` (do 25.5.) → `wrapper-mcp` (25.–30.5.) → `anonymize-mcp` (od 0.9.0).
+
 ## [0.8.7] — 2026-05-30
 
 ### 🧹 Audit & refactoring — čistota kódu, hygiena

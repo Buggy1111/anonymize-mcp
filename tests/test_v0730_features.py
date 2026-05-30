@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import pytest
 
-from wrapper_mcp.maskit import anonymize_text
-from wrapper_mcp.maskit_audit import (
+from anonymize_mcp.maskit import anonymize_text
+from anonymize_mcp.maskit_audit import (
     ResidualPIILeak,
     audit_residual_pii,
     audit_summary,
 )
-from wrapper_mcp.maskit_normalize import normalization_summary, normalize_input
+from anonymize_mcp.maskit_normalize import normalization_summary, normalize_input
 
 # ===========================================================================
 # Audit layer

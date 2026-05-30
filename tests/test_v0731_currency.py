@@ -9,7 +9,7 @@ Covers CZ/SK/EN/DE/world currencies + symbols + ISO codes.
 """
 from __future__ import annotations
 
-from wrapper_mcp.maskit_patterns import regex_pre_pass
+from anonymize_mcp.maskit_patterns import regex_pre_pass
 
 
 def _matches(text: str) -> list[str]:

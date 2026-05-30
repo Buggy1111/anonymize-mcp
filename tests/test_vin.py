@@ -6,7 +6,7 @@ standalone (17 chars, no I/O/Q, contains a letter and a digit). No network.
 """
 import pytest
 
-from wrapper_mcp.maskit_patterns import regex_pre_pass
+from anonymize_mcp.maskit_patterns import regex_pre_pass
 
 VINS_WITH_CONTEXT = [
     "VIN: TMBJF25J9B3012345",
