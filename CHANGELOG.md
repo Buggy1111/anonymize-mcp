@@ -2,6 +2,22 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.8.5] — 2026-05-30
+
+### 🚗 Fixed — VIN (čísla podvozku) se maskují robustně
+
+VIN se maskoval jen s prefixem "VIN". Teď:
+- **standalone VIN pattern** — 17 znaků bez I/O/Q, písmeno + číslice (struktura VIN) → chytá i bez kontextu (`Auto WAUZZZ8K9DA123456 bylo…`, holý VIN).
+- **víc kontextů** — `podvozkové číslo`, `číslo karoserie`, `VIN kód`, `identifikační číslo vozidla`.
+- 7/7 reálných VIN formátů maskováno; žádné false-positive na IBAN. Offline test `test_vin.py`.
+
+### 🌐 Real-world stress — reálné dokumenty z internetu
+
+Ověřeno na **9 reálných veřejných dokumentech**: 8 rozhodnutí Ústavního soudu (NALUS, až 75KB) + 1 arXiv paper (BERT, mezinárodní autoři). **0 leaků** — jména soudců/advokátů/stran, firmy, adresy, sp.zn., mezinárodní jména vědců vše maskováno; audit 0 high/critical. (Datumy soudních jednání a tituly JUDr./Mgr. správně NEmaskovány — nejsou osobní PII.)
+
+### Stav
+offline (CI) 244 passed; ruff + mypy --strict clean. Sektory 97/97, jazyky 11/11, VIN 7/7, real-world 9/9.
+
 ## [0.8.4] — 2026-05-30
 
 ### 🀄 Fixed — CJK jména (čínská/japonská) se teď maskují
