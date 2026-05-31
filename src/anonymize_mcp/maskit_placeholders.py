@@ -15,6 +15,7 @@ from typing import Any
 
 from .http import NAMETAG_URL, post_form
 from .maskit_constants import _TYPE_TO_PREFIX
+from .maskit_stoplist import _FALSE_POSITIVE_WORDS
 from .nametag import is_cjk_text, parse_conll
 
 # Entity types které se anonymizují v NameTag fallback.
@@ -211,6 +212,11 @@ async def nametag_fallback(
         if _is_title_only(original):
             continue
         norm = original.lower().rstrip(",.:;")
+        # Stop-list běžných CZ slov (zájmena/determinanty/spojky/úřední termíny)
+        # — NIKDY PII. Lokální NameTag 1 je větně-úvodně občas mylně tagguje
+        # jako osobu/místo ("Žádné" → OSOBA). Sdílíme s MasKIT stop-list filtrem.
+        if norm in _FALSE_POSITIVE_WORDS:
+            continue
         # Preserve list (v0.7.27): krátké country codes (USA/UK/EU), crypto
         # labels (Bitcoin/Ethereum), card brands (Visa/Mastercard) a finanční
         # tagy (VAT/IBAN) — NameTag je občas tag jako entity, ale jsou to

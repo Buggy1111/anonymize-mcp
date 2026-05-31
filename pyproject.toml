@@ -1,6 +1,6 @@
 [project]
 name = "anonymize-mcp"
-version = "0.9.1"
+version = "0.10.0"
 description = "MCP server wrapping LINDAT NLP tools — production-grade anonymization, multilingual NER (33+ languages), UDPipe (961 models), Charles Translator (8 languages), PONK readability, Korektor spellcheck. Non-commercial use only."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,6 +32,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Zero-egress / on-prem mód — lokální NameTag NER (data neopustí stroj).
+# Aktivace: ANONYMIZE_MCP_LOCAL=1 ; model se stáhne automaticky (~31 MB).
+local = [
+    "ufal.nametag>=1.2.0",
+]
 test = [
     "pytest>=8",
     "anyio>=4",
@@ -39,6 +44,7 @@ test = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pytest-cov>=5",
+    "ufal.nametag>=1.2.0",
 ]
 
 [project.urls]
