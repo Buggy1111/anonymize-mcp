@@ -1,0 +1,14 @@
+# Smithery configuration for anonymize-mcp
+# https://smithery.ai/docs/build/project-config/smithery.yaml
+#
+# Local stdio server: users install and run it on their own machine.
+# Not hosted by Smithery, so tool calls reach the ÚFAL/LINDAT APIs only
+# from the end user's machine (matches the non-commercial usage model).
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+    required: []
+  commandFunction: |
+    (config) => ({ command: "uvx", args: ["anonymize-mcp"] })
