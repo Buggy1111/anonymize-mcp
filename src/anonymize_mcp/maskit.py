@@ -196,6 +196,14 @@ async def anonymize_text(
 
     all_warnings: list[str] = []
 
+    # === Zero-egress lokální mód ===
+    # Bez MasKIT API musí osoby chytit placeholder mód (spouští lokální NameTag
+    # fallback). Vynutíme ho, aby lokální anonymizace pokryla jména.
+    from .local_backend import is_local_mode
+    local_mode = is_local_mode()
+    if local_mode:
+        placeholder_mode = True
+
     # === STEP -1: Input normalization (adversariální defenses) ===
     # NFC + zero-width strip + bidi override strip + non-Latin digit → ASCII.
     # Brání obfuscation útoky: `J<ZWNJ>i<ZWNJ>ří`, full-width digits, RLO Trojan
@@ -275,7 +283,18 @@ async def anonymize_text(
     # co dal regex pre-pass + strict pre-pass. Lepší partial anonymizace
     # (úřady, telefony, č.j., IBAN) než kompletní crash.
     import httpx
-    try:
+    if local_mode:
+        # Zero-egress: žádné volání MasKIT API. Anonymizace běží přes regex
+        # pre-pass + strict pre-pass + lokální NameTag fallback (placeholder mód).
+        all_warnings.append(
+            "Zero-egress lokální mód: MasKIT API přeskočeno — anonymizace přes "
+            "regex pre-pass + strict pre-pass + lokální NameTag NER (data neopustí stroj)."
+        )
+        raw = text_for_maskit
+        anonymized = text_for_maskit
+        maskit_replacements = []
+    else:
+      try:
         data = await post_form(
             MASKIT_URL,
             {"text": text_for_maskit, "input": "txt", "output": output},
@@ -285,7 +304,7 @@ async def anonymize_text(
             anonymized, maskit_replacements = parse_maskit(raw)
         else:
             anonymized, maskit_replacements = raw, []
-    except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+      except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
         # Soft fallback: emuluj výstup MasKITu sentinely, ostatní pipeline
         # (restore, fallback, placeholder mode) doběhne na regex+strict reps.
         all_warnings.append(
