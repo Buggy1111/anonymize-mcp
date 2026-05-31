@@ -9,6 +9,8 @@
 
 MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [ÚFAL MFF UK](https://ufal.mff.cuni.cz/) — **multilingvální NER + morfologie (35 jazyků auto-detect)**, **production-grade anonymizace s 80+ PII patterny napříč 9 sektory + mezinárodním pokrytím (US/UK/DE/FR/IT/ES/PL/RU/IN, EU VAT 28 zemí, IBAN 30+ zemí, crypto, API tokeny)**, překlad mezi 8 jazyky (17 přímých párů + auto EN-pivot), čitelnost a korektura.
 
+> 🔒 **Nově (v0.10.0): [zero-egress lokální mód](#zero-egress--on-prem-mód-)** — plně offline anonymizace, žádný text neopustí stroj. Pro GDPR / právní / zdravotnická data. Zapnutí: `ANONYMIZE_MCP_LOCAL=1`.
+
 > **Pouze pro nekomerční použití.** Modely NameTag a UDPipe jsou pod CC BY-NC-SA. LINDAT API je bezplatné pro akademické a osobní použití. Pro komerční nasazení kontaktujte autory nástrojů a `ufal@ufal.mff.cuni.cz`.
 
 > **Dříve `ufal-mcp`** — přejmenováno na žádost ÚFAL MFF UK (v0.8.0).
@@ -18,7 +20,7 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 | Tool | Backend | K čemu |
 |------|---------|--------|
 | `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | NER pro **CZ** (bohatý CNEC 2.0 tagset) + **34 dalších jazyků** (UNER PER/ORG/LOC) s auto-detekcí |
-| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) | **Production-grade pseudonymizace** (v0.7.26): regex pre-pass přes **80+ PII patternů** — CZ + international (IBAN 30+ zemí, EU VAT 28, US SSN/EIN, DE/UK/FR/IT/ES/PL/RU/IN ID, crypto, API tokeny). Opt-in `placeholder_mode` (deterministické OSOBA1/MESTO1). |
+| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) + NameTag | **Production-grade pseudonymizace**: regex pre-pass přes **80+ PII patternů** — CZ + international (IBAN 30+ zemí, EU VAT 28, US SSN/EIN, DE/UK/FR/IT/ES/PL/RU/IN ID, crypto, API tokeny). Opt-in `placeholder_mode` (deterministické OSOBA1/MESTO1). **🔒 Zero-egress lokální mód** (`ANONYMIZE_MCP_LOCAL=1`) — plně offline, [viz níže](#zero-egress--on-prem-mód-). |
 | `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — **auto-detect 35 jazyků** |
 | `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Čitelnost CZ — 4 feature sety: metrics + rules + lexical surprise + speech acts |
 | `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky |
