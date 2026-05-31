@@ -89,7 +89,18 @@ async def _post_with_retry(
 
 
 async def post_form(url: str, data: dict[str, str]) -> dict[str, Any]:
-    """POST x-www-form-urlencoded → JSON response (s retry + logging)."""
+    """POST x-www-form-urlencoded → JSON response (s retry + logging).
+
+    Zero-egress: v lokálním módu (ANONYMIZE_MCP_LOCAL) se NameTag NER počítá
+    lokálně v procesu místo volání LINDAT API — žádný text neopustí stroj.
+    """
+    from .local_backend import is_local_mode
+
+    if url == NAMETAG_URL and is_local_mode():
+        from .local_backend import local_nametag_conll
+        conll = await asyncio.to_thread(local_nametag_conll, data.get("data", ""))
+        return {"result": conll, "model": "local:czech-cnec2.0-140304"}
+
     response = await _post_with_retry(url, data, HTTP_TIMEOUT)
     result: dict[str, Any] = response.json()
     return result
