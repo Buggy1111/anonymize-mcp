@@ -178,8 +178,36 @@ Pod ním jsou čtyři samostatné nástroje, každý s vlastní licencí:
 
 ## Bezpečnost
 
-- **Vše posíláš na externí server** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`). Před odesláním citlivých dat **nejdřív** projeď text přes `anonymize`.
-- Pro plně privátní zpracování doporučuji **lokální self-host**: NameTag i UDPipe mají modely ke stažení (CC BY-NC-SA), MasKIT a PONK mají MPL 2.0 source.
+- **V cloudovém módu posíláš text na externí server** (`quest.ms.mff.cuni.cz`, `lindat.mff.cuni.cz`). Před odesláním citlivých dat **nejdřív** projeď text přes `anonymize`.
+- Pro **plně privátní zpracování** použij **zero-egress lokální mód** (níže) — žádný text neopustí tvůj stroj.
+
+## Zero-egress / on-prem mód 🔒
+
+Anonymizace **kompletně lokálně** — žádné volání externího API, žádný text neopustí stroj. Pro GDPR / právní / zdravotnická data, kde citlivý obsah nesmí ven.
+
+```bash
+pip install "anonymize-mcp[local]"          # přidá ufal.nametag (lokální NER)
+python -m anonymize_mcp.local_backend        # jednorázově stáhne model (~31 MB)
+ANONYMIZE_MCP_LOCAL=1 anonymize-mcp          # spusť server v lokálním módu
+```
+
+V Claude Code stačí přidat env proměnnou k registraci:
+
+```bash
+claude mcp add anonymize -s user -e ANONYMIZE_MCP_LOCAL=1 -- anonymize-mcp
+```
+
+**Jak to funguje:** `anonymize` přeskočí MasKIT API a anonymizuje přes lokální regex pre-pass (80+ vzorů) + NameTag NER běžící v procesu (`ufal.nametag` + CNEC 2.0 model). Jména, města, instituce, telefony, IČO, RČ, č.j. atd. se nahradí placeholdery (`OSOBA1`, `MESTO1`, `TELEFON1`…) bez jediného síťového volání.
+
+**Konfigurace (env):**
+
+| Proměnná | Význam |
+| --- | --- |
+| `ANONYMIZE_MCP_LOCAL=1` | Zapne zero-egress mód |
+| `ANONYMIZE_MCP_NAMETAG_MODEL=/cesta/model.ner` | Vlastní cesta k modelu (jinak auto-download do `~/.cache/anonymize-mcp/models/`) |
+| `ANONYMIZE_MCP_NO_DOWNLOAD=1` | Zakáže auto-download (model musíš dodat ručně) |
+
+**Tradeoff:** lokální NameTag 1 (CNEC 2.0, CC BY-NC-SA, **non-commercial**) je o něco jednodušší než cloudový NameTag 3 a vynechává MasKIT rule-engine — výměnou za **nulový egress**. Ostatní nástroje (`extract_entities`, `translate_text`, …) v lokálním módu zatím volají cloud API; lokální je `anonymize` (killer feature).
 
 ## Použité API (6 LINDAT REST endpointů)
 

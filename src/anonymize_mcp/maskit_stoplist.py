@@ -40,6 +40,14 @@ _FALSE_POSITIVE_WORDS = frozenset({
     "července", "srpna", "září", "října", "listopadu", "prosince",
     # Časté slovesa/příslovce
     "podle", "tímto", "podává", "vede", "trvá",
+    # Zájmena / determinanty / spojky — NIKDY PII, ale NameTag 1 je větně-úvodně
+    # (velké písmeno na začátku věty) občas mylně označí jako osobu/místo.
+    "žádný", "žádná", "žádné", "žádného", "žádných", "žádném", "žádnému",
+    "tento", "tato", "toto", "tyto", "této", "tomto", "tuto", "těchto",
+    "každý", "každá", "každé", "každého",
+    "některý", "některá", "některé",
+    "dále", "rovněž", "také", "taktéž", "proto", "takže", "nicméně",
+    "ovšem", "pokud", "jelikož", "neboť", "avšak", "tedy", "totiž",
 })
 
 
