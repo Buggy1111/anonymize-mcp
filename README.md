@@ -11,6 +11,8 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 
 > 🔒 **Nově (v0.10.0): [zero-egress lokální mód](#zero-egress--on-prem-mód-)** — plně offline anonymizace, žádný text neopustí stroj. Pro GDPR / právní / zdravotnická data. Zapnutí: `ANONYMIZE_MCP_LOCAL=1`.
 
+> 🌐 **Nechcete nic instalovat? Vyzkoušejte to online zdarma → [anonymizace.js.org](https://anonymizace.js.org)** — anonymizace, NER, morfologie, korektor a překlad češtiny přímo v prohlížeči. Doprovodný web k tomuto MCP serveru.
+
 > **Pouze pro nekomerční použití.** Modely NameTag a UDPipe jsou pod CC BY-NC-SA. LINDAT API je bezplatné pro akademické a osobní použití. Pro komerční nasazení kontaktujte autory nástrojů a `ufal@ufal.mff.cuni.cz`.
 
 > **Dříve `ufal-mcp`** — přejmenováno na žádost ÚFAL MFF UK (v0.8.0).
