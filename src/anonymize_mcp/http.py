@@ -45,7 +45,10 @@ async def _post_with_retry(
 
     for attempt in range(MAX_RETRIES + 1):
         try:
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            # follow_redirects=False (security): POST nese citlivý text (PII) na pevné
+            # ÚFAL URL. Auto-follow by mohl PII payload poslat na cíl redirectu —
+            # ÚFAL endpointy jsou stabilní a neredirectují, takže to nic nerozbije.
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
                 response = await client.post(url, data=data)
 
             if response.status_code in _RETRYABLE_STATUSES and attempt < MAX_RETRIES:
