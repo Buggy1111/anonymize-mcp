@@ -1121,7 +1121,7 @@ Test: 6/7 lang→cs pairs fungují transparently přes wrapper (en/ru direct + d
 - 94 base + 5 chain + 11 lang = **110 tests passed**
 - ULTIMATE 9-sektorový spis (12.7KB, 94 unikátních PII): **100% caught**
 - Backend ÚFAL drží napříč 11 jazyky bez crashů
-- Idempotence + cross-sektor dedup ověřeno (Jiří Vzorek v žalobě = OSOBA1 v lékařské zprávě = OSOBA1 v pojistce)
+- Idempotence + cross-sektor dedup ověřeno (Jan Vzorek v žalobě = OSOBA1 v lékařské zprávě = OSOBA1 v pojistce)
 
 ### Známé limitace (nezměněno)
 
@@ -1321,9 +1321,9 @@ Po prvním reálném testu na 1 stránce SK textu (Andrea Príkladová → Mests
 
 ### Reálná data ze stress testu
 
-Vstup: vyjadrenie matky Andrei Príkladové → Mestský súd Bratislava II, sp. zn. 11Pc/99/2030, 2.3 KB SK text.
+Vstup: vyjadrenie matky Andrey Príkladové → Mestský súd Bratislava II, sp. zn. 99Pc/1/2099, 2.3 KB SK text.
 
-NameTag entit (24 celkem): Andrea Príkladová, Vzorová 13, 82105 Bratislava, Mestský súd, II, Drieňová 5, 827 02, 25.03.2026, Bratislava (5×), Alexandra, CIPC (2×), ČR, atd.
+NameTag entit (24 celkem): Andrea Príkladová, Vzorová 1, 82105 Bratislava, Mestský súd, II, Drieňová 5, 827 02, 25.03.2026, Bratislava (5×), Denisa, CIPC (2×), ČR, atd.
 
 Anonymize v `placeholder_mode=True`: 11 wrapper-placeholder + 2 wrapper-strict + 1 wrapper-regex = 14 náhrad.
 
@@ -1508,7 +1508,7 @@ Identitu udržujeme ostrou — 6 tools, každý 100% využit.
 - E-mail, URL — format-based detection
 - Telefon — 3 formáty: `+420 777 123 456`, `777 18 18 10` (3+2+2+2), `777-123-456`
 - Rodné číslo (`123456/7890`), DIČ (`CZ12345678`), IBAN, SPZ (`1A1 1234`)
-- Kontextové: IČO (s prefix `IČO:`), PSČ (s prefix `PSČ:`), č.j. (`č.j. 25 C 123/2026`), sp.zn. (`sp. zn. 11Pc/99/2030`, plus alternativní `spisová značka:`), občanský průkaz, datová schránka
+- Kontextové: IČO (s prefix `IČO:`), PSČ (s prefix `PSČ:`), č.j. (`č.j. 25 C 123/2026`), sp.zn. (`sp. zn. 99Pc/1/2099`, plus alternativní `spisová značka:`), občanský průkaz, datová schránka
 - **Court regex** — chytá celé jméno soudu včetně lokality: "Krajský soud v Ostravě", "Mestský súd Bratislava II", "Ústavní soud České republiky", "Najvyšší súd SR". Funguje na 12+ typů soudů (Krajský, Okresní, Mestský, Najvyšší, Nejvyšší, Ústavní, Vrchní, Obecní, Obvodný, Špecializovaný)
 
 **Stop-list filter** (`stop_list_filter=True`, default) — post-processing rollback MasKIT false positives:
@@ -1517,8 +1517,8 @@ Identitu udržujeme ostrou — 6 tools, každý 100% využit.
 - **Test na Jiříkově spisu: chytil 4 z 4 viditelných halucinací** ("státu", "sporu", "materiální", "obyvatel")
 
 **Placeholder mode** (`placeholder_mode=True`, opt-in) — deterministic placeholdery místo MasKIT random fake names:
-- "Jiří Vzorek" → vždy `OSOBA1 OSOBA2` (ne náhodně "Jan Novák")
-- Konzistentní deduplikace: pokud se "Alexandra Príkladová" objeví 5× v textu (matka i dcera), 2× dostane `OSOBA7 OSOBA8` + 2× `OSOBA9 OSOBA8` (sdílené příjmení)
+- "Jan Vzorek" → vždy `OSOBA1 OSOBA2` (ne náhodně "Jan Novák")
+- Konzistentní deduplikace: pokud se "Denisa Príkladová" objeví 5× v textu (matka i dcera), 2× dostane `OSOBA7 OSOBA8` + 2× `OSOBA9 OSOBA8` (sdílené příjmení)
 - Prefixy: OSOBA, ULICE, MESTO, FIRMA, INSTITUCE, EMAIL, TELEFON, ICO, PSC, RC, CJ, SPZN, OP, DATOVKA, IBAN, SPZ, DIC
 - **Reprodukovatelné** (stejný vstup → stejný výstup, pro audit/peer review)
 - **Auditovatelné** (1:1 mapping v `replacements`)
@@ -1583,7 +1583,7 @@ PUA znaky z Unicode Private Use Area (U+E100-E2FF) — jednoznakové sentinely, 
   - CZ ↔ RU
   - EN ↔ FR, EN ↔ DE, EN ↔ RU, EN ↔ PL, EN → HI
 - **Document mode** zachová strukturu odstavců — vhodné pro README, korespondenci, celé spisy.
-- **Vlastní jména zůstávají v originále** — testovaný workflow: *"Jiří Vzorek podal žalobu u Krajského soudu v Ostravě"* → *"Jiří Vzorek filed the claim at the Krajský soud v Ostrava"*.
+- **Vlastní jména zůstávají v originále** — testovaný workflow: *"Jan Vzorek podal žalobu u Krajského soudu v Ostravě"* → *"Jan Vzorek filed the claim at the Krajský soud v Ostrava"*.
 - `post_form_text()` helper v `http.py` pro plain-text response (Translator nevrací JSON jako ostatní ÚFAL nástroje).
 
 ### Záměrně neimplementováno
