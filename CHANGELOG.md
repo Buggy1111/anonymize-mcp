@@ -2,7 +2,7 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.10.2] — 2026-06-10
 
 ### Fixed
 - **Anti-over-redakce holého telefonu** (portováno z auditu webového anonymizéru):
