@@ -2,6 +2,23 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Anti-over-redakce holého telefonu** (portováno z auditu webového anonymizéru):
+  číslo bez předvolby musí začínat [2-9] (česká čísla nezačínají 0/1), takže částky
+  a číselné řady („123 456 789“, „100 200 300“) se už neredigují; guardy proti
+  ukousnutí prostředku delšího čísla („1 234 567 890“) a filtr kulatých milionů
+  („500 000 000“ = částka). Varianta s předvolbou `+42x` beze změny (jistota).
+
+### Added
+- **Holé IČO s mod-11 validací:** osmiciferné IČO bez keywordu „IČO“ v okolí
+  („subjekt 45274649 v rejstříku“) se nově rediguje — kontrolní číslice pustí jen
+  reálná IČO, ceny a kódy zboží propadnou. Dřív holé IČO uniklo úplně.
+  S keywordem se dál rediguje cokoliv (i překlepy) — kontext má přednost.
+- **ISO datum `YYYY-MM-DD`** („2024-01-15“) — s validací měsíce a dne přímo
+  v regexu; běžné v mezinárodních a technických dokumentech, dřív unikalo.
+
 ## [0.10.1] — 2026-06-10
 
 ### Security
