@@ -15,7 +15,7 @@ pytestmark = pytest.mark.network
 # (sector, text, [must be masked])
 SECTOR_CORPUS: list[tuple[str, str, list[str]]] = [
     ("pravo",
-     "Žalobce Ing. Jiří Vzorek, rodné číslo 800312/1234, bytem Hlavní 254/15, "
+     "Žalobce Ing. Jan Vzorek, rodné číslo 800312/1234, bytem Hlavní 254/15, "
      "708 00 Ostrava, datová schránka ab7c2dx, č.j. 12 C 187/2024-45, "
      "sp. zn. 23 Cdo 1234/2023, IBAN CZ65 0800 0000 1920 0014 5399.",
      ["Vzorek", "800312/1234", "Hlavní 254", "ab7c2dx", "12 C 187/2024",

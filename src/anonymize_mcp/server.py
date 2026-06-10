@@ -296,7 +296,7 @@ async def correct_text(
     - **spellcheck** (default) — kontrola pravopisu před odesláním podání
     - **spellcheck_strict** — agresivnější (až 2 edits/word)
     - **diacritics** — doplnění diakritiky do textu bez ní
-      (OCR výstupy, emaily, mobilní zprávy: ``Jiri Vzorek`` → ``Jiří Vzorek``)
+      (OCR výstupy, emaily, mobilní zprávy: ``Jan Vzorek bez hacku`` → ``Jan Vzorek bez háčků``)
     - **strip** — odstranění diakritiky (např. pro URL slugy nebo legacy systémy)
 
     Pozor: CZ-only. Modely jsou z roku 2013, vlastní jména a nová slova mohou
@@ -349,8 +349,8 @@ async def translate_text(
     (mutual intelligibility). HI lze jen jako tgt (en→hi), ne jako src.
 
     Charles Translator umí vlastní jména zachovat v originále — užitečné
-    pro legal: *"Jiří Vzorek podal žalobu u Krajského soudu v Ostravě."*
-    → *"Jiří Vzorek filed a lawsuit at the Krajský soud v Ostrava."*
+    pro legal: *"Jan Vzorek podal žalobu u Krajského soudu v Ostravě."*
+    → *"Jan Vzorek filed a lawsuit at the Krajský soud v Ostrava."*
 
     Args:
         text: Text k překladu (UTF-8).
