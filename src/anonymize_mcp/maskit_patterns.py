@@ -19,6 +19,18 @@ from .maskit_constants import make_pii_sentinel
 _RC_MM = r"(?:0[1-9]|1[0-2]|2[1-9]|3[0-2]|5[1-9]|6[0-2]|7[1-9]|8[0-2])"
 _RC_YYMMDD = rf"\d{{2}}{_RC_MM}\d{{2}}"
 
+
+def _valid_ico(s: str) -> bool:
+    """IČO mod-11 kontrolní číslice (váhy 8..2, check = ((11-suma) % 11) % 10).
+
+    Umožňuje bezpečně redigovat HOLÁ osmiciferná IČO (bez keywordu "IČO"
+    v okolí) — náhodná čísla (ceny, kódy zboží) projdou kontrolou jen v ~10 %
+    případů, reálná IČO vždy.
+    """
+    digits = [int(c) for c in s]
+    total = sum((8 - i) * digits[i] for i in range(7))
+    return digits[7] == ((11 - total) % 11) % 10
+
 # CZ měsíce — všechny pády (genitiv, lokál, akuzativ), bez diakritiky tolerantní.
 # Pokrývá: "ledna/lednu/leden", "února/únoru/únor", atd.
 _CZ_MESICE = (
@@ -75,6 +87,14 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"\b(?:0?[1-9]|[12]\d|3[01])[.\/](?:0?[1-9]|1[0-2])[.\/](?:19|20)\d{2}\b"
         ),
         "DATUM", "datum (číselný)",
+    ),
+    # ISO datum YYYY-MM-DD — 2024-01-15. Validace měsíce/dne přímo v regexu
+    # (1234-56-78 nematchne). Běžné v mezinárodních a technických dokumentech.
+    (
+        re.compile(
+            r"\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b"
+        ),
+        "DATUM", "datum (ISO)",
     ),
     # Range roky v parens — "(1937–2020)", "(1940-2005)", "(1937—2020)".
     # Typicky birth/death dates osob (PII pro žijící příbuzné). Match jen
@@ -1030,14 +1050,27 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "OP", "občanský průkaz",
     ),
-    # Telefon CZ/SK: +420 777 123 456, 777 123 456 (3-3-3), 777 18 18 10 (3-2-2-2)
-    # Negative lookbehind: nematchne pokud předchází "OP:" / "průkaz:" /
-    # "průkazu:" — to je už OP, ne telefon.
+    # Telefon CZ/SK s předvolbou: +420 777 123 456, +420 777 18 18 10.
+    # S explicitní předvolbou je číslo jisté — žádná restrikce první číslice.
     (
         re.compile(
-            r"(?<!OP: )(?<!OP:)(?<!průkaz: )(?<!průkazu: )"
-            r"(?:\+\d{1,3}[\s-])?"
+            r"\+\d{1,3}[\s-]"
             r"(?:\d{3}[\s-]\d{3}[\s-]\d{3}|\d{3}\s\d{2}\s\d{2}\s\d{2})(?!\d)"
+        ),
+        "TELEFON", "telefon",
+    ),
+    # Telefon CZ/SK bez předvolby: 777 123 456 (3-3-3), 777 18 18 10 (3-2-2-2).
+    # v0.10.2 anti-over-redakce: první číslice [2-9] (česká čísla nezačínají
+    # 0/1 → částky "123 456 789" / "100 200 300" propadnou), lookbehind blokuje
+    # pokračování delšího čísla ("1 234 567 890"), lookahead totéž zprava,
+    # filtr na kulaté miliony ("500 000 000" = částka, ne telefon).
+    # Negative lookbehind OP: nematchne pokud předchází "OP:" / "průkaz:".
+    (
+        re.compile(
+            r"(?<!OP: )(?<!OP:)(?<!průkaz: )(?<!průkazu: )(?<!\d )(?<!\d-)"
+            r"\b[2-9]\d{2}"
+            r"(?:[\s-](?!000[\s-]000\b)\d{3}[\s-]\d{3}|\s\d{2}\s\d{2}\s\d{2})"
+            r"(?![\s-]?\d)"
         ),
         "TELEFON", "telefon",
     ),
@@ -1129,6 +1162,21 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             re.IGNORECASE,
         ),
         "UCET", "číslo účtu",
+    ),
+]
+
+# Checksum-validované format patterny — match celé, ale redakce projde JEN
+# když validátor potvrdí kontrolní číslici. Běží AŽ PO context patternech,
+# aby context-bound vzory (pas, OP, …) měly přednost u svých hodnot.
+_VALIDATED_FORMAT_PATTERNS: list[
+    tuple[re.Pattern[str], str, str, Callable[[str], bool]]
+] = [
+    # Holé IČO — 8 cifer bez keywordu ("subjekt 45274649 v rejstříku").
+    # Bez checksumu by redigovalo každé osmiciferné číslo (ceny, kódy zboží);
+    # mod-11 pustí jen reálná IČO (+~10 % náhodných čísel — bezpečný směr).
+    (
+        re.compile(r"(?<![\d.,/-])\b\d{8}\b(?![.,/-]?\d)"),
+        "ICO", "IČO", _valid_ico,
     ),
 ]
 
@@ -1461,10 +1509,16 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     # Bez dedup: 3× "800312/1234" → RC1, RC2, RC3 (bug). S dedup: → RC1, RC1, RC1.
     dedup_map: dict[tuple[str, str], tuple[str, str]] = {}  # (prefix, normalized) → (placeholder, sentinel)
 
-    def make_replacer_format(prefix: str, label: str) -> Callable[[re.Match[str]], str]:
+    def make_replacer_format(
+        prefix: str,
+        label: str,
+        validator: Callable[[str], bool] | None = None,
+    ) -> Callable[[re.Match[str]], str]:
         def _replace(m: re.Match[str]) -> str:
             original = m.group(0).strip()
             if not original:
+                return m.group(0)
+            if validator is not None and not validator(original):
                 return m.group(0)
             key = (prefix, original.lower())
             if key in dedup_map:
@@ -1517,6 +1571,10 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     # 2) Context patterns
     for pattern, prefix, label in _CONTEXT_PII_PATTERNS:
         text = pattern.sub(make_replacer_context(prefix, label), text)
+    # 2b) Checksum-validované format patterny — po context patternech,
+    # aby context-bound vzory měly u svých hodnot přednost (label priorita).
+    for pattern, prefix, label, validator in _VALIDATED_FORMAT_PATTERNS:
+        text = pattern.sub(make_replacer_format(prefix, label, validator), text)
     # 3) Section-aware pass — "Datové schránky:" header + list items
     text = _section_pass_datovky(text, make_replacer_context("DATOVKA", "datová schránka"))
     # 4) Court regex
