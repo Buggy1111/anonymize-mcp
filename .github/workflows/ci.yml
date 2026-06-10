@@ -58,6 +58,14 @@ jobs:
         # not in CI (external dependency would make CI flaky). The offline suite
         # covers the regex/MasKIT leak-detection patterns — the security core.
 
+      - name: Dependency vulnerability scan (pip-audit, advisory)
+        # Non-blocking: new advisories in transitive deps must not block releases,
+        # but they should be visible in every CI run.
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit
+
       - name: Build distribution
         run: |
           pip install build

@@ -17,6 +17,7 @@ takže zbytek pipeline běží beze změny.
 from __future__ import annotations
 
 import functools
+import hashlib
 import logging
 import os
 import sys
@@ -50,6 +51,10 @@ _MODEL_ZIP_URL = (
     "?sequence=1&isAllowed=y"
 )
 _MODEL_ZIP_MEMBER = _MODEL_FILENAME  # který soubor ze zipu vytáhnout
+# SHA-256 LINDAT bitstreamu (stabilní, model je z 2014) — model je vstup do
+# nativního C++ parseru, takže TLS samo nestačí: poškozený/podvržený archiv
+# se odmítne dřív, než se ho dotkne zipfile/NameTag.
+_MODEL_ZIP_SHA256 = "a49edd6241970026dd7cf80bdcc9bac9bbad49b69a5e1b38f32a2e1f51c20220"
 
 
 def is_local_mode() -> bool:
@@ -109,8 +114,16 @@ def download_model(dest_dir: Path | None = None) -> str:
                 print(f"\r[anonymize-mcp] model: {pct}%", end="", file=sys.stderr, flush=True)
 
     try:
-        urllib.request.urlretrieve(_MODEL_ZIP_URL, zip_path, reporthook=_progress)
+        urllib.request.urlretrieve(_MODEL_ZIP_URL, zip_path, reporthook=_progress)  # noqa: S310 — pevná HTTPS URL
         print("", file=sys.stderr, flush=True)
+        digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+        if digest != _MODEL_ZIP_SHA256:
+            raise RuntimeError(
+                f"SHA-256 staženého modelu nesouhlasí (čekáno {_MODEL_ZIP_SHA256[:16]}…, "
+                f"staženo {digest[:16]}…) — soubor může být poškozený nebo podvržený. "
+                f"Archiv byl smazán; zkus to znovu, případně stáhni model ručně z LINDATu "
+                f"a nastav {_MODEL_ENV}."
+            )
         with zipfile.ZipFile(zip_path) as zf:
             member = next(
                 (m for m in zf.namelist() if m.endswith(_MODEL_ZIP_MEMBER)), None

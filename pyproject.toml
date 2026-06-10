@@ -1,7 +1,7 @@
 [project]
 name = "anonymize-mcp"
-version = "0.10.0"
-description = "MCP server wrapping LINDAT NLP tools — production-grade anonymization, multilingual NER (33+ languages), UDPipe (961 models), Charles Translator (8 languages), PONK readability, Korektor spellcheck. Non-commercial use only."
+version = "0.10.1"
+description = "MCP server wrapping LINDAT NLP tools — production-grade anonymization, multilingual NER (35 languages), UDPipe (961 models), Charles Translator (8 languages), PONK readability, Korektor spellcheck. Non-commercial use only."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Michal Bürgermeister", email = "michalbugy12@gmail.com" }]
@@ -66,7 +66,7 @@ packages = ["src/anonymize_mcp"]
 [tool.hatch.build.targets.sdist]
 include = [
     "src/",
-    "README.md",
+    "/README.md",
     "LICENSE",
     "pyproject.toml",
 ]

@@ -2,6 +2,47 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.1] — 2026-06-10
+
+### Security
+- **Zero-egress guard:** v lokálním módu (`ANONYMIZE_MCP_LOCAL=1`) jsou cloudové tooly
+  (`translate_text`, `correct_text`, `check_readability`, `analyze_morphology`) odmítnuté
+  s vysvětlující chybou — dřív tiše posílaly text na ÚFAL API a popíraly tak smysl
+  zero-egress módu. Vědomé povolení: `ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD=1`.
+- **SHA-256 ověření modelu:** auto-download lokálního CNEC modelu z LINDATu se ověřuje
+  proti pevnému checksumu — poškozený/podvržený archiv se odmítne a smaže, dřív než se
+  ho dotkne nativní parser.
+- **Redirecty vypnuté na PII POSTech** (`follow_redirects=False`, commit `49cf073`,
+  6. 6. 2026) — defense-in-depth: žádný redirect nemůže přesměrovat citlivý text jinam.
+  Tímto vydáním se fix poprvé dostává na PyPI.
+- **Privacy scrub:** všechny ukázkové texty, docstringy a changelog používají smyšlená
+  jména; legacy manuální testy a dev korpus odstraněny z repozitáře a git historie
+  přepsána (`git filter-repo`).
+
+### Changed
+- `extract_entities` v lokálním módu přidá warning, že multilingvální model není
+  k dispozici (NER běží na lokálním českém CNEC 2.0).
+- Log prefix a env proměnná přejmenovány na `anonymize-mcp` / `ANONYMIZE_MCP_LOG_LEVEL`
+  (staré `WRAPPER_MCP_LOG_LEVEL`/`UFAL_MCP_LOG_LEVEL` fungují jako fallback).
+- sdist už nepřibaluje zatoulané README z podadresářů; smazán stale `smithery.yaml`;
+  `docs/COVERAGE.md` označen jako historický snapshot; README/LICENSE upřesněny
+  (historie přejmenování, non-affiliation disclaimer, UDPipe vs MasKIT v licenční poznámce).
+
+## [0.10.0] — 2026-05-31
+
+### Added
+- **🔒 Zero-egress lokální mód** (`ANONYMIZE_MCP_LOCAL=1`): anonymizace běží plně
+  offline — in-process `ufal.nametag` (NameTag 1) + lokální CNEC 2.0 model, žádný text
+  neopustí stroj. Optional extra `pip install "anonymize-mcp[local]"`; model se
+  jednorázově stáhne z LINDATu (~31 MB) nebo předstáhne přes
+  `python -m anonymize_mcp.local_backend`; `ANONYMIZE_MCP_NO_DOWNLOAD=1` download zakáže.
+  První český real-NLP anonymizér, který umí běžet i lokálně.
+- NameTag CoNLL výstup lokálního backendu je bajt-kompatibilní s `parse_conll` —
+  zbytek pipeline (regex pre-pass, strict pre-pass, placeholder mód, audit) beze změny.
+- 23 nových testů lokálního backendu; suite 272 offline testů zelená.
+
+*(Záznam doplněn zpětně 10. 6. 2026 — vydání 0.10.0 odešlo na PyPI bez changelog entry.)*
+
 ## [0.9.1] — 2026-05-30
 
 ### Added
