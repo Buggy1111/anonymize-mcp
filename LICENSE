@@ -24,7 +24,8 @@ SOFTWARE.
 
 NOTE: This MIT license covers the wrapper code only.
 The underlying ÚFAL MFF UK NLP models accessed via the REST APIs
-(NameTag 3, MasKIT, PONK) are licensed under CC BY-NC-SA, which means
+(NameTag 3 and UDPipe models; MasKIT is rule-based on top of them)
+are licensed under CC BY-NC-SA, which means
 their results are limited to NON-COMMERCIAL use unless you obtain
 explicit written permission from the model authors.
 See https://lindat.mff.cuni.cz/en/terms-of-use for details.

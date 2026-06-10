@@ -1,3 +1,5 @@
+> **Historický snapshot (v0.7.30, květen 2026)** — projekt se od té doby jmenuje anonymize-mcp a pokrytí se rozšířilo (BIC, VIN, k.ú., zero-egress mód…). Aktuální stav viz README a CHANGELOG.
+
 # PII Coverage Matrix — ufal-mcp v0.7.30+
 
 > **Audience**: ÚFAL Karlovka researchers, GDPR DPOs, security reviewers,

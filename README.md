@@ -15,7 +15,7 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 
 > **Pouze pro nekomerční použití.** Modely NameTag a UDPipe jsou pod CC BY-NC-SA. LINDAT API je bezplatné pro akademické a osobní použití. Pro komerční nasazení kontaktujte autory nástrojů a `ufal@ufal.mff.cuni.cz`.
 
-> **Dříve `ufal-mcp`** — přejmenováno na žádost ÚFAL MFF UK (v0.8.0).
+> **Neoficiální komunitní projekt** — není provozován ani schválen ÚFAL MFF UK; wrapper kolem veřejných LINDAT API od nezávislého vývojáře. Historie názvů: `ufal-mcp` → `wrapper-mcp` (v0.8.0, na žádost ÚFAL) → **`anonymize-mcp`** (v0.9.0). Pokud máte nainstalovaný deprecated balíček `wrapper-mcp`, přejděte na `pip install anonymize-mcp` — je to tentýž projekt.
 
 ## Co umí
 
@@ -210,8 +210,13 @@ claude mcp add anonymize -s user -e ANONYMIZE_MCP_LOCAL=1 -- anonymize-mcp
 | `ANONYMIZE_MCP_LOCAL=1` | Zapne zero-egress mód |
 | `ANONYMIZE_MCP_NAMETAG_MODEL=/cesta/model.ner` | Vlastní cesta k modelu (jinak auto-download do `~/.cache/anonymize-mcp/models/`) |
 | `ANONYMIZE_MCP_NO_DOWNLOAD=1` | Zakáže auto-download (model musíš dodat ručně) |
+| `ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD=1` | Vědomě povolí cloudové tooly i v lokálním módu (jinak odmítnuté, viz níže) |
 
-**Tradeoff:** lokální NameTag 1 (CNEC 2.0, CC BY-NC-SA, **non-commercial**) je o něco jednodušší než cloudový NameTag 3 a vynechává MasKIT rule-engine — výměnou za **nulový egress**. Ostatní nástroje (`extract_entities`, `translate_text`, …) v lokálním módu zatím volají cloud API; lokální je `anonymize` (killer feature).
+**Co je v lokálním módu lokální (v0.10.1):** `anonymize` **i `extract_entities`** běží plně offline (lokální CNEC 2.0 NER; multilingvální model vyžaduje API, tool na to upozorní warningem). Ostatní tooly (`translate_text`, `correct_text`, `check_readability`, `analyze_morphology`) by text poslaly na ÚFAL API — proto jsou v zero-egress módu **odmítnuté s vysvětlující chybou**; vědomě je povolíš přes `ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD=1`.
+
+**Hardened setup (air-gapped/auditované stroje):** model si předstáhni předem (`python -m anonymize_mcp.local_backend` — ověřuje se SHA-256) a server nasaď s `ANONYMIZE_MCP_NO_DOWNLOAD=1` — pak proces nikdy neotevře žádné síťové spojení.
+
+**Tradeoff:** lokální NameTag 1 (CNEC 2.0, CC BY-NC-SA, **non-commercial**) je o něco jednodušší než cloudový NameTag 3 a vynechává MasKIT rule-engine — výměnou za **nulový egress**.
 
 ## Použité API (6 LINDAT REST endpointů)
 
@@ -229,8 +234,9 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Smoke test (volá živé API)
-python test_live.py
+# Testy (272 offline testů; síťové: pytest -m network)
+pip install -e ".[test]"
+pytest -m "not network"
 ```
 
 ## Release proces

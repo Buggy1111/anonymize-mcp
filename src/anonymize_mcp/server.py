@@ -1,4 +1,4 @@
-"""Wrapper MCP server — multilingvální NER, anonymizace, překlad, morfologie, čitelnost a korektura.
+"""anonymize-mcp server — multilingvální NER, anonymizace, překlad, morfologie, čitelnost a korektura.
 
 Wrappuje 6 LINDAT/ÚFAL REST API:
 - **NameTag 3**        — NER pro CZ (bohatý CNEC 2.0 tagset) + 30+ dalších jazyků (UNER)
@@ -20,6 +20,7 @@ from typing import Any, Literal
 from mcp.server.fastmcp import FastMCP
 
 from . import korektor as _korektor
+from . import local_backend as _local
 from . import maskit as _maskit
 from . import nametag as _nametag
 from . import ponk as _ponk
@@ -27,12 +28,37 @@ from . import translator as _translator
 from . import udpipe as _udpipe
 from .validation import ValidationError, validate_input
 
-_log_level = os.environ.get("WRAPPER_MCP_LOG_LEVEL", os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO")).upper()
+_log_level = os.environ.get(
+    "ANONYMIZE_MCP_LOG_LEVEL",
+    os.environ.get("WRAPPER_MCP_LOG_LEVEL", os.environ.get("UFAL_MCP_LOG_LEVEL", "INFO")),
+).upper()
 logging.basicConfig(
     level=_log_level,
-    format="%(asctime)s [%(levelname)s] wrapper-mcp: %(message)s",
+    format="%(asctime)s [%(levelname)s] anonymize-mcp: %(message)s",
 )
 logger = logging.getLogger("anonymize_mcp")
+
+# V zero-egress módu (ANONYMIZE_MCP_LOCAL=1) jsou cloudové tooly blokované —
+# poslaly by text na ÚFAL API a tiše tak popřely smysl lokálního módu. Vědomé
+# povolení: ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD=1.
+_ALLOW_CLOUD_ENV = "ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD"
+
+
+def _cloud_tool_refusal(tool_name: str) -> dict[str, Any] | None:
+    """Vrátí error dict, pokud je tool v zero-egress módu zakázaný; jinak None."""
+    if not _local.is_local_mode():
+        return None
+    if os.environ.get(_ALLOW_CLOUD_ENV, "").strip().lower() in ("1", "true", "yes", "on"):
+        return None
+    logger.warning("%s odmítnut v zero-egress módu (text by odešel na ÚFAL API)", tool_name)
+    return {
+        "error": (
+            f"'{tool_name}' není v zero-egress módu (ANONYMIZE_MCP_LOCAL=1) dostupný — "
+            f"poslal by text na ÚFAL/LINDAT API. Lokálně fungují 'anonymize' a "
+            f"'extract_entities' (český CNEC model). Cloudové tooly vědomě povolíš "
+            f"nastavením {_ALLOW_CLOUD_ENV}=1."
+        )
+    }
 
 
 def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:
@@ -100,6 +126,12 @@ async def extract_entities(
         include_xml=include_xml,
         include_vertical=include_vertical,
     )
+    if _local.is_local_mode() and model not in ("auto", "czech"):
+        _warns = [
+            *_warns,
+            "zero-egress mód: požadovaný model se ignoruje — NER běží na lokálním "
+            "českém CNEC 2.0 modelu (multilingvální UNER vyžaduje ÚFAL API)",
+        ]
     if _warns:
         result.setdefault("warnings", []).extend(_warns)
     return result
@@ -216,6 +248,8 @@ async def analyze_morphology(
         ``sentences``, ``model``, ``token_count``, ``sentence_count``,
         ``detected_language`` (jen u auto).
     """
+    if (refusal := _cloud_tool_refusal("analyze_morphology")) is not None:
+        return refusal
     text, _warns = _prepare_input(text, "analyze_morphology")
     result = await _udpipe.analyze(
         text,
@@ -271,6 +305,8 @@ async def check_readability(
         + volitelné ``rules`` (list), ``lexical_surprise`` (dict),
         ``speech_acts`` (dict), ``highlighted_html`` (str).
     """
+    if (refusal := _cloud_tool_refusal("check_readability")) is not None:
+        return refusal
     text, _warns = _prepare_input(text, "check_readability")
     result = await _ponk.check(
         text,
@@ -310,6 +346,8 @@ async def correct_text(
     Returns:
         ``corrected`` (upravený text), ``model``, ``mode``, ``changed`` (bool).
     """
+    if (refusal := _cloud_tool_refusal("correct_text")) is not None:
+        return refusal
     text, _warns = _prepare_input(text, "correct_text")
     result = await _korektor.correct(text, mode=mode)
     if _warns:
@@ -363,6 +401,8 @@ async def translate_text(
         (skutečně použitý model name), ``document_mode``, ``input_chars``,
         ``output_chars``.
     """
+    if (refusal := _cloud_tool_refusal("translate_text")) is not None:
+        return refusal
     text, _warns = _prepare_input(text, "translate_text")
     result = await _translator.translate(
         text, src=src, tgt=tgt, document_mode=document_mode

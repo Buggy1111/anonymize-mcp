@@ -139,3 +139,66 @@ class TestLocalNer:
         # MasKIT nevolán (zero-egress warning přítomen):
         assert any("Zero-egress" in w for w in res.get("warnings", []))
         assert res["sources"]["maskit"] == 0
+
+
+# ============================================================================
+# zero-egress guard — cloudové tooly odmítnuté v lokálním módu (v0.10.1)
+# ============================================================================
+
+class TestCloudToolRefusalInLocalMode:
+    @pytest.mark.anyio
+    async def test_cloud_tools_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ANONYMIZE_MCP_LOCAL", "1")
+        monkeypatch.delenv("ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD", raising=False)
+        from anonymize_mcp import server
+
+        for tool in (
+            server.analyze_morphology,
+            server.check_readability,
+            server.correct_text,
+        ):
+            out = await tool(text="Testovací věta.")
+            assert "error" in out, tool
+            assert "zero-egress" in out["error"]
+        out = await server.translate_text(text="Testovací věta.", src="cs", tgt="en")
+        assert "error" in out and "zero-egress" in out["error"]
+
+    @pytest.mark.anyio
+    async def test_allow_cloud_override_passes_guard(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ANONYMIZE_MCP_LOCAL", "1")
+        monkeypatch.setenv("ANONYMIZE_MCP_LOCAL_ALLOW_CLOUD", "1")
+        from anonymize_mcp import server
+
+        assert server._cloud_tool_refusal("correct_text") is None
+
+    def test_guard_inactive_without_local_mode(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("ANONYMIZE_MCP_LOCAL", raising=False)
+        from anonymize_mcp import server
+
+        assert server._cloud_tool_refusal("translate_text") is None
+
+
+# ============================================================================
+# model download — SHA-256 integrity (v0.10.1)
+# ============================================================================
+
+class TestDownloadChecksum:
+    def test_corrupted_download_rejected_and_removed(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path
+    ) -> None:
+        import urllib.request
+
+        def fake_retrieve(url, dest, reporthook=None):  # noqa: ANN001, ANN202
+            Path(dest).write_bytes(b"not the real model zip")
+
+        from pathlib import Path
+
+        monkeypatch.setattr(urllib.request, "urlretrieve", fake_retrieve)
+        with pytest.raises(RuntimeError, match="SHA-256"):
+            lb.download_model(dest_dir=tmp_path)
+        assert not (tmp_path / "czech-cnec-140304.zip").exists()  # uklizeno
+        assert not (tmp_path / lb._MODEL_FILENAME).exists()
