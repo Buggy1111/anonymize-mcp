@@ -2,6 +2,15 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.3] — 2026-08-11
+
+### Changed
+- **Upgrade na MCP SDK 2.0.0** (spec 2026-07-28, stateless rewrite): `FastMCP` bylo
+  upstream přejmenováno/přesunuto na `MCPServer` (`mcp.server.mcpserver`), stejně
+  aktualizován import v `server.py`. Zpřísněno `mcp>=1.2.0` → `mcp>=2.0.0`, aby
+  čerstvá instalace nemohla natáhnout nekompatibilní starou 1.x verzi SDK.
+  358/358 testů, ruff i mypy zelené.
+
 ## [0.10.2] — 2026-06-10
 
 ### Fixed
