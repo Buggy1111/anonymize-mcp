@@ -17,7 +17,7 @@ import logging
 import os
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from . import korektor as _korektor
 from . import local_backend as _local
@@ -78,7 +78,7 @@ def _prepare_input(text: str, tool_name: str) -> tuple[str, list[str]]:
     return cleaned, warnings
 
 
-mcp = FastMCP("wrapper")
+mcp = MCPServer("wrapper")
 
 
 @mcp.tool()
