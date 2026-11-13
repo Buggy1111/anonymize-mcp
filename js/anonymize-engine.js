@@ -92,7 +92,11 @@ const STRUCT = [
   // částka: číslo + měna („85 000 Kč", „1 200,50 EUR", „25 tis. Kč", „15.000,- Kč") nebo měna před číslem („€ 1 200", „$350").
   // PŘED telefonem/PSČ/IČO, ať si číslice částky nepřeberou. Částka sama osobní údaj být nemusí,
   // ale u dlužníka/pacienta ho prozradí (výše dluhu, mzdy, odškodnění) → redigujeme.
-  {key:"CASTKA",  label:"částka",         re:/(?<![\d.,])\d+(?:[ \u00a0.]\d{3})*(?:,\d{1,2}|,-)?(?:\s?(?:mil\.?|tis\.?|milion\p{L}*|tisíc\p{L}*))?\s?(?:Kč|CZK|EUR|USD|GBP|€|\$|korun\p{L}*|eur\b)(?!\p{L})|(?:€|\$|EUR|CZK|USD)\s?\d+(?:[ ,.\u00a0]\d{3})*(?:[.,]\d{1,2})?(?![\d])/gu},
+  {key:"CASTKA",  label:"částka",         re:/(?<![\d.,])\d+(?:[  .]\d{3})*(?:,\d{1,2}|,-)?(?:\s?(?:mil\.?|tis\.?|milion\p{L}*|tisíc\p{L}*))?\s?(?:[Kk][čČcC]|CZK|czk|EUR|eur|USD|GBP|€|\$|korun\p{L}*(?:\s+česk\p{L}*)?|eur\p{L}*)(?![\p{L}\d])|(?:€|\$|EUR|CZK|USD|[Kk][čČ])\s?\d+(?:[ ,. ]\d{3})*(?:[.,]\d{1,2}|,-)?(?![\d])/gu},
+  // částka slovy („slovy: osmdesát tisíc korun českých") — běžné ve smlouvách
+  {key:"CASTKA",  label:"částka",  cap:1, re:/slovy[:\s]+((?:\p{L}+[\s-]){0,8}?\p{L}*\s?(?:korun\p{L}*|Kč|eur\p{L}*)(?:\s+česk\p{L}*)?)/gu},
+  // částka bez měny, ale za slovem, které peníze jednoznačně ohlašuje („ve výši 80 000", „jistina 120 000")
+  {key:"CASTKA",  label:"částka",  cap:1, re:/(?:ve\s+výši|částk\p{L}*|cen[aěuy]\b|úhrad\p{L}*|dluh\p{L}*|jistin\p{L}*|pokut\p{L}*|odměn\p{L}*|mzd\p{L}*|nájemn\p{L}*|záloh\p{L}*|doplat\p{L}*|odškodn\p{L}*|náhrad\p{L}*\s+škody)(?:\s+(?:činí|ve\s+výši|celkem|ve\s+výši))?[\s:]{1,3}((?:\d{1,3}(?:[  .]\d{3})+|\d{3,})(?:,\d{1,2}|,-)?)(?![\d\/.])/gu},
   // telefon: a) s předvolbou +420/+421 — jistota, bereme libovolné členění 9 číslic
   //          b) bez předvolby — jen reálné CZ prefixy 2–7 (pevné linky+mobily; částky
   //             „123 456 789“ začínají 1 → propadnou) + stopka na měnu/jednotky/delší čísla
