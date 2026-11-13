@@ -89,6 +89,10 @@ const STRUCT = [
   {key:"UCET",    label:"číslo účtu",     re:/\b\d{1,6}-\d{2,10}\/\d{4}\b/g},
   {key:"UCET",    label:"číslo účtu",     cap:1, re:/[Úú]č\p{L}+[^\d\n]{0,12}?((?:\d{1,6}-)?\d{2,10}\/\d{4})\b/gu},
   {key:"SSN",     label:"US SSN",         re:/\b\d{3}-\d{2}-\d{4}\b/g},
+  // částka: číslo + měna („85 000 Kč", „1 200,50 EUR", „25 tis. Kč", „15.000,- Kč") nebo měna před číslem („€ 1 200", „$350").
+  // PŘED telefonem/PSČ/IČO, ať si číslice částky nepřeberou. Částka sama osobní údaj být nemusí,
+  // ale u dlužníka/pacienta ho prozradí (výše dluhu, mzdy, odškodnění) → redigujeme.
+  {key:"CASTKA",  label:"částka",         re:/(?<![\d.,])\d+(?:[ \u00a0.]\d{3})*(?:,\d{1,2}|,-)?(?:\s?(?:mil\.?|tis\.?|milion\p{L}*|tisíc\p{L}*))?\s?(?:Kč|CZK|EUR|USD|GBP|€|\$|korun\p{L}*|eur\b)(?!\p{L})|(?:€|\$|EUR|CZK|USD)\s?\d+(?:[ ,.\u00a0]\d{3})*(?:[.,]\d{1,2})?(?![\d])/gu},
   // telefon: a) s předvolbou +420/+421 — jistota, bereme libovolné členění 9 číslic
   //          b) bez předvolby — jen reálné CZ prefixy 2–7 (pevné linky+mobily; částky
   //             „123 456 789“ začínají 1 → propadnou) + stopka na měnu/jednotky/delší čísla
@@ -253,5 +257,5 @@ const NER_STOP=new Set(["osvč","čr","sr","eu","osa","čsú","npú","por","npor
 const TYPE_LABELS={OSOBA:"osoba",FIRMA:"firma",INSTITUCE:"instituce",MESTO:"místo",ULICE:"ulice",CP:"č. popisné",PSC:"PSČ",TELEFON:"telefon",EMAIL:"email",
   URL:"URL",RC:"rodné číslo",ICO:"IČO",DIC:"DIČ",IBAN:"IBAN",UCET:"číslo účtu",SPZN:"spisová značka",DATUM:"datum",
   DSCHRANKA:"datová schránka",VIN:"VIN",DOKID:"číslo dokumentu",COP:"číslo OP",MKN:"diagnóza (MKN)",
-  KRYPTO:"krypto adresa",TOKEN:"API token",KARTA:"platební karta",SSN:"US SSN",SPZ:"SPZ"};
-const PH_RE=/\b(?:OSOBA|FIRMA|INSTITUCE|MESTO|ULICE|CP|PSC|TELEFON|EMAIL|URL|RC|ICO|DIC|IBAN|UCET|SPZN|DATUM|DSCHRANKA|VIN|DOKID|COP|MKN|KRYPTO|TOKEN|KARTA|SSN|SPZ)\d+\b/g;
+  KRYPTO:"krypto adresa",TOKEN:"API token",KARTA:"platební karta",SSN:"US SSN",SPZ:"SPZ",CASTKA:"částka"};
+const PH_RE=/\b(?:OSOBA|FIRMA|INSTITUCE|MESTO|ULICE|CP|PSC|TELEFON|EMAIL|URL|RC|ICO|DIC|IBAN|UCET|SPZN|DATUM|DSCHRANKA|VIN|DOKID|COP|MKN|KRYPTO|TOKEN|KARTA|SSN|SPZ|CASTKA)\d+\b/g;
