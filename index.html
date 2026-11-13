@@ -2,10 +2,10 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ytVcrgDSeqfs02HxshEtCYP0bLDapa02FKtry64QPY4=' 'sha256-r9u3oEBJVdRTOcQXDYjSccU/Ss6i7462QvEa/kO+IuY='; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4JSC+Jw/ElqYUpX/H+CgMYIP0Z0YMfnf02qFKsl3Cds='; connect-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Anonymizace českých dokumentů online zdarma — jména, rodná čísla, účty (GDPR)</title>
-<meta name="description" content="Anonymizujte žaloby, lékařské zprávy i smlouvy přímo v prohlížeči. Jména, rodná čísla, adresy, účty i částky se nahradí značkami OSOBA1, RC1, IBAN1. Zdarma, bez registrace, text neopustí váš počítač.">
+<title>Anonymizace dokumentů online zdarma | jména, rodná čísla, GDPR</title>
+<meta name="description" content="Anonymizujte žaloby, lékařské zprávy i smlouvy přímo v prohlížeči, než je pošlete do ChatGPT nebo zveřejníte. Jména, rodná čísla, adresy, účty i částky se nahradí značkami. Zdarma, bez registrace, text neopustí váš počítač.">
 <meta name="author" content="Michal Bürgermeister">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -14,6 +14,9 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="manifest" href="site.webmanifest">
 <link rel="canonical" href="https://anonymizace.js.org/">
+<link rel="alternate" hreflang="cs" href="https://anonymizace.js.org/">
+<link rel="alternate" hreflang="x-default" href="https://anonymizace.js.org/">
+<link rel="alternate" type="text/markdown" title="Popis pro AI (llms.txt)" href="https://anonymizace.js.org/llms.txt">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Anonymizace">
 <meta property="og:locale" content="cs_CZ">
@@ -21,6 +24,9 @@
 <meta property="og:description" content="Jména, rodná čísla, adresy, účty i částky se nahradí značkami. Zdarma, v prohlížeči, bez registrace.">
 <meta property="og:url" content="https://anonymizace.js.org/">
 <meta property="og:image" content="https://anonymizace.js.org/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Věta ze spisu, ve které jsou jméno, rodné číslo, adresa, částka a účet nahrazené značkami OSOBA1, RC1, ULICE1, CASTKA1 a IBAN1.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Anonymizace českých dokumentů — text neopustí váš počítač">
 <meta name="twitter:description" content="Jména, rodná čísla, adresy, účty i částky se nahradí značkami. Zdarma, v prohlížeči.">
@@ -47,11 +53,11 @@
 <main id="top">
 <section class="dossier" id="dossier" aria-label="Ukázka anonymizace">
   <div class="d-stage gut">
-    <p class="d-eyebrow d-meta">Spis 23 C 145/2026 · žaloba o zaplacení</p>
+    <div class="d-meta"><h1 class="d-eyebrow">Anonymizace dokumentů</h1><p class="d-sub">Ukázka: spis 23 C 145/2026, žaloba o zaplacení</p></div>
     <p class="d-text" id="dtext">Žalobce <span class="pii" data-tok="OSOBA1">Jan Novák</span>, r.&nbsp;č. <span class="pii" data-tok="RC1">780312/1234</span>, bytem <span class="pii" data-tok="ULICE1">Husova 12</span> v&nbsp;<span class="pii" data-tok="MESTO1">Brně</span>, žádá <span class="pii" data-tok="CASTKA1">85 000 Kč</span> na účet <span class="pii" data-tok="IBAN1">CZ65 0800 0000 1920</span>.</p>
     <div class="d-foot">
       <div class="d-caps">
-        <h1 id="cap0">Šest citlivých údajů v&nbsp;jedné větě. <em>Posuňte dolů a&nbsp;zmizí.</em></h1>
+        <p id="cap0">Šest citlivých údajů v&nbsp;jedné větě. <em>Posuňte dolů a&nbsp;zmizí.</em></p>
         <p id="cap1" style="opacity:0">Po anonymizaci <em>ani jeden.</em></p>
       </div>
       <div class="d-count"><strong id="cnt">6</strong><span>citlivých údajů ve větě</span></div>
@@ -104,8 +110,13 @@
   </div>
 </section>
 
+<section class="about gut" aria-label="O nástroji">
+  <p data-reveal="0"><b>Anonymizace.js.org</b> je bezplatný nástroj pro advokáty, lékaře, úřady a každého, kdo potřebuje sdílet dokument bez osobních údajů. Pozná přes 20 druhů údajů, od jmen a rodných čísel po účty a částky, a nahradí je značkami, takže text zůstane čitelný. <span>Běží ve vašem prohlížeči, data nikam neodesílá a je zdarma.</span></p>
+</section>
+
 <section class="faq gut" id="otazky">
   <h2>Než začnete</h2>
+    <details><summary>Jak anonymizovat dokument, než ho vložím do ChatGPT?</summary><p>Vložte text do anonymizéru nebo nahrajte PDF, Word či TXT. Jména, rodná čísla, adresy, účty a další údaje se nahradí značkami jako OSOBA1 nebo RC1. Výsledek zkopírujete a vložíte do ChatGPT, Claude nebo Gemini. Model pak pracuje s textem, ale osobní údaje nevidí.</p></details>
   <details><summary>Ukládáte někde můj text?</summary><p>Ne. Web nemá vlastní server ani databázi. V lokálním režimu text vůbec neopustí prohlížeč. V přesném režimu ho zpracuje akademický server LINDAT na MFF UK a výsledek se vrátí jen vám.</p></details>
   <details><summary>Stačí to na GDPR?</summary><p>Nahrazení značkami je pseudonymizace podle čl. 4 odst. 5 GDPR. Výrazně snižuje riziko, ale za výsledek odpovídá ten, kdo dokument předává. Výstup si před odesláním vždy přečtěte.</p></details>
   <details><summary>Co všechno pozná?</summary><p>Jména, rodná čísla s kontrolou dělitelnosti, IČO, DIČ, IBAN a čísla účtů, peněžní částky, platební karty, telefony, e-maily, adresy a PSČ, data narození, SPZ, VIN, čísla dokladů, datové schránky, spisové značky i diagnózy MKN-10.</p></details>
@@ -130,14 +141,7 @@
 <script src="js/landing.js"></script>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Anonymizace českých dokumentů","url":"https://anonymizace.js.org/","description":"Anonymizace osobních údajů v českých dokumentech přímo v prohlížeči. Jména, rodná čísla, adresy, účty i částky se nahradí značkami. Lokální offline režim i přesný režim s NER od ÚFAL MFF UK.","applicationCategory":"SecurityApplication","operatingSystem":"All (web browser)","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"creator":{"@type":"Person","name":"Michal Bürgermeister"},"isBasedOn":"https://github.com/Buggy1111/anonymize-mcp"}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"Ukládáte někde můj text?","acceptedAnswer":{"@type":"Answer","text":"Ne. Web nemá vlastní server ani databázi. V lokálním režimu text vůbec neopustí prohlížeč. V přesném režimu ho zpracuje akademický server LINDAT na MFF UK a výsledek se vrátí jen vám."}},
-{"@type":"Question","name":"Stačí to na GDPR?","acceptedAnswer":{"@type":"Answer","text":"Nahrazení značkami je pseudonymizace podle čl. 4 odst. 5 GDPR. Výrazně snižuje riziko, ale za výsledek odpovídá ten, kdo dokument předává. Výstup si před odesláním vždy přečtěte."}},
-{"@type":"Question","name":"Co všechno pozná?","acceptedAnswer":{"@type":"Answer","text":"Jména, rodná čísla s kontrolou dělitelnosti, IČO, DIČ, IBAN a čísla účtů, peněžní částky, platební karty, telefony, e-maily, adresy a PSČ, data narození, SPZ, VIN, čísla dokladů, datové schránky, spisové značky i diagnózy MKN-10."}},
-{"@type":"Question","name":"Kolik to stojí?","acceptedAnswer":{"@type":"Answer","text":"Nic, pro nekomerční použití. Projekt je neoficiální a staví na veřejných nástrojích LINDAT a ÚFAL MFF UK."}}]}
+{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://anonymizace.js.org/#web","url":"https://anonymizace.js.org/","name":"Anonymizace","alternateName":["Anonymizace.js.org","Czech NLP Toolkit"],"inLanguage":"cs","description":"Anonymizace českých dokumentů v prohlížeči.","publisher":{"@id":"https://anonymizace.js.org/#autor"}},{"@type":"Person","@id":"https://anonymizace.js.org/#autor","name":"Michal Bürgermeister","url":"https://github.com/Buggy1111","sameAs":["https://github.com/Buggy1111","https://pypi.org/project/anonymize-mcp/"]},{"@type":"WebApplication","@id":"https://anonymizace.js.org/#app","name":"Anonymizace dokumentů","url":"https://anonymizace.js.org/","description":"Bezplatná anonymizace osobních údajů v českých dokumentech přímo v prohlížeči. Jména, rodná čísla, adresy, účty i peněžní částky se nahradí značkami OSOBA1, RC1, CASTKA1. Lokální offline režim i přesný režim s rozpoznáváním entit (NameTag, ÚFAL MFF UK).","applicationCategory":"SecurityApplication","applicationSubCategory":"Anonymizace a pseudonymizace dokumentů","operatingSystem":"Webový prohlížeč","browserRequirements":"Requires JavaScript","inLanguage":"cs","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"image":"https://anonymizace.js.org/og-image.png","screenshot":"https://anonymizace.js.org/og-image.png","dateModified":"2026-11-14","featureList":["Přes 20 druhů osobních údajů","Rodná čísla, IČO a IBAN ověřené kontrolním součtem","Peněžní částky","Lokální režim bez odesílání dat","Přesný režim s NER (NameTag, ÚFAL)","Nahrání PDF, DOCX a TXT"],"audience":{"@type":"Audience","audienceType":"advokáti, lékaři, úřady, soudy, novináři, vývojáři"},"author":{"@id":"https://anonymizace.js.org/#autor"},"isPartOf":{"@id":"https://anonymizace.js.org/#web"},"isBasedOn":"https://github.com/Buggy1111/anonymize-mcp","license":"https://polyformproject.org/licenses/noncommercial/1.0.0/"},{"@type":"FAQPage","@id":"https://anonymizace.js.org/#otazky","mainEntity":[{"@type":"Question","name":"Jak anonymizovat dokument, než ho vložím do ChatGPT?","acceptedAnswer":{"@type":"Answer","text":"Vložte text do anonymizéru nebo nahrajte PDF, Word či TXT. Jména, rodná čísla, adresy, účty a další údaje se nahradí značkami jako OSOBA1 nebo RC1. Výsledek zkopírujete a vložíte do ChatGPT, Claude nebo Gemini. Model pak pracuje s textem, ale osobní údaje nevidí."}},{"@type":"Question","name":"Ukládáte někde můj text?","acceptedAnswer":{"@type":"Answer","text":"Ne. Web nemá vlastní server ani databázi. V lokálním režimu text vůbec neopustí prohlížeč. V přesném režimu ho zpracuje akademický server LINDAT na MFF UK a výsledek se vrátí jen vám."}},{"@type":"Question","name":"Stačí to na GDPR?","acceptedAnswer":{"@type":"Answer","text":"Nahrazení značkami je pseudonymizace podle čl. 4 odst. 5 GDPR. Výrazně snižuje riziko, ale za výsledek odpovídá ten, kdo dokument předává. Výstup si před odesláním vždy přečtěte."}},{"@type":"Question","name":"Co všechno pozná?","acceptedAnswer":{"@type":"Answer","text":"Jména, rodná čísla s kontrolou dělitelnosti, IČO, DIČ, IBAN a čísla účtů, peněžní částky, platební karty, telefony, e-maily, adresy a PSČ, data narození, SPZ, VIN, čísla dokladů, datové schránky, spisové značky i diagnózy MKN-10."}},{"@type":"Question","name":"Kolik to stojí?","acceptedAnswer":{"@type":"Answer","text":"Nic, pro nekomerční použití. Projekt je neoficiální a staví na veřejných nástrojích LINDAT a ÚFAL MFF UK."}}]}]}
 </script>
 </body>
 </html>

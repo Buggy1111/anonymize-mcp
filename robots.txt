@@ -1,16 +1,39 @@
+# anonymizace.js.org — vítáme všechny vyhledávače i AI asistenty (vyhledávání i trénink).
 User-agent: *
 Allow: /
+Disallow: /docs/
 
-# AI / GEO crawlery výslovně vítány
-User-agent: GPTBot
+# Vyhledávače
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Applebot
+User-agent: DuckDuckBot
+User-agent: YandexBot
+User-agent: SeznamBot
 Allow: /
+Disallow: /docs/
+
+# AI vyhledávání a asistenti (citace v odpovědích)
 User-agent: OAI-SearchBot
-Allow: /
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
 User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: MistralAI-User
+User-agent: DuckAssistBot
 Allow: /
+Disallow: /docs/
+
+# AI trénink (ať modely o nástroji vědí)
+User-agent: GPTBot
 User-agent: ClaudeBot
-Allow: /
+User-agent: anthropic-ai
 User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: meta-externalagent
 Allow: /
+Disallow: /docs/
 
 Sitemap: https://anonymizace.js.org/sitemap.xml

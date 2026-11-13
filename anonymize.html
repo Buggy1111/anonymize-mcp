@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-Th+Vw5+OTLTWte4NCQ2dx5QQAiQ8Px/KIzAU5qvoJ7E=' 'sha256-smBFhAyBHHM3nB3qeCM/pi6VCbOqJ8/+8Gq+qUwdapk=' 'sha256-K7ZnZe22zq7qpWYqQISRLTy7FrbTgH4HK/1k6dmrlr8='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-rNsKoWhVmr++iFWgiLqCXG9qlbNV24SLz0M3RKARQmQ='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Anonymizér českého textu online zdarma — jména, rodná čísla, IČO, účty (GDPR)</title>
 <meta name="description" content="Anonymizujte český text přímo v prohlížeči. Jména, rodná čísla, adresy, telefony, IČO, účty i částky se nahradí značkami OSOBA1, RC1… Lokální offline režim nebo přesný režim s NER od ÚFAL. Nahrajte PDF, Word nebo TXT.">
@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="manifest" href="site.webmanifest">
 <link rel="canonical" href="https://anonymizace.js.org/anonymize.html">
+<link rel="alternate" hreflang="cs" href="https://anonymizace.js.org/anonymize.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Anonymizace">
 <meta property="og:locale" content="cs_CZ">
@@ -21,6 +22,9 @@
 <meta property="og:description" content="Jména, rodná čísla, adresy, IČO, účty i částky se nahradí značkami. Offline v prohlížeči nebo přesně s NER od ÚFAL.">
 <meta property="og:url" content="https://anonymizace.js.org/anonymize.html">
 <meta property="og:image" content="https://anonymizace.js.org/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Věta ze spisu s osobními údaji nahrazenými značkami OSOBA1, RC1, ULICE1, CASTKA1 a IBAN1.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Anonymizér českého textu online zdarma (GDPR)">
 <meta name="twitter:description" content="Skryjte osobní údaje v českém textu, offline v prohlížeči nebo přesně s NER od ÚFAL.">
@@ -96,6 +100,10 @@
 <section class="faq gut">
   <h2>Časté otázky</h2>
   <details><summary>Jak zdarma anonymizovat český text pro GDPR?</summary><p>Vložte text do anonymizéru a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) se automaticky nahradí značkami jako OSOBA1 nebo RC1. Lokální režim běží celý ve vašem prohlížeči, přesný režim používá akademické API ÚFAL.</p></details>
+  <details><summary>Můžu anonymizovaný text vložit do ChatGPT?</summary><p>Ano, k tomu je nástroj určený. Po anonymizaci výsledek zkopírujte a vložte do ChatGPT, Claude nebo Gemini. Model uvidí značky OSOBA1, RC1 nebo IBAN1 místo skutečných údajů, takže text může shrnout, přeložit nebo zkontrolovat, aniž by se k osobním údajům dostal.</p></details>
+  <details><summary>Jak anonymizovat rozsudek nebo soudní rozhodnutí?</summary><p>Vložte text rozhodnutí nebo nahrajte PDF. Anonymizér nahradí jména účastníků, rodná čísla, adresy, čísla účtů i částky a ponechá spisovou značku jako SPZN1. Pro jména ve skloňovaných tvarech (např. „žalované Marii Svobodové“) zapněte přesný režim.</p></details>
+  <details><summary>Jak skrýt rodné číslo v PDF?</summary><p>Nahrajte PDF tlačítkem Nahrát soubor. Text se přečte ve vašem prohlížeči a každé rodné číslo, které projde kontrolou dělitelnosti 11, se nahradí značkou RC1, RC2 a dalšími. Anonymizovaný text pak zkopírujete.</p></details>
+  <details><summary>Jaký je rozdíl mezi anonymizací a pseudonymizací?</summary><p>Pseudonymizace nahradí údaje značkami, ale z kontextu nebo s dodatečnými informacemi lze osobu někdy znovu určit. Anonymizace podle GDPR znamená, že to nejde vůbec. Tento nástroj provádí pseudonymizaci; pro skutečnou anonymizaci výstup zkontrolujte a odstraňte i nepřímé indicie.</p></details>
   <details><summary>Opustí můj text počítač?</summary><p>V lokálním režimu ne, anonymizace proběhne celá ve vašem prohlížeči. V přesném režimu se text posílá na akademické API ÚFAL (LINDAT) ke zpracování.</p></details>
   <details><summary>Jak velký dokument zvládne?</summary><p>Do 20 000 znaků najednou, tedy zhruba 8 stran textu. Soubor (PDF, DOCX, TXT do 10 MB) se čte ve vašem prohlížeči.</p></details>
 </section>
@@ -121,16 +129,7 @@
 <script src="js/site.js"></script>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Anonymizér českého textu","url":"https://anonymizace.js.org/anonymize.html","description":"Bezplatná anonymizace osobních údajů v českém textu přímo v prohlížeči. Lokální offline režim i přesný režim s NER od ÚFAL MFF UK.","applicationCategory":"SecurityApplication","operatingSystem":"All (web browser)","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"featureList":["Přes 20 druhů osobních údajů","Lokální offline režim","Přesný režim s NER (ÚFAL NameTag)","Nahrání PDF, DOCX a TXT","Tabulka náhrad"],"creator":{"@type":"Person","name":"Michal Bürgermeister"},"isBasedOn":"https://github.com/Buggy1111/anonymize-mcp"}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"Jak zdarma anonymizovat český text pro GDPR?","acceptedAnswer":{"@type":"Answer","text":"Vložte text do anonymizéru a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) se automaticky nahradí značkami jako OSOBA1 nebo RC1. Lokální režim běží celý ve vašem prohlížeči, přesný režim používá akademické API ÚFAL."}},
-{"@type":"Question","name":"Opustí můj text počítač?","acceptedAnswer":{"@type":"Answer","text":"V lokálním režimu ne, anonymizace proběhne celá ve vašem prohlížeči. V přesném režimu se text posílá na akademické API ÚFAL (LINDAT) ke zpracování."}},
-{"@type":"Question","name":"Jak velký dokument zvládne?","acceptedAnswer":{"@type":"Answer","text":"Do 20 000 znaků najednou, tedy zhruba 8 stran textu. Soubor (PDF, DOCX, TXT do 10 MB) se čte ve vašem prohlížeči."}}]}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Anonymizace","item":"https://anonymizace.js.org/"},{"@type":"ListItem","position":2,"name":"Anonymizér","item":"https://anonymizace.js.org/anonymize.html"}]}
+{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","@id":"https://anonymizace.js.org/anonymize.html#app","name":"Anonymizér českého textu","url":"https://anonymizace.js.org/anonymize.html","description":"Bezplatná anonymizace osobních údajů v českém textu přímo v prohlížeči. Jména, rodná čísla, adresy, účty a částky se nahradí značkami. Lokální offline režim i přesný režim s NER od ÚFAL MFF UK. Nahrání PDF, DOCX a TXT.","applicationCategory":"SecurityApplication","operatingSystem":"Webový prohlížeč","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"image":"https://anonymizace.js.org/og-image.png","featureList":["Přes 20 druhů osobních údajů","Lokální offline režim","Přesný režim s NER (ÚFAL NameTag)","Nahrání PDF, DOCX a TXT","Tabulka náhrad"],"author":{"@id":"https://anonymizace.js.org/#autor"},"isPartOf":{"@id":"https://anonymizace.js.org/#web"},"isBasedOn":"https://github.com/Buggy1111/anonymize-mcp"},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Jak zdarma anonymizovat český text pro GDPR?","acceptedAnswer":{"@type":"Answer","text":"Vložte text do anonymizéru a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) se automaticky nahradí značkami jako OSOBA1 nebo RC1. Lokální režim běží celý ve vašem prohlížeči, přesný režim používá akademické API ÚFAL."}},{"@type":"Question","name":"Můžu anonymizovaný text vložit do ChatGPT?","acceptedAnswer":{"@type":"Answer","text":"Ano, k tomu je nástroj určený. Po anonymizaci výsledek zkopírujte a vložte do ChatGPT, Claude nebo Gemini. Model uvidí značky OSOBA1, RC1 nebo IBAN1 místo skutečných údajů, takže text může shrnout, přeložit nebo zkontrolovat, aniž by se k osobním údajům dostal."}},{"@type":"Question","name":"Jak anonymizovat rozsudek nebo soudní rozhodnutí?","acceptedAnswer":{"@type":"Answer","text":"Vložte text rozhodnutí nebo nahrajte PDF. Anonymizér nahradí jména účastníků, rodná čísla, adresy, čísla účtů i částky a ponechá spisovou značku jako SPZN1. Pro jména ve skloňovaných tvarech (např. „žalované Marii Svobodové“) zapněte přesný režim."}},{"@type":"Question","name":"Jak skrýt rodné číslo v PDF?","acceptedAnswer":{"@type":"Answer","text":"Nahrajte PDF tlačítkem Nahrát soubor. Text se přečte ve vašem prohlížeči a každé rodné číslo, které projde kontrolou dělitelnosti 11, se nahradí značkou RC1, RC2 a dalšími. Anonymizovaný text pak zkopírujete."}},{"@type":"Question","name":"Jaký je rozdíl mezi anonymizací a pseudonymizací?","acceptedAnswer":{"@type":"Answer","text":"Pseudonymizace nahradí údaje značkami, ale z kontextu nebo s dodatečnými informacemi lze osobu někdy znovu určit. Anonymizace podle GDPR znamená, že to nejde vůbec. Tento nástroj provádí pseudonymizaci; pro skutečnou anonymizaci výstup zkontrolujte a odstraňte i nepřímé indicie."}},{"@type":"Question","name":"Opustí můj text počítač?","acceptedAnswer":{"@type":"Answer","text":"V lokálním režimu ne, anonymizace proběhne celá ve vašem prohlížeči. V přesném režimu se text posílá na akademické API ÚFAL (LINDAT) ke zpracování."}},{"@type":"Question","name":"Jak velký dokument zvládne?","acceptedAnswer":{"@type":"Answer","text":"Do 20 000 znaků najednou, tedy zhruba 8 stran textu. Soubor (PDF, DOCX, TXT do 10 MB) se čte ve vašem prohlížeči."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Anonymizace","item":"https://anonymizace.js.org/"},{"@type":"ListItem","position":2,"name":"Anonymizér","item":"https://anonymizace.js.org/anonymize.html"}]}]}
 </script>
 </body>
 </html>

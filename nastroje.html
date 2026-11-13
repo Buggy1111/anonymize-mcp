@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-GovQvIbgi2KdeymtAWS3v5SfxlX6v2FXR52ozjKmxeM=' 'sha256-WuduJyT3H2Modolh5oipJGr2vX8gNL6EbB/VowOY+Y0=' 'sha256-J2nLhkmRTqpl6YDsmjWxVtRaOcKJvVZrch/5d24BFp4='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-7+rA+rSMD80xcPwWbnoCNmVybzgrks2I266nUrvawAU='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Nástroje pro češtinu online — rozpoznání entit, morfologie, pravopis a překlad</title>
 <meta name="description" content="České jazykové nástroje přímo v prohlížeči: rozpoznání entit (NER), morfologická analýza, oprava pravopisu a diakritiky a strojový překlad. Zdarma, postaveno na nástrojích ÚFAL MFF UK.">
@@ -14,6 +14,7 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="manifest" href="site.webmanifest">
 <link rel="canonical" href="https://anonymizace.js.org/nastroje.html">
+<link rel="alternate" hreflang="cs" href="https://anonymizace.js.org/nastroje.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Anonymizace">
 <meta property="og:locale" content="cs_CZ">
@@ -21,6 +22,9 @@
 <meta property="og:description" content="Rozpoznání entit, morfologie, oprava pravopisu a překlad češtiny přímo v prohlížeči. Postaveno na ÚFAL MFF UK.">
 <meta property="og:url" content="https://anonymizace.js.org/nastroje.html">
 <meta property="og:image" content="https://anonymizace.js.org/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Věta ze spisu s osobními údaji nahrazenými značkami OSOBA1, RC1, ULICE1, CASTKA1 a IBAN1.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://anonymizace.js.org/og-image.png">
 <link rel="stylesheet" href="css/fonts.css">
@@ -118,16 +122,7 @@
 <script src="js/site.js"></script>
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Nástroje pro češtinu: entity, morfologie, pravopis, překlad","url":"https://anonymizace.js.org/nastroje.html","description":"Rozpoznání entit (NER), morfologická analýza, oprava pravopisu a diakritiky a strojový překlad češtiny v prohlížeči. Postaveno na nástrojích ÚFAL MFF UK.","applicationCategory":"UtilitiesApplication","operatingSystem":"All (web browser)","browserRequirements":"Requires JavaScript","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"featureList":["Rozpoznání pojmenovaných entit — NameTag","Morfologická analýza — UDPipe","Oprava pravopisu a diakritiky — Korektor","Strojový překlad mezi 7 jazyky — CUBBITT"],"creator":{"@type":"Person","name":"Michal Bürgermeister"},"isPartOf":{"@type":"WebSite","name":"Anonymizace","url":"https://anonymizace.js.org/"}}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"Posílají se moje texty někam?","acceptedAnswer":{"@type":"Answer","text":"Web nemá vlastní server a nic neukládá. Texty se posílají přímo z vašeho prohlížeče na akademické API ÚFAL (LINDAT) ke zpracování. Anonymizér navíc nabízí lokální režim, kde text neopustí váš počítač."}},
-{"@type":"Question","name":"Jaké jazyky umí překladač?","acceptedAnswer":{"@type":"Answer","text":"Překládá mezi češtinou, angličtinou, němčinou, francouzštinou, polštinou, ruštinou a ukrajinštinou. Pro češtinu a angličtinu používá CUBBITT, jeden z nejkvalitnějších dostupných překladačů."}},
-{"@type":"Question","name":"Je to zdarma?","acceptedAnswer":{"@type":"Answer","text":"Ano, pro nekomerční použití. Nástroje stojí na otevřených projektech ÚFAL MFF UK: NameTag, UDPipe, Korektor a Charles Translator (CUBBITT)."}}]}
-</script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Anonymizace","item":"https://anonymizace.js.org/"},{"@type":"ListItem","position":2,"name":"Další nástroje","item":"https://anonymizace.js.org/nastroje.html"}]}
+{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","name":"Nástroje pro češtinu: entity, morfologie, pravopis, překlad","url":"https://anonymizace.js.org/nastroje.html","description":"Rozpoznání entit (NER), morfologická analýza, oprava pravopisu a diakritiky a strojový překlad češtiny v prohlížeči. Postaveno na nástrojích ÚFAL MFF UK.","applicationCategory":"UtilitiesApplication","operatingSystem":"All (web browser)","browserRequirements":"Requires JavaScript","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"featureList":["Rozpoznání pojmenovaných entit — NameTag","Morfologická analýza — UDPipe","Oprava pravopisu a diakritiky — Korektor","Strojový překlad mezi 7 jazyky — CUBBITT"],"isPartOf":{"@type":"WebSite","name":"Anonymizace","url":"https://anonymizace.js.org/"},"author":{"@id":"https://anonymizace.js.org/#autor"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Posílají se moje texty někam?","acceptedAnswer":{"@type":"Answer","text":"Web nemá vlastní server a nic neukládá. Texty se posílají přímo z vašeho prohlížeče na akademické API ÚFAL (LINDAT) ke zpracování. Anonymizér navíc nabízí lokální režim, kde text neopustí váš počítač."}},{"@type":"Question","name":"Jaké jazyky umí překladač?","acceptedAnswer":{"@type":"Answer","text":"Překládá mezi češtinou, angličtinou, němčinou, francouzštinou, polštinou, ruštinou a ukrajinštinou. Pro češtinu a angličtinu používá CUBBITT, jeden z nejkvalitnějších dostupných překladačů."}},{"@type":"Question","name":"Je to zdarma?","acceptedAnswer":{"@type":"Answer","text":"Ano, pro nekomerční použití. Nástroje stojí na otevřených projektech ÚFAL MFF UK: NameTag, UDPipe, Korektor a Charles Translator (CUBBITT)."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Anonymizace","item":"https://anonymizace.js.org/"},{"@type":"ListItem","position":2,"name":"Další nástroje","item":"https://anonymizace.js.org/nastroje.html"}]}]}
 </script>
 </body>
 </html>
