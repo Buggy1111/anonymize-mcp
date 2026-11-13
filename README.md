@@ -8,31 +8,34 @@ Doprovodný web k MCP serveru [anonymize-mcp](https://github.com/Buggy1111/anony
 
 ## Nástroje
 
-- **Anonymizace** — skryje osobní údaje (jména, rodná čísla, adresy, telefony, IČO, e-maily) a nahradí je placeholdery (OSOBA1, MESTO1…). Lokální offline mód (regex) i reálný NER. Vlastní stránka `anonymize.html`.
+- **Anonymizace** — skryje osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) a nahradí je značkami (OSOBA1, CASTKA1…). Lokální offline režim i přesný NER. Vlastní stránka `anonymize.html`.
 - **NER** — rozpoznávání pojmenovaných entit (NameTag 3).
 - **Morfologie** — lemma, slovní druh, mluvnické kategorie (UDPipe 2).
 - **Korektor** — oprava překlepů a diakritiky (Korektor).
 - **Překlad** — strojový překlad mezi 7 jazyky (CUBBITT).
-- **Čitelnost** — *připravujeme* (PONK API zatím nepovoluje volání z prohlížeče / CORS).
 
 ## Struktura
 
-Statický web bez build kroku. Tři stránky:
+Statický web bez build kroku. Tři stránky, vzhled ve stylu Apple (den i noc):
 
 ```
-index.html          — landing: hák ochrany dat, "pro koho", "jak to funguje",
-                      karty nástrojů s prokliky, FAQ
-nastroje.html       — interaktivní nástroje: NER, morfologie, korektor, překlad
-                      (deep-link přes #hash, např. nastroje.html#morf)
-anonymize.html      — plný anonymizér (2 módy, ~19 typů PII, tabulka náhrad)
+index.html          — úvod: věta ze spisu, kterou při scrollu „skartuje" anonymizace,
+                      dveře „Kam putuje váš text", živá ukázka, otázky
+anonymize.html      — plný anonymizér (2 režimy, přes 20 druhů údajů, tabulka náhrad)
+nastroje.html       — entity, morfologie, pravopis, překlad (deep-link přes #ner, #morf…)
 
-css/base.css        — sdílené tokeny, layout, header, footer
-css/toolkit.css     — styly landingu i stránky nástrojů
-css/anonymize.css   — styly anonymizéru
-js/extract-text.js  — sdílené čtení PDF/DOCX/TXT (pdf.js + mammoth)
-js/toolkit.js       — logika nástrojů + deep-link přes #hash
-js/anonymize-engine.js — anonymizační logika
+css/fonts.css       — self-hosted Geist, Geist Mono, Inter (SIL OFL) — žádné Google Fonts
+css/site.css        — sdílené tokeny, lišta, patička, pracovní plocha
+css/landing.css     — úvodní stránka
+css/tool.css        — anonymizér a nástroje
+js/theme.js         — den/noc před vykreslením (bez probliknutí)
+js/site.js          — přepínač vzhledu, plynulý scroll (vendor/lenis), odhalení při scrollu
+js/landing.js       — skartovačka, dveře, nečinnost, živá ukázka
+js/extract-text.js  — čtení PDF/DOCX/TXT (pdf.js + mammoth z cdnjs)
+js/toolkit.js       — logika nástrojů
+js/anonymize-engine.js — anonymizační logika (sdílí úvod i anonymizér)
 js/anonymize-app.js — DOM vrstva anonymizéru
+csp-hashes.mjs      — po úpravě JSON-LD spusť `node csp-hashes.mjs` (přepočítá CSP hashe)
 ```
 
 ## Jak to funguje

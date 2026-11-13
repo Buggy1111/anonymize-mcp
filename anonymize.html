@@ -2,192 +2,135 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-rNuU3KzKpfKFmZZaspCkTSpLmz2l2R5UP+tfIuMOOZs=' 'sha256-Avtw4b5zRgeKt0KSkRhTv6ZRIf6A9qs76rH4xYhAFCw=' 'sha256-r2jJoCbvUTWlJmJfptmwqutqw9jNMdLMwmzVeh/KpsU='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
-<meta http-equiv="content-language" content="cs">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Anonymizace českého textu online zdarma — skryj jména, RČ, IČO, adresy (GDPR)</title>
-<meta name="description" content="Bezplatná anonymizace osobních údajů v českém textu přímo v prohlížeči. Skryje jména, rodná čísla, adresy, telefony, IČO, e-maily i krypto adresy. Lokální offline mód (zero-egress) nebo reálný NER od ÚFAL. Pro GDPR a citlivá data.">
-<meta name="keywords" content="anonymizace textu online, anonymizace osobních údajů, GDPR anonymizace, skrytí rodného čísla, PII redakce čeština, anonymizace dokumentů, ÚFAL, NameTag, MasKIT, zero-egress">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'sha256-Th+Vw5+OTLTWte4NCQ2dx5QQAiQ8Px/KIzAU5qvoJ7E=' 'sha256-smBFhAyBHHM3nB3qeCM/pi6VCbOqJ8/+8Gq+qUwdapk=' 'sha256-K7ZnZe22zq7qpWYqQISRLTy7FrbTgH4HK/1k6dmrlr8='; connect-src 'self' https://lindat.mff.cuni.cz https://cdnjs.cloudflare.com; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Anonymizér českého textu online zdarma — jména, rodná čísla, IČO, účty (GDPR)</title>
+<meta name="description" content="Anonymizujte český text přímo v prohlížeči. Jména, rodná čísla, adresy, telefony, IČO, účty i částky se nahradí značkami OSOBA1, RC1… Lokální offline režim nebo přesný režim s NER od ÚFAL. Nahrajte PDF, Word nebo TXT.">
 <meta name="author" content="Michal Bürgermeister">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-<meta name="theme-color" content="#06070c">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="favicon.svg">
 <link rel="manifest" href="site.webmanifest">
 <link rel="canonical" href="https://anonymizace.js.org/anonymize.html">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Czech NLP Toolkit">
+<meta property="og:site_name" content="Anonymizace">
 <meta property="og:locale" content="cs_CZ">
-<meta property="og:title" content="Anonymizace českého textu online zdarma (GDPR)">
-<meta property="og:description" content="Skryj jména, rodná čísla, adresy, IČO a další PII v českém textu. Offline lokální mód i reálný NER od ÚFAL. Běží v prohlížeči.">
+<meta property="og:title" content="Anonymizér českého textu online zdarma (GDPR)">
+<meta property="og:description" content="Jména, rodná čísla, adresy, IČO, účty i částky se nahradí značkami. Offline v prohlížeči nebo přesně s NER od ÚFAL.">
 <meta property="og:url" content="https://anonymizace.js.org/anonymize.html">
 <meta property="og:image" content="https://anonymizace.js.org/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Anonymizace českého textu online zdarma (GDPR)">
-<meta name="twitter:description" content="Skryj osobní údaje v českém textu — offline i reálný NER od ÚFAL.">
+<meta name="twitter:title" content="Anonymizér českého textu online zdarma (GDPR)">
+<meta name="twitter:description" content="Skryjte osobní údaje v českém textu, offline v prohlížeči nebo přesně s NER od ÚFAL.">
 <meta name="twitter:image" content="https://anonymizace.js.org/og-image.png">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/anonymize.css">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/tool.css">
+<script src="js/theme.js"></script>
 </head>
 <body>
-<noscript><div style="background:#7c5cff;color:#fff;text-align:center;padding:11px;font-family:sans-serif;font-size:14px">Tento nástroj potřebuje zapnutý JavaScript.</div></noscript>
-<div class="wrap">
-  <header>
-    <a class="logo" href="index.html" style="text-decoration:none"><span class="dot"></span> anonymize<small>-mcp</small></a>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <a class="gh" href="index.html">← Všechny nástroje</a>
-      <a class="gh" href="https://github.com/Buggy1111/anonymize-mcp" target="_blank" rel="noopener">GitHub →</a>
-    </div>
-  </header>
-  <main>
-  <section class="hero">
-    <div class="pill">🔒 Lokální mód běží <b>plně v prohlížeči</b> · žádný text neodchází (NER mód volá ÚFAL)</div>
-    <h1>Anonymizuj český text <span class="grad">naživo</span></h1>
-    <p>Vlož text vlevo (nebo zkus příklad) a sleduj, jak se citlivá data nahradí placeholdery.
-      Vhodné pro <b>právní spisy, lékařské zprávy, faktury i úřední dokumenty</b> — kdekoliv je potřeba skrýt osobní údaje (GDPR).
-      Lokální mód běží plně v prohlížeči, plný NER využívá ÚFAL NameTag.</p>
-  </section>
-  <div class="mode">
-    <label><input type="radio" name="mode" value="local" checked> 🔒 Lokální (regex, offline)</label>
-    <label><input type="radio" name="mode" value="ner"> 🧠 Plný NER — reálná jména přes ÚFAL</label>
+<noscript><div class="noscript">Anonymizér potřebuje zapnutý JavaScript.</div></noscript>
+<header class="site-nav"><div class="nav gut">
+  <a class="mark" href="./" aria-label="Anonymizace, úvod"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="6" width="5" height="2" rx="1" fill="currentColor" opacity=".4"/><rect x="5" y="9" width="10" height="2.4" rx="1" fill="currentColor"/><rect x="5" y="12.4" width="7" height="2" rx="1" fill="currentColor" opacity=".4"/></svg>Anonymizace</a>
+  <nav class="links" aria-label="Hlavní"><a href="./">Úvod</a><a href="anonymize.html" aria-current="page">Anonymizér</a><a href="nastroje.html">Další nástroje</a></nav>
+  <div class="theme" role="group" aria-label="Vzhled">
+    <button type="button" data-t="system" aria-label="Podle systému"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></button>
+    <button type="button" data-t="light" aria-label="Denní režim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    <button type="button" data-t="dark" aria-label="Noční režim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
   </div>
-  <div class="nerinfo" id="nerinfo"></div>
-  <div class="examples" id="examples"></div>
-  <div style="text-align:center;margin:0 0 12px"><label class="upload">📎 Nahrát soubor (PDF, Word, TXT)<input type="file" accept=".txt,.pdf,.docx" id="anon-file" hidden></label> <span id="anon-fst" style="font-size:12px;color:var(--mut)"></span></div>
-  <div class="panes">
-    <div class="pane">
-      <div class="ph"><span>Vstup</span><span id="incount">0 znaků</span></div>
-      <textarea id="input" maxlength="20000" aria-label="Český text k anonymizaci" placeholder="Sem vlož český text se jmény, rodnými čísly, IČO, telefony…"></textarea>
+  <a class="open" href="anonymize.html">Otevřít</a>
+</div></header>
+
+<main>
+<section class="page-head gut">
+  <span class="kick">Anonymizér</span>
+  <h1>Anonymizace českého textu <em>naživo.</em></h1>
+  <p>Vložte text nebo nahrajte PDF, Word či TXT. Osobní údaje se hned nahradí značkami a vy uvidíte, co přesně zmizelo.</p>
+</section>
+
+<section class="tool gut" aria-label="Anonymizér">
+  <div class="toolbar">
+    <div class="left">
+      <div class="modes" role="radiogroup" aria-label="Režim">
+        <label><input type="radio" name="mode" value="local" checked><span>Lokálně, offline</span></label>
+        <label><input type="radio" name="mode" value="ner"><span>Přesně, přes ÚFAL</span></label>
+      </div>
+      <div class="seg" id="examples" role="group" aria-label="Ukázkové texty"></div>
     </div>
-    <div class="pane">
-      <div class="ph"><span>Anonymizováno</span><button class="copy" id="copy">kopírovat</button></div>
-      <div class="out" id="output"></div>
+    <div class="left">
+      <label class="upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Nahrát soubor<input type="file" accept=".txt,.pdf,.docx" id="anon-file" class="sr"></label>
+      <span id="anon-fst" class="fst" aria-live="polite"></span>
+    </div>
+  </div>
+  <p class="nerinfo" id="nerinfo" aria-live="polite"></p>
+  <div class="bench">
+    <div class="panes">
+      <div class="pane"><div class="ph"><label for="input">Váš text</label><span id="incount">0 znaků</span></div>
+        <textarea id="input" maxlength="20000" spellcheck="false" placeholder="Vložte český text se jmény, rodnými čísly, IČO, telefony…"></textarea></div>
+      <div class="pane"><div class="ph"><span>Anonymizováno</span><button type="button" class="copy" id="copy">Kopírovat</button></div>
+        <div class="out" id="output" aria-live="polite"></div></div>
     </div>
   </div>
   <div class="stats" id="stats"></div>
-  <div class="tablewrap">
-    <div class="th"><span>Náhrady</span><span id="repcount">0</span></div>
-    <div id="table"></div>
+  <div class="card">
+    <div class="card-h"><span>Náhrady</span><span><span id="repcount">0</span> položek</span></div>
+    <div class="card-b" id="table"></div>
   </div>
+</section>
 
-  <section class="full">
-    <h2>Co umí plný nástroj <span style="color:var(--mut);font-weight:400;font-size:14px">— toto demo ukazuje jen anonymizaci v prohlížeči</span></h2>
-    <div class="fsub">anonymize-mcp = 6 nástrojů postavených na reálném NLP od ÚFAL MFF UK. Demo nahoře běží client-side (regex vrstva). Plný nástroj (pip install) přidává:</div>
-    <div class="tg">
-      <div class="ti on"><b>🔒 anonymize</b><span>MasKIT + NameTag + 80+ PII vzorů napříč 9 sektory, zero-egress lokální mód</span></div>
-      <div class="ti"><b>🧠 extract_entities</b><span>NER přes NameTag 3 — 35 jazyků, bohatý CNEC tagset</span></div>
-      <div class="ti"><b>📊 analyze_morphology</b><span>UDPipe — lemma, slovní druhy, závislostní parse</span></div>
-      <div class="ti"><b>📖 check_readability</b><span>PONK — čitelnost úředních a právních textů</span></div>
-      <div class="ti"><b>✍️ correct_text</b><span>Korektor — spellcheck + doplnění diakritiky</span></div>
-      <div class="ti"><b>🌍 translate_text</b><span>Charles Translator — 8 jazyků, 17 přímých párů</span></div>
-    </div>
-  </section>
+<section class="band gut" aria-label="Kam jdou data">
+  <div class="band-h" data-reveal="0"><h2>Dva režimy. <em>Vždy víte, kde je váš text.</em></h2></div>
+  <div class="duo">
+    <article data-reveal="1"><span class="kick">Výchozí</span><h3>Lokálně</h3><p>Údaje se hledají podle vzorů a kontrolních součtů přímo ve vašem prohlížeči. Na server se neodešle nic, funguje i bez internetu.</p></article>
+    <article data-reveal="2"><span class="kick">Na vyžádání</span><h3>Přesně</h3><p>Text odejde šifrovaně na akademický server LINDAT (MFF UK). Model NameTag pozná jména, firmy a instituce i ve skloňovaných tvarech. Výsledek se spojí s lokálními pravidly.</p></article>
+  </div>
+</section>
 
-  <section class="full">
-    <h2>Pro koho je to <span style="color:var(--mut);font-weight:400;font-size:14px">— stress-tested napříč 9 sektory + mezinárodně (94/94 PII v jednom volání)</span></h2>
-    <div class="fsub">Anonymizace se hodí všude, kde se citlivá data potkávají s AI nebo sdílením. Níže use-casy z praxe — plný výčet 80+ PII vzorů a podpora 35 jazyků je na <a href="https://github.com/Buggy1111/anonymize-mcp" target="_blank" rel="noopener" style="color:var(--acc2)">GitHubu</a>.</div>
-    <div class="tg">
-      <div class="ti"><b>⚖️ Právo / advokáti</b><span>anonymizace spisu před AI review, GDPR — jména, RČ, adresy, č.j., sp. zn., IBAN, OP, datovky</span></div>
-      <div class="ti"><b>🏥 Medicína / lékaři</b><span>propouštěcí zprávy pro výzkum a statistiku — RČ, IČZ, č. pojištěnce, kontakty lékaře; klinické kódy MKN-10 zachované</span></div>
-      <div class="ti"><b>🎓 Věda / akademie</b><span>peer review, citace v publikaci — ORCID, Researcher ID, e-maily kolegů, granty</span></div>
-      <div class="ti"><b>💳 Bankovnictví</b><span>compliance, výpisy do AI, vykazování — č. ú., karta, IBAN, VS/KS/SS</span></div>
-      <div class="ti"><b>🏠 Reality / katastr</b><span>anonymizace výpisů z KN a smluv — LV, parcely, k. ú., vlastník + RČ + adresa</span></div>
-      <div class="ti"><b>🚗 Pojišťovny</b><span>likvidace škod, AI analýza — VIN, SPZ, č. pojistky, TP, OP, RČ pojištěného</span></div>
-      <div class="ti"><b>📜 Notáři</b><span>notářské zápisy pro AI summary — NZ, OP, datovka notáře, sp. zn.</span></div>
-      <div class="ti"><b>📚 Školství / studijní</b><span>potvrzení o studiu, statistiky studentů — UČO, studijní č., ISIC, kontakty</span></div>
-      <div class="ti"><b>🔬 Výzkum / NGO</b><span>anonymizace korpusu pro etiku výzkumu — vše výše + zachování klinických a právních kódů</span></div>
-      <div class="ti"><b>🌍 Mezinárodní</b><span>doklady US/UK/DE/FR/IT/ES/PL/RU/IN, crypto peněženky, API tokeny, EU VAT (28 zemí), IBAN (30+ zemí)</span></div>
-    </div>
-  </section>
+<section class="band gut" aria-label="Co anonymizér pozná">
+  <div class="band-h" data-reveal="0"><h2>Co pozná. <em>Čísla ověřuje, ne hádá.</em></h2><p>Rodné číslo, které neprojde kontrolou dělitelnosti, není rodné číslo. Proto anonymizér nezačerní každé desetimístné číslo ve smlouvě.</p></div>
+  <div class="types" data-reveal="1"><div><b>Jméno a příjmení</b><span class="tok">OSOBA1</span><small>i skloňované v přesném režimu</small></div><div><b>Rodné číslo</b><span class="tok">RC1</span><small>kontrola dělitelnosti 11</small></div><div><b>IČO</b><span class="tok">ICO1</span><small>kontrolní číslice</small></div><div><b>DIČ</b><span class="tok">DIC1</span></div><div><b>IBAN</b><span class="tok">IBAN1</span><small>kontrola mod 97</small></div><div><b>Číslo účtu</b><span class="tok">UCET1</span></div><div><b>Částka</b><span class="tok">CASTKA1</span><small>85 000 Kč, € 1 200</small></div><div><b>Platební karta</b><span class="tok">KARTA1</span><small>Luhnův algoritmus</small></div><div><b>Telefon</b><span class="tok">TELEFON1</span></div><div><b>E-mail</b><span class="tok">EMAIL1</span></div><div><b>Ulice</b><span class="tok">ULICE1</span></div><div><b>PSČ a město</b><span class="tok">PSC1</span></div><div><b>Datum</b><span class="tok">DATUM1</span><small>jen platná data</small></div><div><b>Datová schránka</b><span class="tok">DSCHRANKA1</span></div><div><b>SPZ a VIN</b><span class="tok">SPZ1</span></div><div><b>Občanský průkaz</b><span class="tok">COP1</span></div><div><b>Spisová značka</b><span class="tok">SPZN1</span><small>a čísla jednací</small></div><div><b>Diagnóza MKN-10</b><span class="tok">MKN1</span></div><div><b>Firma a instituce</b><span class="tok">FIRMA1</span><small>v přesném režimu</small></div><div><b>Odkazy a API klíče</b><span class="tok">URL1</span></div></div>
+</section>
 
-  <section class="faq">
-    <h2>Časté otázky</h2>
-    <details>
-      <summary>Jak zdarma anonymizovat český text pro GDPR?</summary>
-      <p>Vložte text do tohoto nástroje a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, e-maily) se automaticky nahradí placeholdery jako OSOBA1 nebo MESTO1. Lokální mód běží zcela offline ve vašem prohlížeči, mód s reálným NER používá akademické API ÚFAL.</p>
-    </details>
-    <details>
-      <summary>Opustí můj text počítač?</summary>
-      <p>V lokálním (regex) módu ne — anonymizace probíhá zcela ve vašem prohlížeči, žádný text se neodesílá (zero-egress). V módu s reálným NER se text posílá na akademické API ÚFAL ke zpracování.</p>
-    </details>
-  </section>
+<section class="faq gut">
+  <h2>Časté otázky</h2>
+  <details><summary>Jak zdarma anonymizovat český text pro GDPR?</summary><p>Vložte text do anonymizéru a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) se automaticky nahradí značkami jako OSOBA1 nebo RC1. Lokální režim běží celý ve vašem prohlížeči, přesný režim používá akademické API ÚFAL.</p></details>
+  <details><summary>Opustí můj text počítač?</summary><p>V lokálním režimu ne, anonymizace proběhne celá ve vašem prohlížeči. V přesném režimu se text posílá na akademické API ÚFAL (LINDAT) ke zpracování.</p></details>
+  <details><summary>Jak velký dokument zvládne?</summary><p>Do 20 000 znaků najednou, tedy zhruba 8 stran textu. Soubor (PDF, DOCX, TXT do 10 MB) se čte ve vašem prohlížeči.</p></details>
+</section>
+</main>
 
-  </main>
-  <footer class="site-footer">
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <div class="flogo"><span class="dot"></span> anonymize-mcp</div>
-        <p>Anonymizace osobních údajů v českém textu — zdarma, v prohlížeči. Lokální offline mód i reálný NER od ÚFAL MFF UK. Pro GDPR a citlivá data.</p>
-      </div>
-      <div class="foot-col">
-        <h2>Další nástroje</h2>
-        <a href="index.html">Czech NLP Toolkit</a>
-        <a href="nastroje.html#ner">Rozpoznávání entit</a>
-        <a href="nastroje.html#morf">Morfologie</a>
-        <a href="nastroje.html#korek">Pravopis a překlad</a>
-      </div>
-      <div class="foot-col">
-        <h2>O projektu</h2>
-        <a href="https://github.com/Buggy1111/anonymize-mcp" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://pypi.org/project/anonymize-mcp/" target="_blank" rel="noopener">pip install anonymize-mcp</a>
-        <a href="https://ufal.mff.cuni.cz/" target="_blank" rel="noopener">ÚFAL MFF UK</a>
-        <a href="mailto:michalbugy12@gmail.com?subject=Czech%20NLP%20Toolkit%20%E2%80%93%20zp%C4%9Btn%C3%A1%20vazba">✉️ Kontakt / nahlásit chybu</a>
-        <span>Autor: Michal Bürgermeister</span>
-      </div>
-    </div>
-    <div class="foot-bottom">
-      <span>© 2026 anonymize-mcp · jen pro nekomerční použití</span>
-      <span>Postaveno na ÚFAL NameTag + MasKIT 🎓</span>
-    </div>
-  </footer>
-</div>
+<footer class="site-footer gut"><div class="f-in">
+  <p class="f-note">Anonymizace je neoficiální komunitní projekt. Není provozován ani schválen ÚFAL MFF UK, využívá jejich veřejná API LINDAT (NameTag, UDPipe, Korektor, CUBBITT). Nahrazení značkami je pseudonymizace, výstup si vždy zkontrolujte.</p>
+  <div class="f-cols">
+    <div><h2>Nástroje</h2><a href="anonymize.html">Anonymizér</a><a href="nastroje.html#ner">Rozpoznání entit</a><a href="nastroje.html#morf">Morfologie</a><a href="nastroje.html#korek">Pravopis a diakritika</a><a href="nastroje.html#prek">Překlad</a></div>
+    <div><h2>Pro vývojáře</h2><a href="https://github.com/Buggy1111/anonymize-mcp" rel="noopener">MCP server na GitHubu</a><a href="https://pypi.org/project/anonymize-mcp/" rel="noopener"><code>pip install anonymize-mcp</code></a><a href="https://github.com/Buggy1111/czech-nlp-toolkit" rel="noopener">Zdrojový kód webu</a></div>
+    <div><h2>Projekt</h2><a href="https://lindat.mff.cuni.cz/" rel="noopener">LINDAT/CLARIAH-CZ</a><a href="https://ufal.mff.cuni.cz/" rel="noopener">ÚFAL MFF UK</a><a href="mailto:michalbugy12@gmail.com?subject=Anonymizace%20%E2%80%93%20zp%C4%9Btn%C3%A1%20vazba">Kontakt a nahlášení chyby</a></div>
+  </div>
+  <div class="f-bottom"><span>© 2026 Michal Bürgermeister · jen pro nekomerční použití</span><span>Kód pod licencí PolyForm Noncommercial 1.0.0</span></div>
+</div></footer>
 
+<script src="js/vendor/lenis.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.min.mjs" type="module" integrity="sha512-54wsEqEFNC3gPwTKkiB4A+/xQXSJIcPnRIjz6Gg8JZ+H+2bthEcYOFCk978ogjyXYaivHJpL/flsKCyrO2lMRg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js" integrity="sha512-Bpw1G70k1RT4pADRSajgVrcxVbAl0Ymw1UVr1EmeXxidZLp5MzAqkBx3zPK02UuvCnz4Ly7trvpJ1Zu/t2X1kQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="js/extract-text.js"></script>
 <script src="js/ner-common.js"></script>
 <script src="js/anonymize-engine.js"></script>
 <script src="js/anonymize-app.js"></script>
+<script src="js/site.js"></script>
 
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Anonymizace českého textu (anonymize-mcp)",
-  "url": "https://anonymizace.js.org/anonymize.html",
-  "description": "Bezplatná anonymizace osobních údajů (PII) v českém textu přímo v prohlížeči. Lokální offline mód i reálný NER od ÚFAL MFF UK. Pro GDPR a citlivá data.",
-  "applicationCategory": "SecurityApplication",
-  "operatingSystem": "All (web browser)",
-  "inLanguage": "cs",
-  "dateModified": "2026-06-04",
-  "isAccessibleForFree": true,
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CZK" },
-  "featureList": ["Anonymizace 19 typů PII", "Lokální offline mód (zero-egress)", "Reálný NER (ÚFAL NameTag)", "Live zvýraznění a tabulka náhrad"],
-  "creator": { "@type": "Person", "name": "Michal Bürgermeister" },
-  "isBasedOn": "https://github.com/Buggy1111/anonymize-mcp"
-}
+{"@context":"https://schema.org","@type":"WebApplication","name":"Anonymizér českého textu","url":"https://anonymizace.js.org/anonymize.html","description":"Bezplatná anonymizace osobních údajů v českém textu přímo v prohlížeči. Lokální offline režim i přesný režim s NER od ÚFAL MFF UK.","applicationCategory":"SecurityApplication","operatingSystem":"All (web browser)","inLanguage":"cs","dateModified":"2026-11-14","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CZK"},"featureList":["Přes 20 druhů osobních údajů","Lokální offline režim","Přesný režim s NER (ÚFAL NameTag)","Nahrání PDF, DOCX a TXT","Tabulka náhrad"],"creator":{"@type":"Person","name":"Michal Bürgermeister"},"isBasedOn":"https://github.com/Buggy1111/anonymize-mcp"}
 </script>
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    { "@type": "Question", "name": "Jak zdarma anonymizovat český text pro GDPR?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Vložte text do tohoto nástroje a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, e-maily) se automaticky nahradí placeholdery jako OSOBA1 nebo MESTO1. Lokální mód běží zcela offline ve vašem prohlížeči, mód s reálným NER používá akademické API ÚFAL." } },
-    { "@type": "Question", "name": "Opustí můj text počítač?",
-      "acceptedAnswer": { "@type": "Answer", "text": "V lokálním (regex) módu ne — anonymizace probíhá zcela ve vašem prohlížeči, žádný text se neodesílá (zero-egress). V módu s reálným NER se text posílá na akademické API ÚFAL ke zpracování." } }
-  ]
-}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Jak zdarma anonymizovat český text pro GDPR?","acceptedAnswer":{"@type":"Answer","text":"Vložte text do anonymizéru a osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) se automaticky nahradí značkami jako OSOBA1 nebo RC1. Lokální režim běží celý ve vašem prohlížeči, přesný režim používá akademické API ÚFAL."}},
+{"@type":"Question","name":"Opustí můj text počítač?","acceptedAnswer":{"@type":"Answer","text":"V lokálním režimu ne, anonymizace proběhne celá ve vašem prohlížeči. V přesném režimu se text posílá na akademické API ÚFAL (LINDAT) ke zpracování."}},
+{"@type":"Question","name":"Jak velký dokument zvládne?","acceptedAnswer":{"@type":"Answer","text":"Do 20 000 znaků najednou, tedy zhruba 8 stran textu. Soubor (PDF, DOCX, TXT do 10 MB) se čte ve vašem prohlížeči."}}]}
 </script>
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Czech NLP Toolkit", "item": "https://anonymizace.js.org/" },
-    { "@type": "ListItem", "position": 2, "name": "Anonymizace", "item": "https://anonymizace.js.org/anonymize.html" }
-  ]
-}
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Anonymizace","item":"https://anonymizace.js.org/"},{"@type":"ListItem","position":2,"name":"Anonymizér","item":"https://anonymizace.js.org/anonymize.html"}]}
 </script>
 </body>
 </html>

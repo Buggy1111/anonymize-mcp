@@ -17,7 +17,7 @@ function render(anonymized,replacements){
 
   // výstup s zvýrazněnými placeholdery — čisté DOM uzly (matchAll, žádný innerHTML)
   clear(output);
-  if(!anonymized){const s=span("","…výstup se zobrazí tady");s.style.color="var(--mut)";output.appendChild(s);}
+  if(!anonymized){output.appendChild(span("placeholder","Výsledek se zobrazí tady."));}
   else{
     let last=0;
     for(const m of anonymized.matchAll(PH_RE)){
@@ -36,7 +36,7 @@ function render(anonymized,replacements){
     s.appendChild(b);s.appendChild(document.createTextNode(" "+(TYPE_LABELS[t]||t)));statsEl.appendChild(s);
   });
   if(replacements.length){
-    const s=span("stat","");s.style.borderColor="rgba(124,92,255,.4)";
+    const s=span("stat total","");
     const b=document.createElement("b");b.textContent=replacements.length;
     s.appendChild(b);s.appendChild(document.createTextNode(" celkem"));statsEl.appendChild(s);
   }
@@ -44,10 +44,10 @@ function render(anonymized,replacements){
   // tabulka
   repcount.textContent=replacements.length;
   clear(tableEl);
-  if(!replacements.length){tableEl.appendChild(span("empty","Zatím žádné PII — vlož text nebo zkus příklad."));return;}
+  if(!replacements.length){tableEl.appendChild(span("empty","Zatím nic k nahrazení. Vložte text nebo zkuste ukázku."));return;}
   const table=document.createElement("table");
   const thead=document.createElement("thead");const htr=document.createElement("tr");
-  ["Originál","Placeholder","Typ"].forEach(h=>{const th=document.createElement("th");th.textContent=h;htr.appendChild(th);});
+  ["Originál","Značka","Druh"].forEach(h=>{const th=document.createElement("th");th.textContent=h;htr.appendChild(th);});
   thead.appendChild(htr);table.appendChild(thead);
   const tbody=document.createElement("tbody");
   const seen=new Set();
@@ -63,7 +63,7 @@ function render(anonymized,replacements){
 }
 
 const EXAMPLES={
-  "Právní spis":"Žalobce Jan Novák, nar. 15.3.1980, rodné číslo 800315/1234, bytem Sokolovská 12, Praha, podal dne 3.2.2026 ke Krajskému soudu návrh proti žalované Marii Svobodové (IČO 12345679, DIČ CZ12345679). Kontakt: jan.novak@email.cz, tel. 777 123 456. Spis sp. zn. 25 C 145/2026. Účet 1234567890/0800.",
+  "Právní spis":"Žalobce Jan Novák, nar. 15.3.1980, rodné číslo 800315/1234, bytem Sokolovská 12, Praha, podal dne 3.2.2026 ke Krajskému soudu návrh na zaplacení 85 000 Kč proti žalované Marii Svobodové (IČO 12345679, DIČ CZ12345679). Kontakt: jan.novak@email.cz, tel. 777 123 456. Spis sp. zn. 25 C 145/2026. Účet 1234567890/0800.",
   "Faktura":"Odběratel: Petr Dvořák, Husova 5, Ostrava, PSČ 702 00. IČO 87654326, DIČ CZ87654326. Splatnost 30.4.2026. Platba na účet 19-2000145399/0800, IBAN CZ65 0800 0000 1920 0014 5399. Dotazy: petr.dvorak@firma.cz, 605 999 111 nebo https://faktury.firma.cz.",
   "E-mail":"Dobrý den, jmenuji se Eva Černá, bydlím v Brně. Moje číslo je 720 555 333 a email eva.cerna@seznam.cz. Narozena 22.11.1990, rodné číslo 905322/4567.",
   "Lékařská zpráva":"Pacientka Marie Nováková, nar. 14.6.1975, rodné číslo 755614/1234, bytem Tyršova 8, Olomouc, byla přijata 12.5.2026 na interní oddělení s diagnózou arteriální hypertenze. Ošetřující lékař MUDr. Petr Svoboda, kontakt petr.svoboda@nemocnice.cz, tel. 585 111 222. Doporučena kontrola za 14 dní."
@@ -85,7 +85,7 @@ function run(){
   }
   // NER mód — počkej na ÚFAL, debounce ať netřískáme API při psaní
   const seq=++nerSeq;
-  nerinfo.textContent="⏳ volám ÚFAL NameTag…";
+  nerinfo.textContent="Zpracovává server LINDAT…";
   clearTimeout(nerTimer);
   nerTimer=setTimeout(async function(){
     if(!text.trim()){const r=anonymize(text);render(r.anonymized,r.replacements);nerinfo.textContent="";return;}
@@ -93,23 +93,25 @@ function run(){
       const ents=await fetchNER(text);
       if(seq!==nerSeq) return;            // zastaralý výsledek, zahoď
       const r=anonymize(text,ents); render(r.anonymized,r.replacements);
-      nerinfo.textContent="🧠 reálný NER (ÚFAL NameTag) + strukturní PII · text odešel na ÚFAL (není zero-egress)";
+      nerinfo.textContent="Přesný režim: jména a firmy rozpoznal NameTag (ÚFAL). Text byl odeslán na server LINDAT.";
     }catch(e){
       if(seq!==nerSeq) return;
       const r=anonymize(text); render(r.anonymized,r.replacements);
-      nerinfo.textContent="⚠️ NameTag nedostupný ("+e.message+") — použita lokální regex vrstva";
+      nerinfo.textContent="Server LINDAT teď neodpovídá ("+e.message+"). Použil se lokální režim.";
     }
   },550);
 }
 
 const exWrap=document.getElementById("examples");
 Object.keys(EXAMPLES).forEach(name=>{
-  const b=document.createElement("button");b.className="ex";b.textContent=name;
-  b.onclick=function(){input.value=EXAMPLES[name];run();};exWrap.appendChild(b);
+  const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=name;b.setAttribute("aria-pressed",String(name==="Právní spis"));
+  b.onclick=function(){input.value=EXAMPLES[name];run();exWrap.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));};exWrap.appendChild(b);
 });
 document.getElementById("copy").onclick=function(){
-  if(navigator.clipboard)navigator.clipboard.writeText(lastAnon);
-  const b=document.getElementById("copy");b.textContent="zkopírováno ✓";setTimeout(function(){b.textContent="kopírovat";},1500);
+  const b=document.getElementById("copy");
+  const done=t=>{b.textContent=t;setTimeout(function(){b.textContent="Kopírovat";},1600);};
+  if(navigator.clipboard) navigator.clipboard.writeText(lastAnon).then(()=>done("Zkopírováno"),()=>done("Kopírování se nepovedlo"));
+  else done("Kopírování se nepovedlo");
 };
 input.addEventListener("input",run);
 document.querySelectorAll('input[name="mode"]').forEach(r=>r.addEventListener("change",run));
@@ -122,13 +124,13 @@ run();
   if(!fi) return;
   fi.addEventListener("change",async function(){
     const f=fi.files&&fi.files[0]; if(!f) return;
-    fst.style.color="var(--mut)"; fst.textContent="⏳ načítám "+f.name+"…";
+    fst.className="fst"; fst.textContent="Načítám "+f.name+"…";
     try{
       if(f.size>10*1024*1024) throw new Error("soubor je moc velký (max 10 MB)");
       const txt=await extractText(f);
       input.value=txt.slice(0,MAX_CHARS); run();
-      fst.style.color="var(--acc2)"; fst.textContent="✅ "+f.name+" ("+input.value.length+" znaků)";
-    }catch(e){ fst.style.color="var(--err,#f87171)"; fst.textContent="⚠️ "+e.message; }
+      fst.className="fst ok"; fst.textContent=f.name+" načten ("+input.value.length.toLocaleString("cs-CZ")+" znaků)";
+    }catch(e){ fst.className="fst err"; fst.textContent="Soubor se nepodařilo načíst: "+e.message; }
     fi.value="";
   });
 })();

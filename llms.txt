@@ -1,9 +1,9 @@
-# Czech NLP Toolkit
+# Anonymizace (anonymizace.js.org)
 
-> Bezplatná webová sada českých NLP nástrojů: anonymizace osobních údajů (GDPR), rozpoznávání entit (NER), morfologická analýza, oprava pravopisu a strojový překlad. Postaveno na nástrojích ÚFAL MFF UK. Běží přímo v prohlížeči, zdarma pro nekomerční použití. Jediný uživatelsky přívětivý all-in-one český NLP web.
+> Anonymizace českých dokumentů přímo v prohlížeči: jména, rodná čísla, adresy, telefony, IČO, účty, peněžní částky a další údaje se nahradí značkami (OSOBA1, RC1, CASTKA1…). Lokální režim bez odesílání dat i přesný režim s NER od ÚFAL MFF UK. K tomu rozpoznání entit, morfologie, pravopis a překlad. Zdarma pro nekomerční použití.
 
 ## Nástroje
-- [Anonymizace PII](https://anonymizace.js.org/anonymize.html): skryje jména, rodná čísla, adresy, telefony, IČO, e-maily a další osobní údaje v českém textu. Lokální offline mód (zero-egress) i reálný NER.
+- [Anonymizace PII](https://anonymizace.js.org/anonymize.html): skryje jména, rodná čísla, adresy, telefony, IČO, účty, peněžní částky, e-maily a další osobní údaje (přes 20 druhů). Lokální offline režim i přesný režim s NER. Nahrání PDF, DOCX a TXT.
 - Rozpoznávání entit (NER): NameTag — jména osob, firmy, místa, instituce, data.
 - Morfologie: UDPipe — lemma (základní tvar), slovní druhy, mluvnické kategorie.
 - Korektor: oprava překlepů a doplnění diakritiky.
@@ -11,6 +11,8 @@
 
 ## O projektu
 - Autor: Michal Bürgermeister
-- Zdroj: https://github.com/Buggy1111/anonymize-mcp
+- Zdroj webu: https://github.com/Buggy1111/czech-nlp-toolkit
+- MCP server: https://github.com/Buggy1111/anonymize-mcp
+- Neoficiální komunitní projekt, není provozován ani schválen ÚFAL MFF UK
 - Postaveno na: ÚFAL MFF UK (LINDAT) — NameTag, UDPipe, Korektor, Charles Translator
 - Licence: nekomerční použití
