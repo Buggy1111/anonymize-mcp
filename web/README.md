@@ -1,10 +1,12 @@
-# Czech NLP Toolkit
+# Web anonymizace.js.org
 
 České NLP nástroje online, zdarma a přímo v prohlížeči. Postaveno na akademických nástrojích [ÚFAL MFF UK](https://ufal.mff.cuni.cz/).
 
 **Web:** https://anonymizace.js.org/
 
-Doprovodný web k MCP serveru [anonymize-mcp](https://github.com/Buggy1111/anonymize-mcp) — pro lidi, kteří nechtějí řešit instalaci ani MCP.
+Webová část projektu **anonymize-mcp** (tato složka `web/` v repu [Buggy1111/anonymize-mcp](https://github.com/Buggy1111/anonymize-mcp)) — pro lidi, kteří nechtějí řešit instalaci ani MCP. Dřív samostatné repo `czech-nlp-toolkit`, sloučeno i s historií 14. 11. 2026.
+
+**Nasazení:** push do `main` se změnou ve `web/` spustí workflow `.github/workflows/pages.yml` a web se nasadí na GitHub Pages (doména anonymizace.js.org).
 
 ## Nástroje
 
@@ -12,7 +14,7 @@ Doprovodný web k MCP serveru [anonymize-mcp](https://github.com/Buggy1111/anony
 
 ### Testy
 
-`tools/test-overredaction.cjs` (lokální, gitignorované) — 108 případů: díry i přetažení (data, verze, „Smlouva o dílo“ zůstávají).
+`web/tests/engine.test.cjs` (`node web/tests/engine.test.cjs`, běží i v CI) — 108 případů: díry i přetažení (data, verze, „Smlouva o dílo“ zůstávají).
 - **NER** — rozpoznávání pojmenovaných entit (NameTag 3).
 - **Morfologie** — lemma, slovní druh, mluvnické kategorie (UDPipe 2).
 - **Korektor** — oprava překlepů a diakritiky (Korektor).
@@ -54,7 +56,7 @@ prohlížeč vůbec neopustí. Limit 20 000 znaků na požadavek.
 Žádný build. Stačí libovolný statický server:
 
 ```bash
-python3 -m http.server 8000
+cd web && python3 -m http.server 8000
 # → http://localhost:8000
 ```
 

@@ -17,6 +17,10 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 
 > **Neoficiální komunitní projekt** — není provozován ani schválen ÚFAL MFF UK; wrapper kolem veřejných LINDAT API od nezávislého vývojáře. Historie názvů: `ufal-mcp` → `wrapper-mcp` (v0.8.0, na žádost ÚFAL) → **`anonymize-mcp`** (v0.9.0). Pokud máte nainstalovaný deprecated balíček `wrapper-mcp`, přejděte na `pip install anonymize-mcp` — je to tentýž projekt.
 
+## Web
+
+Bez instalace v prohlížeči: **https://anonymizace.js.org/** — zdrojový kód ve složce [`web/`](web/) (nasazení přes `.github/workflows/pages.yml`).
+
 ## Co umí
 
 | Tool | Backend | K čemu |
