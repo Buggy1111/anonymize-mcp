@@ -61,33 +61,43 @@ const MESIC="(?:led(?:na|en)|únor[ay]?|březn[a]?|březen|dub(?:na|en)|květ(?:
 const STRUCT = [
   {key:"URL",     label:"URL",            re:/\bhttps?:\/\/[^\s<>"]+/gi},
   {key:"EMAIL",   label:"email",          re:/\b[\w.+-]+@[\w-]+\.[\w.-]{2,}\b/g},
+  // e-mail maskovaný proti robotům: „jan.novak(at)seznam.cz", „jan [at] seznam.cz", „zavináč"
+  {key:"EMAIL",   label:"email",          re:/\b[\w.+-]+\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]+(?:\.|\s?\(dot\)\s?|\s?\[dot\]\s?)[\w.-]{2,}\b/giu},
+  // IPv4 (oktety 0–255); ne za slovem verze/build („build 1.2.34.5")
+  {key:"IP",      label:"IP adresa",      re:/(?<![\d.])(?<!(?:[Vv]erz\p{L}*|[Vv]ersion|[Bb]uild|[Rr]elease|[Vv]er\.|\bv)\s?)(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])/gu},
   {key:"TOKEN",   label:"API token",      re:/\b(?:sk-[A-Za-z0-9-]{20,}|github_pat_[A-Za-z0-9_]{60,}|ghp_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35})\b/g},
   // KRYPTO bez Base58Check (review #12, vědomě): checksum = 2× SHA-256, v prohlížeči
   // jen async SubtleCrypto — validátory jsou sync. Náhodný 26+znakový token jako FP ≠ leak.
   {key:"KRYPTO",  label:"krypto adresa",  re:/\b(?:0x[a-fA-F0-9]{40}|bc1[a-z0-9]{25,59}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b/g},
   // ulice: a) koncovka+číslo  b) kontext (bytem/sídlem)+víceslovný název+číslo
   {key:"ULICE",   label:"ulice",          re:/\p{Lu}[\p{Ll}]+(?:ská|cká|ova|ého|ního|í)\s+\d{1,4}(?:\/\d{1,4})?/gu},
-  {key:"ULICE",   label:"ulice",  cap:1,  re:/(?:bytem|se\s+sídlem|sídlem|trvale\s+bytem|adres\p{L}+)\s+(\p{Lu}[\p{L}]+(?:\s+(?:nám\.|náměstí|[\p{Lu}\p{Ll}.]+)){0,2}\s+\d{1,4}(?:\/\d{1,4})?)/gu},
+  {key:"ULICE",   label:"ulice",  cap:1,  re:/(?:bytem|se\s+sídlem|sídlem|trvale\s+bytem|adres\p{L}+|bydliště|ulice|ul\.)[:\s]+((?:nám(?:ěstí|\.)\s+|třída\s+|tř\.\s+|nábřeží\s+)?\p{Lu}[\p{L}]*(?:\s+(?:nám\.|náměstí|[\p{Lu}\p{Ll}.]+)){0,2}\s+\d{1,4}(?:\/\d{1,4})?[a-z]?)(?![\d])/gu},
+  // náměstí / třída / nábřeží kdekoli („náměstí Míru 5", „třída Kpt. Jaroše 12")
+  {key:"ULICE",   label:"ulice",          re:/(?:[Nn]ám(?:ěstí|\.)|[Tt]řída|[Tt]ř\.|[Nn]ábřeží)\s+\p{Lu}[\p{L}.]*(?:\s+\p{Lu}[\p{L}.]*){0,2}\s+\d{1,4}(?:\/\d{1,4})?[a-z]?(?![\d])/gu},
   // DIČ PŘED IBAN (oba CZ+číslice; \b…\b zabrání kolizi na délce)
   {key:"DIC",     label:"DIČ",            re:/\b(?:CZ|SK|DE|AT|PL)\d{8,11}\b/g},
   {key:"IBAN",    label:"IBAN",           re:/\b[A-Za-z]{2}\d{2}(?:\s?[A-Za-z0-9]{4}){2,7}\b/g, valid:validIBAN},
   {key:"VIN",     label:"VIN",            re:/\b[A-HJ-NPR-Z0-9]{17}\b/g},
   {key:"KARTA",   label:"platební karta", re:/\b(?:\d{4}[ -]){3}\d{4}\b/g},
   {key:"KARTA",   label:"platební karta", re:/\b\d{16}\b/g, valid:luhn},          // bez separátorů (Luhn)
+  {key:"RC",      label:"rodné číslo",  cap:1, re:/(?:RČ|rodné\s+číslo|r\.\s*č\.|číslo\s+pojištěnce|č\.\s*pojištěnce)[:\s]{0,3}(\d{6}\s?\/?\s?\d{3,4})(?!\d)/giu},
   {key:"RC",      label:"rodné číslo",    re:/\b\d{6}\/\d{3,4}\b/g},
   {key:"RC",      label:"rodné číslo",    re:/\b\d{10}\b/g, valid:validRC},        // bez lomítka (datum+mod11)
-  {key:"SPZN",    label:"spisová značka", re:/\b\d{1,3}\s?[A-Z]{1,3}\s?\d{1,4}\/\d{4}\b/g},
+  {key:"SPZN",    label:"spisová značka", re:/\b\d{1,3}\s?[A-Z][A-Za-z]{0,3}\s?\d{1,4}\/\d{4}(?:-\d{1,4})?\b/g},
   // ID datové schránky: kontext „schránk…“ + 7znakový alfanum. token (musí mít číslici)
   {key:"DSCHRANKA",label:"datová schránka",cap:1, re:/[Ss]chránk\p{L}*[\s\S]{0,50}?\b((?=[a-z0-9]*\d)[a-z0-9]{7})\b/gu},
   // kontextová oborová čísla (smlouva/pojistka/škodní/jednací/VS/SS/osobní č./ID/ev.č.)
   // (?<![A-Z\d]) před číslicí: capture nesmí ukrást číslici z dřívějšího placeholderu
   // („sp. zn. SPZN1“ → bral „1“ → SPZNDOKID1) — placeholdery jsou VELKÁ písmena+číslo
-  {key:"DOKID",   label:"číslo dokumentu",cap:1, re:/(?:[Vv]ariabiln\p{L}*\s+symbol|[Ss]pecifick\p{L}*\s+symbol|[Čč]ísl\p{L}*\s+(?:smlouvy|pojistky|pojistné\s+smlouvy|škodní\s+události|jednací|zákaznick\p{L}*|profilu|žáka)|[Čč]\.\s*j\.|[Ss]p\.\s*zn\.|[Ss]pisov\p{L}*\s+značk\p{L}*|[Oo]sobní\s+čísl\p{L}*|ID\s+žáka|[Ee]viden\p{L}*\s+čísl\p{L}*|[Ee]v\.\s*č\.)[^\d\n]{0,25}?((?:[A-Z]{1,5}[ \/-])?(?<![A-Z\d])\d[\dA-Za-z]*(?:[\/-][\dA-Za-z]+){0,3})/gu},
+  {key:"DOKID",   label:"číslo dokumentu",cap:1, re:/(?:(?<![\p{L}])(?:VS|KS|SS)(?=[:\s])|(?:[Ss]mlouv\p{L}*|[Ff]aktur\p{L}*|[Oo]bjednávk\p{L}*|[Pp]ojistk\p{L}*|[Pp]ojistn\p{L}*\s+smlouv\p{L}*)\s+(?:č\.|čísl\p{L}*)|[Vv]ariabiln\p{L}*\s+symbol|[Ss]pecifick\p{L}*\s+symbol|[Čč]ísl\p{L}*\s+(?:smlouvy|pojistky|pojistné\s+smlouvy|škodní\s+události|jednací|zákaznick\p{L}*|profilu|žáka)|[Čč]\.\s*j\.|[Ss]p\.\s*zn\.|[Ss]pisov\p{L}*\s+značk\p{L}*|[Oo]sobní\s+čísl\p{L}*|ID\s+žáka|[Ee]viden\p{L}*\s+čísl\p{L}*|[Ee]v\.\s*č\.)[^\d\n]{0,25}?((?:[A-Z]{1,5}[ \/-])?(?<![A-Z\d])\d[\dA-Za-z]*(?:[\/-][\dA-Za-z]+){0,3})/gu},
+  {key:"PAS",     label:"číslo pasu",     cap:1, re:/(?:číslo\s+pasu|cestovní\p{L}*\s+pas\p{L}*|pas\s+č\.)[^\d\n]{0,15}?([A-Z]{0,2}\d{7,9})(?!\d)/giu},
+  {key:"RP",      label:"řidičský průkaz",cap:1, re:/(?:řidičsk\p{L}*\s+průkaz\p{L}*|řidičák\p{L}*|ŘP)[^\dA-Z\n]{0,15}?([A-Z]{2}\s?\d{6})(?!\d)/gu},
+  {key:"ICP",     label:"IČP/IČZ",        cap:1, re:/(?<![\p{L}])(?:IČP|IČZ)[:\s]{1,3}(\d{8})(?!\d)/gu},
   // číslo OP (9 číslic) v kontextu — PŘED telefonem
   {key:"COP",     label:"číslo OP",       cap:1, re:/(?:občansk\p{L}*\s+průkaz\p{L}*|čísl\p{L}*\s+OP|OP\s+č\.|č\.\s*OP)[^\d\n]{0,20}?(\d{9})\b/gu},
   // číslo účtu: pomlčková forma NEBO v kontextu „účet/účtu“ (zúženo, ať nebere č.j./roky)
   {key:"UCET",    label:"číslo účtu",     re:/\b\d{1,6}-\d{2,10}\/\d{4}\b/g},
-  {key:"UCET",    label:"číslo účtu",     cap:1, re:/[Úú]č\p{L}+[^\d\n]{0,12}?((?:\d{1,6}-)?\d{2,10}\/\d{4})\b/gu},
+  {key:"UCET",    label:"číslo účtu",     cap:1, re:/(?:[Úú]č\p{L}+|č\.\s*ú\.)[^\d\n]{0,12}?((?:\d{1,6}-)?\d{2,10}\/\d{4})\b/gu},
   {key:"SSN",     label:"US SSN",         re:/\b\d{3}-\d{2}-\d{4}\b/g},
   // částka: číslo + měna („85 000 Kč", „1 200,50 EUR", „25 tis. Kč", „15.000,- Kč") nebo měna před číslem („€ 1 200", „$350").
   // PŘED telefonem/PSČ/IČO, ať si číslice částky nepřeberou. Částka sama osobní údaj být nemusí,
@@ -100,7 +110,7 @@ const STRUCT = [
   // telefon: a) s předvolbou +420/+421 — jistota, bereme libovolné členění 9 číslic
   //          b) bez předvolby — jen reálné CZ prefixy 2–7 (pevné linky+mobily; částky
   //             „123 456 789“ začínají 1 → propadnou) + stopka na měnu/jednotky/delší čísla
-  {key:"TELEFON", label:"telefon",        re:/\+42[01](?:[\s.-]?\d){9}\b/g},
+  {key:"TELEFON", label:"telefon",        re:/(?:\+|00\s?)42[01](?:[\s.-]?\d){9}\b/g},
   {key:"TELEFON", label:"telefon",        re:/(?<!\d[\s.-])\b[2-7]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}\b(?![\s.-]?\d)(?!\s?(?:Kč|CZK|EUR|USD|€|%|,-|mil|tis))/g},
   // SPZ: přesný moderní formát číslice+písmeno+alfanum + 4 číslice („3T9 4567“) —
   // dřívější volný vzor bral i „výrobek 3T 9999“; malá písmena tolerujeme (leak > FP)
@@ -108,6 +118,7 @@ const STRUCT = [
   // datum: číselné + slovní měsíc („2. září 1954“) + ISO + dvouciferný rok (validované)
   {key:"DATUM",   label:"datum",          re:new RegExp("\\b\\d{1,2}\\.\\s?\\d{1,2}\\.\\s?\\d{4}\\b|\\b\\d{1,2}\\.\\s?"+MESIC+"\\s+\\d{4}\\b","giu")},
   {key:"DATUM",   label:"datum",          re:/\b\d{4}-\d{2}-\d{2}\b/g, valid:validISODate},
+  {key:"DATUM",   label:"datum",          re:/\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2}\b/g},
   {key:"DATUM",   label:"datum",          re:/\b\d{1,2}\.\s?\d{1,2}\.\s?\d{2}\b(?!\.?\d)/g, valid:validDayMonth},
   // MKN/ICD-10: dekadická forma (E11.9) bez kontextu + nedekadická (I10) v kontextu diagnózy
   {key:"MKN",     label:"diagnóza (MKN)", re:/\b[A-TV-Z]\d{2}\.\d{1,2}\b/g},
@@ -116,6 +127,7 @@ const STRUCT = [
   //      ale NE před měnou/jednotkou („250 00 Kč“, „150 96 kusů“) a ne uvnitř delšího čísla
   {key:"PSC",     label:"PSČ",    cap:1,  re:/PSČ[\s:]{0,3}(\d{3}\s?\d{2})\b/g},
   {key:"PSC",     label:"PSČ",            re:/(?<!\d\s)\b\d{3}\s\d{2}\b(?![\s.,-]?\d)(?!\s?(?:Kč|CZK|EUR|USD|€|%|,-|[Kk]s\b|kus|km\b|kg\b|mil\b|tis\b|hod\b|let\b|m[²2]?\b|l\b|g\b))/gu},
+  {key:"PSC",     label:"PSČ",            re:/(?<![\d\/.,-])\b[1-7]\d{4}(?=\s+\p{Lu}\p{Ll}+)/gu},
   {key:"ICO",     label:"IČO",            re:/\b\d{8}\b/g, valid:validICO},        // mod-11 (ceny/kódy bez platné kontrolní číslice propadnou)
 ];
 
@@ -190,6 +202,9 @@ function anonymize(text,nerEnts){
   // trailing grabber ořezává zprava (review #9): slovo za jménem, které je adjektivum/
   // město, nepatří do jména ("Petr Veškeré Náležitosti"); 2. slovo za jménem bereme
   // jen s příjmenní koncovkou ("Barbora Vidová Hladká" ano, ale "Jan Novák Veškeré" ne).
+  const ROLE=new Set(["žalobce","žalobkyně","žalovaný","žalovaná","pan","paní","pacient","pacientka","kupující","prodávající","účastník","účastnice","svědek","svědkyně","obviněný","obviněná","dlužník","dlužnice","věřitel","věřitelka","zaměstnanec","zaměstnankyně","nájemce","pronajímatel","jméno","příjmení","dne","podepsal","podepsala","zástupce","advokát","advokátka","soudce","soudkyně","lékař","lékařka","ošetřující","student","studentka","žák","žákyně","klient","klientka"]);
+  const REV_RE=new RegExp("(?<![\\p{L}])(\\p{Lu}[\\p{Ll}]+)\\s+((?:"+NAMEALT+"))(?![\\p{L}])(?=\\s*,)","gu");
+  out=out.replace(REV_RE,(m,sur,first)=>{const w=sur.toLowerCase();return (ROLE.has(w)||NOTNAME.has(w)||CITIES.has(w)||FIRST_NAMES.has(w))?m:assign(m,"OSOBA","osoba");});
   out=out.replace(DICT_RE,m=>{
     let kept=m,rest="";
     for(;;){
@@ -209,7 +224,10 @@ function anonymize(text,nerEnts){
   //    jako příjmení → falešné poplachy / over-redakce čitelných slov.
   if(!(nerEnts&&nerEnts.length)){
     const SUR_RE=new RegExp("(?:(\\p{Lu}[\\p{Ll}]+)\\s+)?(\\p{Lu}[\\p{Ll}]*"+SUF+")(?![\\p{Ll}])","gu");
-    out=out.replace(SUR_RE,function(m,pre,word){const w=word.toLowerCase();return (NOTNAME.has(w)||CITIES.has(w))?m:assign(m,"OSOBA","osoba");});
+    out=out.replace(SUR_RE,function(m,pre,word){const w=word.toLowerCase();if(NOTNAME.has(w)||CITIES.has(w)) return m;
+      // oslovení/role před příjmením („Pan Novák", „Žalobce Dvořák") zůstává čitelné
+      if(pre&&ROLE.has(pre.toLowerCase())) return m.slice(0,m.length-word.length)+assign(word,"OSOBA","osoba");
+      return assign(m,"OSOBA","osoba");});
   }
   // C) jeden průchod pro oba slovníky: samostatná křestní jména → OSOBA, města → MESTO
   out=out.replace(/\p{Lu}[\p{Ll}]+/gu,m=>{
@@ -261,5 +279,5 @@ const NER_STOP=new Set(["osvč","čr","sr","eu","osa","čsú","npú","por","npor
 const TYPE_LABELS={OSOBA:"osoba",FIRMA:"firma",INSTITUCE:"instituce",MESTO:"místo",ULICE:"ulice",CP:"č. popisné",PSC:"PSČ",TELEFON:"telefon",EMAIL:"email",
   URL:"URL",RC:"rodné číslo",ICO:"IČO",DIC:"DIČ",IBAN:"IBAN",UCET:"číslo účtu",SPZN:"spisová značka",DATUM:"datum",
   DSCHRANKA:"datová schránka",VIN:"VIN",DOKID:"číslo dokumentu",COP:"číslo OP",MKN:"diagnóza (MKN)",
-  KRYPTO:"krypto adresa",TOKEN:"API token",KARTA:"platební karta",SSN:"US SSN",SPZ:"SPZ",CASTKA:"částka"};
-const PH_RE=/\b(?:OSOBA|FIRMA|INSTITUCE|MESTO|ULICE|CP|PSC|TELEFON|EMAIL|URL|RC|ICO|DIC|IBAN|UCET|SPZN|DATUM|DSCHRANKA|VIN|DOKID|COP|MKN|KRYPTO|TOKEN|KARTA|SSN|SPZ|CASTKA)\d+\b/g;
+  KRYPTO:"krypto adresa",TOKEN:"API token",KARTA:"platební karta",SSN:"US SSN",SPZ:"SPZ",CASTKA:"částka",IP:"IP adresa",PAS:"číslo pasu",RP:"řidičský průkaz",ICP:"IČP/IČZ"};
+const PH_RE=/\b(?:OSOBA|FIRMA|INSTITUCE|MESTO|ULICE|CP|PSC|TELEFON|EMAIL|URL|RC|ICO|DIC|IBAN|UCET|SPZN|DATUM|DSCHRANKA|VIN|DOKID|COP|MKN|KRYPTO|TOKEN|KARTA|SSN|SPZ|CASTKA|IP|PAS|RP|ICP)\d+\b/g;
