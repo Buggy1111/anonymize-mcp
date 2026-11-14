@@ -45,7 +45,10 @@ _CZ_MESICE = (
     r"září|zari|září?u?|"
     r"říj(?:na|nu|en)|rij(?:na|nu|en)|"
     r"listopad[au]?|"
-    r"prosin(?:ce|ci|ec)"
+    r"prosin(?:ce|ci|ec)|"
+    # v0.10.6: slovenské měsíce („18. júna 2026")
+    r"januára?|februára?|marca?|apríla?|mája?|júna?|júla?|augusta?|"
+    r"septemb(?:er|ra)|októb(?:er|ra)|novemb(?:er|ra)|decemb(?:er|ra)"
     r")"
 )
 
@@ -61,9 +64,14 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # v0.10.4: náměstí / třída / nábřeží kdekoli v textu („náměstí Míru 5")
     (
         re.compile(
-            r"(?:[Nn]ám(?:ěstí|\.)|[Tt]řída|[Tt]ř\.|[Nn]ábřeží)\s+[A-ZÁ-Ž][\w.]*"
+            r"(?:[Nn]ám(?:ěstí|\.)|[Tt]řída|[Tt]ř\.|[Nn]ábřeží|[Nn]ábrežie)\s+[A-ZÁ-Ž][\w.]*"
             r"(?:\s+[A-ZÁ-Ž][\w.]*){0,2}\s+\d{1,4}(?:/\d{1,4})?[a-z]?(?!\d)"
         ),
+        "ULICE", "ulice",
+    ),
+    # v0.10.6: slovenský zápis s náměstím za jménem („Hviezdoslavovo námestie 2", „Hviezdoslavovo nám. 2")
+    (
+        re.compile(r"\b[A-ZÁ-Ž]\w+(?:ovo|ské|ova)\s+(?:nám\.|náměstí|námestie|nábrežie)\s+\d{1,4}(?:/\d{1,4})?[a-z]?(?!\d)"),
         "ULICE", "ulice",
     ),
     # v0.10.4: e-mail maskovaný proti robotům — „jan.novak(at)seznam.cz", „jan [at] firma.cz", „jan zavináč firma.cz"
@@ -1047,7 +1055,7 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"(?:(?<=\s)|(?<=^)|(?<=,\s)|(?<=,))"
-            r"[1-7]\d{2}\s\d{2}"
+            r"[0-9]\d{2}\s\d{2}"
             r"(?!\s*(?:Kč|EUR|USD|GBP|CHF|PLN|HUF|Eur\.?|Kčs|korun|euro|dolar))"
             r"(?=\s+[A-ZÁ-Ž]|[.,;)])"
         ),
@@ -1093,6 +1101,11 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"\+\d{1,3}[\s-]"
             r"(?:\d{3}[\s-]\d{3}[\s-]\d{3}|\d{3}\s\d{2}\s\d{2}\s\d{2})(?!\d)"
         ),
+        "TELEFON", "telefon",
+    ),
+    # v0.10.6: SK mobil/linka s úvodní nulou („0901 234 567", „02/123 456 78" ne)
+    (
+        re.compile(r"(?<![\d/])\b0[2-9]\d{2}[\s/]?\d{3}\s?\d{3}\b(?![\s.-]?\d)"),
         "TELEFON", "telefon",
     ),
     # Telefon CZ/SK bez předvolby: 777 123 456 (3-3-3), 777 18 18 10 (3-2-2-2).
@@ -1224,10 +1237,18 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         re.compile(r"((?:evidenční\s+číslo|ev\.\s*č\.)(?:\s+ČAK)?[:\s]+)([A-Z]{0,3}\d{3,10})\b", re.IGNORECASE),
         "POJISTKA", "evidenční číslo",
     ),
+    # v0.10.6: rejstříková a spisová čísla (SK/CZ): „vložka č. 12345/B", „SAK č. 9999/2010", „Číslo: 20260101/-1/1"
+    (
+        re.compile(
+            r"((?:vložk\w*\s+č\.|(?:SAK|ČAK)\s+č\.|(?<!\w)[Čč]íslo:|[Nn]aše\s+čísl\w*:?)\s*)"
+            r"(\d[\dA-Za-z]*(?:[/-]{1,2}[\dA-Za-z]+){0,3})"
+        ),
+        "POJISTKA", "evidenční číslo",
+    ),
     # v0.10.4: ulice za kontextem bydliště/sídla — i „U Lesa 3", „Na Příkopě 12", „náměstí Míru 5"
     (
         re.compile(
-            r"((?:bytem|trvale\s+bytem|se\s+sídlem|sídlem|bydliště|adres\w+|ulice|ul\.)[:\s]+)"
+            r"((?:bytem|bytom|trvale\s+bytem|se\s+sídlem|so\s+sídlom|sídlem|sídlom|bydliště|adres\w+|ulice|ul\.)[:\s]+)"
             r"((?:nám(?:ěstí|\.)\s+|třída\s+|tř\.\s+|nábřeží\s+)?[A-ZÁ-Ž][\w]*"
             r"(?:\s+(?:nám\.|náměstí|[\w.]+)){0,2}\s+\d{1,4}(?:/\d{1,4})?[a-z]?)(?!\d)"
         ),
@@ -1282,7 +1303,7 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         "PMCID", "PubMed Central ID",
     ),
     # IČO: 12345678
-    (re.compile(r"(IČO[:\s]+)(\d{8})\b", re.IGNORECASE), "ICO", "IČO"),
+    (re.compile(r"((?:IČO|1ČO|IC0)[:\s]+)(\d{8}|\d{2} \d{3} \d{3})\b", re.IGNORECASE), "ICO", "IČO"),
     # PSČ: 749 01
     (re.compile(r"(PSČ[:\s]+)(\d{3}\s?\d{2})\b", re.IGNORECASE), "PSC", "PSČ"),
     # Číslo účtu bez bank-v-závorce (jen s kontextovým slovem):

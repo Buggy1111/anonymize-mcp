@@ -2,6 +2,16 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.6] — 2026-11-14
+
+### Added
+- **Slovenské dokumenty** (test na skenech slovenských soudních písemností):
+  měsíce slovy („18. júna 2026"), PSČ začínající 0/8/9 („811 02"), mobil s nulou
+  („0901 234 567"), „Hviezdoslavovo námestie 2" / „nám. 2" / „nábrežie", kontext
+  „bytom" / „so sídlom", IČO ve tvaru 2-3-3 („12 345 679") i s chybou OCR („1ČO"),
+  rejstříková čísla „vložka č.", „SAK č.", „Číslo:", „Naše číslo".
+- `tests/test_v0106_slovak.py` (12 testů).
+
 ## [0.10.5] — 2026-11-14
 
 ### Security
