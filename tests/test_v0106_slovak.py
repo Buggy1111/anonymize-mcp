@@ -18,6 +18,7 @@ from anonymize_mcp.maskit_patterns import regex_pre_pass
     ("telefón: 0901 234 567", "0901"),
     ("zo dňa 18. júna 2026.", "18. júna 2026"),
     ("bytom Lipová 12, Bratislava", "Lipová 12"),
+    ("Sídlo: Lazarská 15/7, 117 22 Praha 1", "Lazarská"),
 ])
 def test_slovak_hidden(text: str, secret: str) -> None:
     out, _, _ = regex_pre_pass(text)

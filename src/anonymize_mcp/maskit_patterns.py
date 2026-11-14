@@ -1248,7 +1248,7 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # v0.10.4: ulice za kontextem bydliště/sídla — i „U Lesa 3", „Na Příkopě 12", „náměstí Míru 5"
     (
         re.compile(
-            r"((?:bytem|bytom|trvale\s+bytem|se\s+sídlem|so\s+sídlom|sídlem|sídlom|bydliště|adres\w+|ulice|ul\.)[:\s]+)"
+            r"((?:[Bb]ytem|[Bb]ytom|trvale\s+bytem|se\s+sídlem|so\s+sídlom|sídlem|sídlom|[Ss]ídlo|[Bb]ydliště|[Aa]dres\w+|[Uu]lice|ul\.)[:\s]+)"
             r"((?:nám(?:ěstí|\.)\s+|třída\s+|tř\.\s+|nábřeží\s+)?[A-ZÁ-Ž][\w]*"
             r"(?:\s+(?:nám\.|náměstí|[\w.]+)){0,2}\s+\d{1,4}(?:/\d{1,4})?[a-z]?)(?!\d)"
         ),
