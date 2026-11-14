@@ -2,6 +2,17 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [Unreleased] — větev ada/hardening (čeká na schválení)
+
+### Security
+- **Fail-closed u html/conllu:** v zero-egress lokálním módu vracel `output="html"`/`"conllu"`
+  PŮVODNÍ text beze změny jako „anonymized". Teď `ValueError` (lokálně jen `txt`).
+- **Výpadek MasKITu:** u html/conllu chyba místo neanonymizovaného textu; u `txt` se zapne
+  placeholder mód s NameTag fallbackem, aby jména nezůstala v textu.
+- `tests/test_v0108_privacy.py`: keep_mapping=False bez originálů v jakémkoli poli,
+  zero-egress hlídaný na úrovni `socket.connect` (dřív jen httpx.post), chybějící model
+  s `ANONYMIZE_MCP_NO_DOWNLOAD` bez pokusu o síť.
+
 ## [0.10.7] — 2026-11-14
 
 ### Added

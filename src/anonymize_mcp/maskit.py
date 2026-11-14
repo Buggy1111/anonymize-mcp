@@ -203,6 +203,13 @@ async def anonymize_text(
     local_mode = is_local_mode()
     if local_mode:
         placeholder_mode = True
+        # v0.10.8 (fail-closed): HTML/CoNLL-U výstup umí jen MasKIT (cloud). Dřív lokální mód
+        # u output="html"/"conllu" vrátil PŮVODNÍ text beze změny jako „anonymized".
+        if output != "txt":
+            raise ValueError(
+                f'output="{output}" vyžaduje MasKIT (cloud), v zero-egress lokálním módu '
+                f'je k dispozici jen output="txt".'
+            )
 
     # === STEP -1: Input normalization (adversariální defenses) ===
     # NFC + zero-width strip + bidi override strip + non-Latin digit → ASCII.
@@ -304,6 +311,20 @@ async def anonymize_text(
             else:
                 anonymized, maskit_replacements = raw, []
         except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+            # v0.10.8 (fail-closed): u html/conllu by se vrátil původní text (regex pre-pass
+            # ani placeholder mód pro ně neběží) → raději chyba než únik.
+            if output != "txt":
+                raise RuntimeError(
+                    f"MasKIT API selhalo ({type(e).__name__}) a output=\"{output}\" nemá náhradní "
+                    f"cestu — nic nevracím, aby neodešel neanonymizovaný text. Zkuste output=\"txt\"."
+                ) from e
+            # u txt: jména bez MasKITu chytí jen NameTag fallback v placeholder módu → zapnout
+            if not placeholder_mode:
+                placeholder_mode = True
+                all_warnings.append(
+                    "MasKIT nedostupný → zapnut placeholder mód s NameTag fallbackem, aby jména "
+                    "nezůstala v textu (značky OSOBA1… místo náhradních jmen)."
+                )
             # Soft fallback: emuluj výstup MasKITu sentinely, ostatní pipeline
             # (restore, fallback, placeholder mode) doběhne na regex+strict reps.
             all_warnings.append(
