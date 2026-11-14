@@ -45,3 +45,23 @@ def test_chunks_cover_text_exactly() -> None:
     parts = _chunks(text)
     assert "".join(parts) == text
     assert all(len(p) <= _CHUNK for p in parts)
+
+
+def test_chunks_never_split_capitalized_name() -> None:
+    # dlouhý text bez konce věty; jména musí zůstat celá v jednom kousku
+    words = []
+    for i in range(600):
+        words.append("Jan Novák" if i % 7 == 0 else "slovo")
+    text = " ".join(words)
+    for part in _chunks(text):
+        assert not part.rstrip().endswith(" Jan"), part[-30:]
+
+
+def test_find_sequences_linear_and_correct() -> None:
+    from anonymize_mcp.maskit_postprocess import _find_sequences
+    assert _find_sequences("Karel Čapek a Univerzita Karlova", ["Karel", "Čapek"]) == [0]
+    assert _find_sequences("Karel" + " " * 100 + "Čapek", ["Karel", "Čapek"]) == []
+    text = "Novák " * 50_000
+    t = time.perf_counter()
+    _find_sequences(text, ["Novák"] * 5)
+    assert time.perf_counter() - t < 1.0

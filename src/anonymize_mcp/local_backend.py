@@ -20,6 +20,7 @@ import functools
 import hashlib
 import logging
 import os
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -197,6 +198,7 @@ def _maximal_entities(
 
 
 _CHUNK = 2000
+_SAFE_CUT = re.compile(r"\s(?=[^\sA-ZÁ-ŽА-ЯЁ\u0100-\u017F]|$)")
 
 
 def _chunks(text: str) -> list[str]:
@@ -210,9 +212,14 @@ def _chunks(text: str) -> list[str]:
         window = text[i:i + _CHUNK]
         cut = max(window.rfind("\n"), window.rfind(". "), window.rfind("! "), window.rfind("? "))
         if cut < _CHUNK // 2:
-            cut = window.rfind(" ")
+            # Bez konce věty: řízni jen před slovem s MALÝM počátečním písmenem,
+            # aby se víceslovné jméno („Jan | Novák", „Velký | Orel") nikdy nerozdělilo
+            # (rozdělené jméno by NER nemusel poznat → únik osobního údaje).
+            cut = -1
+            for m in _SAFE_CUT.finditer(window):
+                cut = m.start()
         if cut < _CHUNK // 4:
-            cut = _CHUNK - 1  # souvislý blok bez mezer — tvrdý řez
+            cut = _CHUNK - 1  # souvislý blok bez bezpečného místa (bez mezer) — jména tu nejsou
         out.append(text[i:i + cut + 1])
         i += cut + 1
     return out
