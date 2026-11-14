@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from anonymize_mcp.validation import MAX_INPUT_BYTES, SOFT_WARN_BYTES, ValidationError, validate_input
+from anonymize_mcp.validation import (
+    MAX_INPUT_BYTES,
+    SOFT_WARN_BYTES,
+    ValidationError,
+    validate_input,
+)
 
 
 @pytest.mark.parametrize("bad", ["", "   \n\t  "])
