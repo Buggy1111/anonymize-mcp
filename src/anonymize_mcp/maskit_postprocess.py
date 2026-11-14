@@ -540,6 +540,44 @@ def extend_institution_names(
     return anonymized
 
 
+
+_ROLE_WORDS = {
+    "žalobce", "žalobkyně", "žalovaný", "žalovaná", "pan", "paní", "pacient", "pacientka",
+    "kupující", "prodávající", "účastník", "účastnice", "svědek", "svědkyně", "obviněný",
+    "obviněná", "dlužník", "dlužnice", "věřitel", "věřitelka", "zaměstnanec", "zaměstnankyně",
+    "nájemce", "pronajímatel", "jméno", "příjmení", "dne", "podepsal", "podepsala", "zástupce",
+    "advokát", "advokátka", "soudce", "soudkyně", "lékař", "lékařka", "ošetřující", "klient",
+    "klientka", "student", "studentka", "žák", "žákyně", "mudr", "judr", "ing", "mgr", "bc",
+}
+
+
+def anonymize_surname_before_person(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]]:
+    """v0.10.4: příjmení PŘED křestním jménem („Svoboda Petr, nar. 1980").
+
+    Formuláře a seznamy píšou „Příjmení Jméno,". NER chytí křestní jméno
+    (OSOBA1), příjmení před ním zůstane. Heuristika: Velké slovo hned před
+    OSOBA placeholderem, za kterým následuje čárka, se připojí ke stejné
+    osobě — kromě rolí a oslovení (Žalobce, Pan, Pacientka…).
+    """
+    pattern = re.compile(
+        r"(?<![\w])([A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+)\s+(OSOBA\d+)(?=\s*,)"
+    )
+    by_plc = {r.get("placeholder"): r for r in replacements}
+
+    def _replace(m: re.Match[str]) -> str:
+        word, plc = m.group(1), m.group(2)
+        if word.lower() in _ROLE_WORDS or re.match(r"^[A-Z]+\d+$", word):
+            return m.group(0)
+        rep = by_plc.get(plc)
+        if rep is not None and word not in rep.get("original", ""):
+            rep["original"] = f"{word} {rep['original']}".strip()
+        return plc
+
+    return pattern.sub(_replace, anonymized), replacements
+
 def anonymize_middle_names(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -848,6 +886,7 @@ def postprocess(
     anonymized = revert_preserved_acronyms(anonymized, replacements, original_text)
     anonymized = extend_institution_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
+    anonymized, replacements = anonymize_surname_before_person(anonymized, replacements)
     anonymized, replacements = anonymize_facility_names(anonymized, replacements, original_text)
     anonymized, replacements = capture_company_prefix(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_international_companies(anonymized, replacements, original_text)
