@@ -8,7 +8,11 @@ Doprovodný web k MCP serveru [anonymize-mcp](https://github.com/Buggy1111/anony
 
 ## Nástroje
 
-- **Anonymizace** — skryje osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, částky, e-maily) a nahradí je značkami (OSOBA1, CASTKA1…). Lokální offline režim i přesný NER. Vlastní stránka `anonymize.html`.
+- **Anonymizace** — skryje osobní údaje (jména, rodná čísla, adresy, telefony, IČO, účty, peněžní částky v jakémkoli zápisu, e-maily, IP adresy, čísla pasů, řidičských průkazů a smluv, IČP/IČZ…) a nahradí je značkami (OSOBA1, CASTKA1…). Lokální offline režim i přesný NER. Vlastní stránka `anonymize.html`.
+
+### Testy
+
+`tools/test-overredaction.cjs` (lokální, gitignorované) — 108 případů: díry i přetažení (data, verze, „Smlouva o dílo“ zůstávají).
 - **NER** — rozpoznávání pojmenovaných entit (NameTag 3).
 - **Morfologie** — lemma, slovní druh, mluvnické kategorie (UDPipe 2).
 - **Korektor** — oprava překlepů a diakritiky (Korektor).
