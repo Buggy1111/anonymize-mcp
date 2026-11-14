@@ -1,0 +1,62 @@
+# Anonymizace (anonymizace.js.org) — plný popis
+
+Anonymizace.js.org je bezplatný webový nástroj, který v českých dokumentech najde osobní a citlivé údaje a nahradí je značkami. Text zůstane čitelný („Žalobce OSOBA1, r. č. RC1, žádá CASTKA1 na účet IBAN1.“), ale osobní údaje v něm nejsou. Běží přímo ve webovém prohlížeči, nevyžaduje registraci ani instalaci a je zdarma pro nekomerční použití.
+
+## K čemu slouží
+- Vložit smlouvu, spis, lékařskou zprávu nebo e-mail do ChatGPT, Claude či Gemini bez osobních údajů.
+- Připravit soudní rozhodnutí, smlouvu nebo úřední dokument ke zveřejnění (např. podle zákona č. 106/1999 Sb.).
+- Poslat dokument kolegovi, překladateli nebo do výzkumu bez jmen a rodných čísel.
+- Pseudonymizace podle čl. 4 odst. 5 GDPR.
+
+## Pro koho
+Advokáti a advokátní koncipienti, soudy a úřady, lékaři a zdravotnická zařízení, pojišťovny, banky, novináři, výzkumníci a vývojáři.
+
+## Režimy
+1. Lokální režim (výchozí): údaje se hledají podle vzorů a kontrolních součtů přímo v prohlížeči. Na server se neodešle nic (0 bajtů), funguje i bez internetu.
+2. Přesný režim (na vyžádání): text odejde šifrovaně na akademický server LINDAT (Matematicko-fyzikální fakulta Univerzity Karlovy). Model NameTag 3 rozpozná jména osob, firmy a instituce i ve skloňovaných tvarech. Výsledek se spojí s lokálními pravidly.
+
+## Co nástroj pozná (značka)
+- Jméno a příjmení (OSOBA)
+- Firma, instituce (FIRMA, INSTITUCE) — v přesném režimu
+- Město, ulice, PSČ (MESTO, ULICE, PSC)
+- Rodné číslo s kontrolou dělitelnosti 11 (RC)
+- IČO s kontrolní číslicí (ICO), DIČ (DIC)
+- IBAN s kontrolou mod 97 (IBAN), české číslo účtu (UCET)
+- Peněžní částky v jakémkoli zápisu: 80 000 Kč, kč, Kč 80 000, CZK, €, „tis. Kč“, „korun českých“, částka slovy i „ve výši 80 000“ (CASTKA)
+- Platební karta s Luhnovým algoritmem (KARTA)
+- Telefon vč. +420 a 00420 (TELEFON), e-mail i maskovaný „(at)“ (EMAIL), webová adresa (URL), IP adresa (IP)
+- Datum, jen platná data (DATUM)
+- Datová schránka (DSCHRANKA)
+- SPZ (SPZ), VIN (VIN)
+- Číslo občanského průkazu (COP), pasu (PAS), řidičského průkazu (RP)
+- Čísla smluv, faktur, pojistek, variabilní symboly VS/KS/SS (DOKID)
+- IČP a IČZ zdravotnických zařízení (ICP)
+- Spisová značka (SPZN)
+- Diagnóza MKN-10 (MKN)
+- Krypto adresy (KRYPTO), API klíče (TOKEN)
+
+Stejný údaj dostane v celém textu stejnou značku (dvakrát „Jan Novák“ = dvakrát OSOBA1).
+
+## Limity
+- Do 20 000 znaků najednou (asi 8 stran). Soubory PDF, DOCX a TXT do 10 MB.
+- Jde o pseudonymizaci: výstup si vždy přečtěte, nepřímé indicie (funkce, vzácná příjmení v kontextu) nástroj nemusí poznat.
+
+## Otázky a odpovědi
+**Jak anonymizovat dokument, než ho vložím do ChatGPT?** Vložte text na https://anonymizace.js.org/anonymize.html nebo nahrajte PDF či Word. Údaje se nahradí značkami, výsledek zkopírujete do ChatGPT.
+
+**Ukládá web můj text?** Ne. Web nemá server ani databázi. V lokálním režimu text neopustí prohlížeč.
+
+**Stačí to na GDPR?** Je to pseudonymizace podle čl. 4 odst. 5 GDPR. Snižuje riziko, ale za výsledek odpovídá ten, kdo dokument předává.
+
+**Jaký je rozdíl mezi anonymizací a pseudonymizací?** Pseudonymizovaná data lze s dodatečnými informacemi znovu přiřadit osobě, anonymizovaná ne. Nástroj provádí pseudonymizaci.
+
+**Kolik to stojí?** Nic, pro nekomerční použití.
+
+## Další nástroje na webu
+Rozpoznání pojmenovaných entit (NameTag 3, 35 jazyků), morfologická analýza (UDPipe 2), oprava pravopisu a doplnění diakritiky (Korektor), strojový překlad mezi češtinou, angličtinou, němčinou, francouzštinou, polštinou, ruštinou a ukrajinštinou (CUBBITT). https://anonymizace.js.org/nastroje.html
+
+## Pro vývojáře
+MCP server anonymize-mcp (Python, PyPI) nabízí stejnou anonymizaci pro AI asistenty: `pip install anonymize-mcp`, v konfiguraci MCP `"command": "anonymize-mcp"`. https://github.com/Buggy1111/anonymize-mcp
+
+## O projektu
+Autor: Michal Bürgermeister (https://github.com/Buggy1111). Neoficiální komunitní projekt; není provozován ani schválen ÚFAL MFF UK, využívá jejich veřejná API LINDAT/CLARIAH-CZ. Kód webu: PolyForm Noncommercial 1.0.0.

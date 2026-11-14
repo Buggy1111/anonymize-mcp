@@ -1,0 +1,89 @@
+/* tool.css — stránky s nástroji (anonymizér, NER/morfologie/korektor/překlad). Staví na site.css. */
+.tool{max-width:1024px;margin:0 auto;display:grid;gap:18px;padding-bottom:6vh}
+
+/* ovládání nad pracovní plochou */
+.modes{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--seg)}
+.modes label{position:relative;cursor:pointer}
+.modes input{position:absolute;opacity:0;pointer-events:none}
+.modes span{display:block;font-size:13px;font-weight:500;padding:6px 14px;border-radius:7px;white-space:nowrap;transition:background .25s,box-shadow .25s}
+.modes input:checked+span{background:var(--seg-on);box-shadow:var(--shadow)}
+.modes input:focus-visible+span{outline:2px solid var(--blue)}
+.upload{cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--blue)}
+.upload:hover{text-decoration:underline}
+.upload svg{width:15px;height:15px}
+.upload:focus-within{outline:2px solid var(--blue);outline-offset:3px;border-radius:6px}
+.fst{font-size:13px;color:var(--fg2)}
+.fst.ok{color:var(--ok)}.fst.err{color:var(--err)}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.toolbar .left{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.nerinfo{min-height:1.4em;font-size:13px;color:var(--fg2);text-align:center}
+.nerinfo:empty{display:none}
+
+/* vstup anonymizéru roste s obsahem */
+#input{min-height:300px}
+.out .placeholder{color:var(--mut)}
+
+/* souhrn a tabulka náhrad */
+.stats{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.stat{font-size:13px;color:var(--fg2);padding:6px 12px;border-radius:999px;background:var(--bg2)}
+.stat b{font-family:var(--f-display);font-weight:700;color:var(--fg);margin-right:2px;font-variant-numeric:tabular-nums}
+.stat.total{background:var(--fg);color:var(--bg)}
+.stat.total b{color:var(--bg)}
+.card{background:var(--bg2);border-radius:28px;overflow:hidden}
+.card-h{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:-.02em}
+.card-h span:last-child{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--fg2)}
+.card-b{background:var(--bg);margin:0 2px 2px;border-radius:0 0 26px 26px;overflow-x:auto}
+.card-b table{width:100%;border-collapse:collapse;font-size:15px}
+.card-b th{text-align:left;font-size:12px;font-weight:600;color:var(--fg2);padding:14px 24px 8px;border-bottom:1px solid var(--line)}
+.card-b td{padding:12px 24px;border-bottom:1px solid var(--line);vertical-align:middle}
+.card-b tr:last-child td{border-bottom:0}
+.card-b td.orig{font-weight:600;overflow-wrap:anywhere}
+.badge{font-size:12.5px;color:var(--fg2)}
+.empty{display:block;padding:22px 24px;color:var(--mut);font-size:15px}
+
+/* oddíl s vysvětlením */
+.band{max-width:1024px;margin:0 auto;padding-block:12vh 0;display:grid;gap:28px}
+.band-h{text-align:center;display:grid;gap:12px;justify-items:center}
+.band-h h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(32px,4.2vw,56px);letter-spacing:-.045em;line-height:1.05;text-wrap:balance}
+.band-h h2 em{font-style:normal;font-weight:300}
+.band-h p{margin:0;max-width:44ch;color:var(--fg2);font-size:clamp(16px,1.4vw,19px)}
+.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;background:var(--line);border-radius:22px;overflow:hidden}
+.types div{background:var(--bg2);padding:16px 18px;display:grid;gap:6px;align-content:start}
+.types b{font-weight:600;font-size:15px}
+.types .tok{justify-self:start;font-size:11px}
+.types small{font-size:12.5px;color:var(--fg2)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.duo article{background:var(--bg2);border-radius:28px;padding:30px;display:grid;gap:12px;align-content:start}
+.duo .kick{font-family:var(--f-display);font-weight:600;font-size:14px;color:var(--fg2)}
+.duo h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:28px;letter-spacing:-.04em}
+.duo p{margin:0;color:var(--fg2)}
+
+/* záložky nástrojů */
+.tabs{justify-self:center}
+.tabs .tab{all:unset;cursor:pointer;font-size:14px;font-weight:500;padding:8px 18px;border-radius:7px;white-space:nowrap;transition:background .25s,box-shadow .25s}
+.tabs .tab.active{background:var(--seg-on);box-shadow:var(--shadow)}
+.tabs .tab:focus-visible{outline:2px solid var(--blue)}
+.panel{display:none;gap:18px}
+.panel.active{display:grid}
+.desc{text-align:center;max-width:60ch;justify-self:center;color:var(--fg2);font-size:16px;margin:0}
+.desc b{color:var(--fg)}
+.desc .eng{display:block;margin-top:6px;font-size:13px;color:var(--mut)}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.controls select{font:inherit;font-size:14px;padding:8px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);color:var(--fg)}
+.status{font-size:13px;color:var(--fg2)}
+.status.ok{color:var(--ok)}.status.err{color:var(--err)}
+.cc{font-size:12px;font-weight:500;color:var(--fg2)}
+.cc.over{color:var(--err)}
+.pane .out{min-height:200px}
+.tool .pane textarea{min-height:200px}
+.ent{display:inline-block;margin:0 6px 8px 0;font-size:14px;padding:5px 11px;border-radius:999px;background:var(--bg2);font-weight:500}
+.out table{width:100%;border-collapse:collapse;font-size:14px;white-space:normal}
+.out th{text-align:left;font-size:12px;font-weight:600;color:var(--fg2);padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}
+.out td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line)}
+.out td.w{font-weight:600}.out td.f{font-family:var(--f-mono);font-size:12px;color:var(--fg2);overflow-wrap:anywhere}
+.out.mono{overflow-x:auto}
+.ins{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;font-size:13px;color:var(--fg2);padding-top:8px}
+
+@media (max-width:860px){.types{grid-template-columns:repeat(2,minmax(0,1fr))}.duo{grid-template-columns:1fr}}
+@media (max-width:760px){.toolbar{justify-content:flex-start}.modes span,.tabs .tab{padding:6px 10px;font-size:12.5px}.card-b th,.card-b td{padding-left:16px;padding-right:16px}}
