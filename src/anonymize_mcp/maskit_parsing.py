@@ -18,7 +18,7 @@ from typing import Any
 # Předchozí pattern `[^\s_\[\]]+` chytal `{"name":"Jan_[Jiří]` celé (group(1) =
 # `{"name":"Jan`), výsledkem byl `OSOBA1...` a `{"name":"` zmizel. Karlovka leak.
 _MASKIT_PLACEHOLDER = re.compile(
-    r"(\[[\w#]+\]|[\wÀ-žÀ-ɏ]+)_\[([^\]]+)\]"
+    r"(\[[\w#]+\]|[\wÀ-ɏ]+)_\[([^\]]+)\]"  # À-ž byl duplicitní (leží v À-ɏ)
 )
 
 # Type inference patterns

@@ -20,7 +20,6 @@ import functools
 import hashlib
 import logging
 import os
-import re
 import sys
 import zipfile
 from pathlib import Path
@@ -198,7 +197,19 @@ def _maximal_entities(
 
 
 _CHUNK = 2000
-_SAFE_CUT = re.compile(r"\s(?=[^\sA-ZÁ-ŽА-ЯЁ\u0100-\u017F]|$)")
+
+
+def _safe_space(window: str) -> int:
+    """Poslední mezera, za kterou NEzačíná slovo velkým písmenem (str.isupper
+    zná i Č, Ř, Ž, cyrilici…); jinak poslední mezera vůbec; jinak -1."""
+    last_space = -1
+    for k in range(len(window) - 1, 0, -1):
+        if window[k - 1].isspace():
+            if last_space < 0:
+                last_space = k - 1
+            if not window[k].isupper():
+                return k - 1
+    return last_space
 
 
 def _chunks(text: str) -> list[str]:
@@ -215,11 +226,9 @@ def _chunks(text: str) -> list[str]:
             # Bez konce věty: řízni jen před slovem s MALÝM počátečním písmenem,
             # aby se víceslovné jméno („Jan | Novák", „Velký | Orel") nikdy nerozdělilo
             # (rozdělené jméno by NER nemusel poznat → únik osobního údaje).
-            cut = -1
-            for m in _SAFE_CUT.finditer(window):
-                cut = m.start()
-        if cut < _CHUNK // 4:
-            cut = _CHUNK - 1  # souvislý blok bez bezpečného místa (bez mezer) — jména tu nejsou
+            cut = _safe_space(window)
+        if cut < 0:
+            cut = _CHUNK - 1  # v úseku není jediná mezera → slovo, ne víceslovné jméno
         out.append(text[i:i + cut + 1])
         i += cut + 1
     return out
