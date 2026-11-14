@@ -133,3 +133,23 @@ def test_redos_new_patterns(chunk: str) -> None:
     t = time.perf_counter()
     regex_pre_pass(s)
     assert time.perf_counter() - t < 2.0
+
+
+def test_many_values_no_crash_and_fast() -> None:
+    """Dřív >255 různých údajů = ValueError (sentinely jen 256) a propagace v kvadratickém čase."""
+    import time
+
+    from anonymize_mcp.maskit_patterns import regex_pre_pass
+    t = "".join(f"{i}. platba {1000 + i},00 Kč na účet {1000000 + i}/0800\n" for i in range(600))
+    s = time.perf_counter()
+    out, reps, _ = regex_pre_pass(t)
+    assert time.perf_counter() - s < 3.0
+    assert len(reps) > 255
+    assert not any(f"{1000000 + i}/0800" in out for i in range(600))
+
+
+def test_too_many_values_clear_error() -> None:
+    from anonymize_mcp.maskit_patterns import regex_pre_pass
+    t = "".join(f"tel. 7{str(10000000 + i * 7919)[:8]}, účet {1000000 + i}/0800\n" for i in range(1400))
+    with pytest.raises(ValueError, match="rozděl"):
+        regex_pre_pass(t)

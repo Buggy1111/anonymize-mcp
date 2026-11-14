@@ -9,6 +9,10 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   PŮVODNÍ text beze změny jako „anonymized". Teď `ValueError` (lokálně jen `txt`).
 - **Výpadek MasKITu:** u html/conllu chyba místo neanonymizovaného textu; u `txt` se zapne
   placeholder mód s NameTag fallbackem, aby jména nezůstala v textu.
+- **Dlouhé dokumenty:** text s víc než 255 různými údaji (bankovní výpis) dřív spadl na
+  `ValueError: PII sentinel index out of range` — sentinely rozšířeny na 2 560 (+1 280 firem),
+  nad limit srozumitelná chyba „rozděl na menší části". Propagace jedním průchodem
+  (1 600 údajů 3,6 s → 0,2 s).
 - **Monitoring API ÚFAL** (`.github/workflows/ufal-monitor.yml` + `scripts/check_ufal_apis.py`):
   každých 6 h jeden minimální smyšlený požadavek na NameTag, UDPipe, MasKIT, PONK, Korektor
   a Charles Translator; při chybě 2 opakování po 60 s, pak jedno issue (štítek `ufal-api`),

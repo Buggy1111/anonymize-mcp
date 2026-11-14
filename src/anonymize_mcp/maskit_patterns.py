@@ -1718,18 +1718,26 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     )
     # 5) v0.10.7: propagace — originál nalezený jednou se skryje i jinde v textu
     #    (výplatnice: „41 712 Kč" u platu a holé „41 712" v součtu)
-    seen: set[str] = set()
-    for r in sorted(replacements, key=lambda x: -len(x["original"])):
-        cands = [r["original"]]
+    # Jeden průchod: kandidát jen pokud jeho nejdelší slovo v textu ještě je (množina slov),
+    # pak jeden spojený regex — dřív re.sub na každý originál = kvadratický čas.
+    words = set(re.split(r"[^\w]+", text))
+    cand: dict[str, str] = {}
+    for r in replacements:
+        opts = [r["original"]]
         if r["placeholder"].startswith("MENA"):
             num = re.search(r"\d[\d \u00a0.,]*\d", r["original"])
             if num and sum(ch.isdigit() for ch in num.group(0)) >= 4:
-                cands.append(num.group(0))
-        for o in cands:
-            if len(o) < 4 or o in seen:
+                opts.append(num.group(0))
+        for o in opts:
+            key = " ".join(o.split())
+            if len(key) < 4 or key in cand:
                 continue
-            seen.add(o)
-            pat = r"(?<![\w])" + re.escape(o).replace(r"\ ", r"\s+") + r"(?![\w])"
-            text = re.sub(pat, r["_sentinel"], text)
+            piece = max(re.split(r"[^\w]+", key), key=len)
+            if piece and piece in words:
+                cand[key] = r["_sentinel"]
+    if cand:
+        alts = sorted(cand, key=len, reverse=True)
+        big = re.compile(r"(?<![\w])(?:" + "|".join(re.escape(k).replace(r"\ ", r"\s+") for k in alts) + r")(?![\w])")
+        text = big.sub(lambda m: cand.get(" ".join(m.group(0).split()), m.group(0)), text)
 
     return text, replacements, counters
