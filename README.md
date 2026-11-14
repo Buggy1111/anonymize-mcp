@@ -11,6 +11,8 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 
 > 🔒 **Nově (v0.10.0): [zero-egress lokální mód](#zero-egress--on-prem-mód-)** — plně offline anonymizace, žádný text neopustí stroj. Pro GDPR / právní / zdravotnická data. Zapnutí: `ANONYMIZE_MCP_LOCAL=1`.
 
+> ⚠️ **Výchozí (cloudový) režim posílá text na servery ÚFAL** (LINDAT a quest.ms.mff.cuni.cz). Podle podmínek služeb ÚFAL mohou být zaslaná data použita ke zlepšení jejich systémů. Pro skutečné osobní údaje proto používejte zero-egress lokální mód.
+
 > 🌐 **Nechcete nic instalovat? Vyzkoušejte to online zdarma → [anonymizace.js.org](https://anonymizace.js.org)** — anonymizace, NER, morfologie, korektor a překlad češtiny přímo v prohlížeči. Doprovodný web k tomuto MCP serveru.
 
 ![Ukázka webu anonymizace.js.org: jména, rodné číslo, telefon a účet se při psaní nahrazují značkami](https://raw.githubusercontent.com/Buggy1111/anonymize-mcp/main/docs/demo.gif)

@@ -9,6 +9,12 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   PŮVODNÍ text beze změny jako „anonymized". Teď `ValueError` (lokálně jen `txt`).
 - **Výpadek MasKITu:** u html/conllu chyba místo neanonymizovaného textu; u `txt` se zapne
   placeholder mód s NameTag fallbackem, aby jména nezůstala v textu.
+- **Monitoring API ÚFAL** (`.github/workflows/ufal-monitor.yml` + `scripts/check_ufal_apis.py`):
+  každých 6 h jeden minimální smyšlený požadavek na NameTag, UDPipe, MasKIT, PONK, Korektor
+  a Charles Translator; při chybě 2 opakování po 60 s, pak jedno issue (štítek `ufal-api`),
+  po obnovení komentář a uzavření; do logu jen stav/čas, nikdy obsah. Běží až po sloučení do main.
+- README: upozornění, že cloudový režim posílá text ÚFAL a podle jejich podmínek mohou data
+  použít ke zlepšení služeb.
 - **Společný smyšlený korpus** `tests/corpus/corpus.json` (12 dokumentů, 68 údajů; stejný na webu):
   MCP 8/12 → 12/12. Opraveno: příjmení za osobou, které NER vynechal („OSOBA1 Veselý"),
   opakované/skloňované příjmení („Šťastná … paní Šťastné"), osoba za popiskem formuláře
