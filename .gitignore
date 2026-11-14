@@ -20,3 +20,8 @@ dist/
 .coverage.*
 htmlcov/
 coverage.xml
+
+# web
+web/.playwright-mcp/
+web/tools/
+web/tmp-qa/
