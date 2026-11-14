@@ -96,6 +96,7 @@ def test_account_prefix_hidden() -> None:
     assert "6015" not in out
 
 
+@pytest.mark.network  # lokální mód si poprvé stahuje model NameTag z LINDAT
 def test_no_raw_without_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     """keep_mapping=False nesmí vrátit originály ani v poli `raw` (zero-egress mód)."""
     import asyncio
