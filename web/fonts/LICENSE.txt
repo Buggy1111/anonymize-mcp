@@ -1,6 +1,0 @@
-Písma v této složce jsou šířena pod licencí SIL Open Font License 1.1 (https://openfontlicense.org).
-
-Geist, Geist Mono — Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
-Inter — Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
-
-Soubory jsou podmnožiny (latin, latin-ext) stažené z Google Fonts, beze změn.
