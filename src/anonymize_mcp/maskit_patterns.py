@@ -129,7 +129,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Číslo účtu — 7-10 cifer / 4 cifer banka. Distinguished od RČ:
     # RČ má max 6 cifer před slash (YYMMDD), UCET má 7-10. Žádný overlap.
     # Pokrývá: 1234567890/0800, 9876543210/0300 (i bez "(banka)" v závorce).
-    (re.compile(r"\b\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
+    # v0.10.5: s předčíslím („6015-1234567890/0100") — dřív zůstalo „6015-UCET1"
+    (re.compile(r"\b(?:\d{1,6}-)?\d{7,10}/\d{4}\b"), "UCET", "číslo účtu"),
     # Pojistka / čísla smluv / studie IDs — letter-(letters?)-year?-digits format.
     # Pokrývá: G-CZ-12345, P-987654321, ŠU-2024-00045123, K-2024-12345,
     # R-2024-007, CT-2024-456 a podobné. 1-3 letters + dash + structured ID.

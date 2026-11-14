@@ -26,7 +26,14 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   (`À-ž`, `゠-ヿ`), GitHub Actions připnuté na SHA a `permissions: contents: read`.
 - `.github/dependabot.yml` (pip + actions) a `SECURITY.md` (soukromé hlášení).
 
+- **`keep_mapping=False` vracel originály v poli `raw`** (v zero-egress módu
+  jména před NER). `raw` se teď vrací jen spolu s mappingem.
+- Závislosti: `uv lock --upgrade` (PyJWT 2.15.1, cryptography 50.0.2, anyio 4.16,
+  certifi 2026.10.23, starlette 1.7, mcp 2.3.0) — 32 upozornění Dependabota;
+  minimální `mcp>=2.2.0` (opravy v MCP SDK).
+
 ### Fixed
+- Číslo účtu s předčíslím („6015-1234567890/0100") — dřív zůstalo „6015-UCET1".
 - **Test na reálných soudních dokumentech** (lokálně, zero-egress): data
   s mezerami za tečkami („3. 4. 2001" — správný zápis podle ČSN 01 6910),
   exekuční a insolvenční spisové značky („34 E 756/2007 - 213"), slovenská

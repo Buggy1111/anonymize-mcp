@@ -243,7 +243,6 @@ async def anonymize_text(
                             "idempotence-skip": 1},
             } if keep_mapping else {
                 "anonymized": text,
-                "raw": text,
                 "warnings": [
                     f"Vstup obsahuje {len(idem_restore_map)} existujicich placeholderu — "
                     f"detekovano jako jiz anonymizovany text, pipeline preskocena."
@@ -458,10 +457,12 @@ async def anonymize_text(
 
     out: dict[str, Any] = {
         "anonymized": anonymized,
-        "raw": raw,
         "warnings": all_warnings,
     }
     if keep_mapping:
+        # v0.10.5: `raw` (mezivýsledek; v zero-egress módu ještě s původními jmény)
+        # jen spolu s mappingem — keep_mapping=False dřív vracel originály v `raw`.
+        out["raw"] = raw
         out["replacements"] = replacements
         out["count"] = len(replacements)
         out["sources"] = sources_count

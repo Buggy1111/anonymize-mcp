@@ -89,3 +89,20 @@ def test_chunks_all_caps_and_accented_lowercase() -> None:
 def test_real_court_document_gaps(text: str, secret: str) -> None:
     out, _, _ = regex_pre_pass(text)
     assert secret not in out
+
+
+def test_account_prefix_hidden() -> None:
+    out, _, _ = regex_pre_pass("na účet 6015-1234567890/0100 a dál")
+    assert "6015" not in out
+
+
+def test_no_raw_without_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    """keep_mapping=False nesmí vrátit originály ani v poli `raw` (zero-egress mód)."""
+    import asyncio
+
+    from anonymize_mcp.maskit import anonymize_text
+
+    monkeypatch.setenv("ANONYMIZE_MCP_LOCAL", "1")
+    r = asyncio.run(anonymize_text("Žalobce Jan Novák, nar. 3. 4. 2001.", keep_mapping=False))
+    assert "raw" not in r and "replacements" not in r
+    assert "Novák" not in str(r)

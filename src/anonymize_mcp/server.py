@@ -191,7 +191,8 @@ async def anonymize(
         stop_list_filter: Default ``True``. Rollback MasKIT false positives.
 
     Returns:
-        ``anonymized`` (čistý text), ``raw`` (MasKIT raw), ``replacements``
+        ``anonymized`` (čistý text), ``warnings``; jen s ``keep_mapping=True``
+        navíc ``raw`` (mezivýsledek, může obsahovat originály) a ``replacements``
         (list s ``original``, ``placeholder``, ``type``, ``source``),
         ``warnings``, ``sources`` ({maskit, wrapper-regex, wrapper-strict,
         wrapper-placeholder}).
