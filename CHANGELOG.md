@@ -2,6 +2,19 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.7] — 2026-11-14
+
+### Added
+- **Propagace:** údaj nalezený jednou se skryje i na dalších místech textu; u částky
+  i holé číslo bez měny (výplatnice: plat „… Kč" a stejné číslo v součtu).
+- Účet bez kódu banky v kontextu („VÝPLATA NA ÚČET - …"), telefon v libovolném
+  členění za „tel./fax/mobil/sekret.", částky u „Na účet:", „Základ … pojištění",
+  „čistá/hrubá mzda", SK „sumu", rozsah „13 300–15 000 Kč", OCR překlep „čk".
+- `tests/test_v0107_holes.py` (9 testů vč. ReDoS).
+
+### Fixed
+- Test `test_no_raw_without_mapping` označen jako `network` (lokální mód stahuje model) — CI bez sítě zelené.
+
 ## [0.10.6] — 2026-11-14
 
 ### Added

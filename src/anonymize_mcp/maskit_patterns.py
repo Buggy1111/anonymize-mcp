@@ -175,14 +175,16 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Variant A: number + suffix currency  ("2 350 000 Kč", "5000 EUR")
     (
         re.compile(
-            r"\b(?:\d{1,3}(?:[ \u00A0,.]\d{3})+|\d+)"
+            # v0.10.7: rozsah „13 300–15 000 Kč" — skryje i dolní mez
+            r"\b(?:(?:\d{1,3}(?:[ \u00A0.]\d{3})+|\d+)\s?[–-]\s?)?"
+            r"(?:\d{1,3}(?:[ \u00A0,.]\d{3})+|\d+)"
             r"(?:[,.]\d{1,3}|[,.]-)?"
             # v0.10.4: řád („80 tisíc Kč", „1,5 mil. Kč", „2 mld. Kč")
             r"(?:\s?(?:tis\.|mil\.|mld\.|tisíc\w*|milion\w*|miliard\w*))?"
             r"\s*"
             r"(?:"
             # v0.10.4: bez ohledu na velikost písmen a háček (kč, KČ, kc) + CZK
-            r"(?i:kčs|kč|kc|czk)|EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|RMB|"
+            r"(?i:kčs|kč|kc|czk|čk)|EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|RMB|"
             r"INR|BRL|MXN|KRW|TRY|UAH|RON|BGN|HRK|DKK|SEK|NOK|ISK|"
             r"AUD|CAD|NZD|SGD|HKD|TWD|THB|IDR|MYR|PHP|VND|"
             r"ZAR|ILS|AED|SAR|EGP|"
@@ -1245,6 +1247,16 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "POJISTKA", "evidenční číslo",
     ),
+    # v0.10.7: účet bez kódu banky v kontextu („VÝPLATA NA ÚČET - 1234567890")
+    (
+        re.compile(r"((?:[Úú]čet|[Úú]čtu|ÚČET|č\.\s*ú\.)[\s:–-]{1,6})(\d{6,10})(?![\d/])"),
+        "UCET", "číslo účtu",
+    ),
+    # v0.10.7: telefon za tel./fax/mobil/sekretariát v libovolném členění („sekret.: 02/1234 5678")
+    (
+        re.compile(r"((?:[Tt]el\w*|[Ff]ax|[Mm]obil\w*|[Ss]ekret\w*)[.:\s]{1,4})(\+?\d[\d /-]{6,15}\d)(?![\d/])"),
+        "TELEFON", "telefon",
+    ),
     # v0.10.4: ulice za kontextem bydliště/sídla — i „U Lesa 3", „Na Příkopě 12", „náměstí Míru 5"
     (
         re.compile(
@@ -1277,7 +1289,9 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"((?:ve\s+výši|částk\w*|cen[aěuy]\b|úhrad\w*|dluh\w*|jistin\w*|pokut\w*|odměn\w*|"
-            r"mzd\w*|nájemn\w*|záloh\w*|doplat\w*|odškodn\w*|náhrad\w*\s+škody)"
+            r"mzd\w*|nájemn\w*|záloh\w*|doplat\w*|odškodn\w*|náhrad\w*\s+škody|"
+            # v0.10.7: výplatnice a SK („Na účet: 28 390", „Základ zdrav. pojištění 41 712", „sumu 400 000")
+            r"na\s+účet:|výplat\w*|čist\w+\s+mzd\w*|hrub\w+\s+mzd\w*|základ\w*(?:\s+\w+\.?){0,2}|sum[aouy]\b)"
             r"(?:\s+(?:činí|celkem|ve\s+výši))?[\s:]{1,3})"
             r"((?:\d{1,3}(?:[ \u00A0.]\d{3})+|\d{3,})(?:,\d{1,2}|,-)?)(?![\d/.])",
             re.IGNORECASE,
@@ -1686,5 +1700,20 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     text = _COURT_REGEX.sub(
         make_replacer_format("INSTITUCE", "úřad/instituce"), text
     )
+    # 5) v0.10.7: propagace — originál nalezený jednou se skryje i jinde v textu
+    #    (výplatnice: „41 712 Kč" u platu a holé „41 712" v součtu)
+    seen: set[str] = set()
+    for r in sorted(replacements, key=lambda x: -len(x["original"])):
+        cands = [r["original"]]
+        if r["placeholder"].startswith("MENA"):
+            num = re.search(r"\d[\d \u00a0.,]*\d", r["original"])
+            if num and sum(ch.isdigit() for ch in num.group(0)) >= 4:
+                cands.append(num.group(0))
+        for o in cands:
+            if len(o) < 4 or o in seen:
+                continue
+            seen.add(o)
+            pat = r"(?<![\w])" + re.escape(o).replace(r"\ ", r"\s+") + r"(?![\w])"
+            text = re.sub(pat, r["_sentinel"], text)
 
     return text, replacements, counters
