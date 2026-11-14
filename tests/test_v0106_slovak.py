@@ -7,9 +7,9 @@ from anonymize_mcp.maskit_patterns import regex_pre_pass
 
 
 @pytest.mark.parametrize("text,secret", [
-    ("so sídlom Hviezdoslavovo námestie 2, 811 02 Bratislava", "Hviezdoslavovo námestie 2"),
-    ("so sídlom Hviezdoslavovo námestie 2, 811 02 Bratislava", "811 02"),
-    ("Hviezdoslavovo nám. 2, 81102 Bratislava", "81102"),
+    ("so sídlom Hviezdoslavovo námestie 5, 811 01 Bratislava", "Hviezdoslavovo námestie 5"),
+    ("so sídlom Hviezdoslavovo námestie 5, 811 01 Bratislava", "811 01"),
+    ("Hviezdoslavovo nám. 5, 81101 Bratislava", "81101"),
     ("IČO: 12 345 679, DIČ: 2020123456", "12 345 679"),
     ("1ČO: 12 345 679", "12 345 679"),
     ("vložka č. 12345/B", "12345"),

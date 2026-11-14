@@ -69,7 +69,7 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "ULICE", "ulice",
     ),
-    # v0.10.6: slovenský zápis s náměstím za jménem („Hviezdoslavovo námestie 2", „Hviezdoslavovo nám. 2")
+    # v0.10.6: slovenský zápis s náměstím za jménem („Hviezdoslavovo námestie 5", „Hviezdoslavovo nám. 5")
     (
         re.compile(r"\b[A-ZÁ-Ž]\w+(?:ovo|ské|ova)\s+(?:nám\.|náměstí|námestie|nábrežie)\s+\d{1,4}(?:/\d{1,4})?[a-z]?(?!\d)"),
         "ULICE", "ulice",
