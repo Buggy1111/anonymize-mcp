@@ -13,6 +13,8 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 
 > 🌐 **Nechcete nic instalovat? Vyzkoušejte to online zdarma → [anonymizace.js.org](https://anonymizace.js.org)** — anonymizace, NER, morfologie, korektor a překlad češtiny přímo v prohlížeči. Doprovodný web k tomuto MCP serveru.
 
+![Ukázka webu anonymizace.js.org: jména, rodné číslo, telefon a účet se při psaní nahrazují značkami](https://raw.githubusercontent.com/Buggy1111/anonymize-mcp/main/docs/demo.gif)
+
 > **Pouze pro nekomerční použití.** Modely NameTag a UDPipe jsou pod CC BY-NC-SA. LINDAT API je bezplatné pro akademické a osobní použití. Pro komerční nasazení kontaktujte autory nástrojů a `ufal@ufal.mff.cuni.cz`.
 
 > **Neoficiální komunitní projekt** — není provozován ani schválen ÚFAL MFF UK; wrapper kolem veřejných LINDAT API od nezávislého vývojáře. Historie názvů: `ufal-mcp` → `wrapper-mcp` (v0.8.0, na žádost ÚFAL) → **`anonymize-mcp`** (v0.9.0). Pokud máte nainstalovaný deprecated balíček `wrapper-mcp`, přejděte na `pip install anonymize-mcp` — je to tentýž projekt.
