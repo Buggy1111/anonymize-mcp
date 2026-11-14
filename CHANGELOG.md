@@ -2,6 +2,27 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.5] — 2026-11-14
+
+### Security
+- **ReDoS / kvadratický čas** (bezpečnostní audit 14. 11. 2026). S limitem vstupu
+  500 kB šlo jedním textem zablokovat server na desítky minut:
+  - E-mailové regexy (`\b[\w.+-]+@…` v pre-passu i v auditu zbytků a nový
+    maskovaný `(at)`) zkoušely každou pozici dlouhého úseku bez `@`:
+    20 000 × „a." = 1,7–8,7 s. Nově začátek jen na hranici slova a local part
+    max. 64 znaků (RFC 5321) → regex vrstva 11,2 s → 0,13 s.
+  - Lokální NameTag dostával celý dokument najednou a tokenizér rostl
+    kvadraticky (40 000 znaků = 32 s). Nově po kouscích ~2000 znaků na hranici
+    odstavce/věty → 2,8 s, lineárně.
+  - `revert_institutional_persons` prohledával pro každou dvojici jmen celý
+    dokument (`.*?` s DOTALL). Nově mezera max. 80 znaků a výsledek pro stejnou
+    posloupnost jmen se pamatuje.
+- Ověřeno: zero-egress mód (cs/en/de/ru) neodešle jediný síťový požadavek;
+  pip-audit bez známých zranitelností; v historii žádné skutečné tajné klíče
+  (jen záměrně falešná testovací data).
+
+400/400 testů (nový `tests/test_v0105_redos.py`), ruff i mypy zelené.
+
 ## [0.10.4] — 2026-11-14
 
 ### Fixed

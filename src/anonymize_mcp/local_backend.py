@@ -196,6 +196,28 @@ def _maximal_entities(
     return result
 
 
+_CHUNK = 2000
+
+
+def _chunks(text: str) -> list[str]:
+    """Rozdělí text na kousky ~_CHUNK znaků na hranici odstavce, věty nebo mezery."""
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        if n - i <= _CHUNK:
+            out.append(text[i:])
+            break
+        window = text[i:i + _CHUNK]
+        cut = max(window.rfind("\n"), window.rfind(". "), window.rfind("! "), window.rfind("? "))
+        if cut < _CHUNK // 2:
+            cut = window.rfind(" ")
+        if cut < _CHUNK // 4:
+            cut = _CHUNK - 1  # souvislý blok bez mezer — tvrdý řez
+        out.append(text[i:i + cut + 1])
+        i += cut + 1
+    return out
+
+
 def local_nametag_conll(text: str) -> str:
     """Lokální NER → CoNLL string kompatibilní s `nametag.parse_conll`.
 
@@ -209,25 +231,30 @@ def local_nametag_conll(text: str) -> str:
 
     ner = _load_ner()
     tokenizer = ner.newTokenizer()
-    tokenizer.setText(text)
     forms = nametag.Forms()
     tokens = nametag.TokenRanges()
     entities = nametag.NamedEntities()
 
     lines: list[str] = []
-    while tokenizer.nextSentence(forms, tokens):
-        ner.recognize(forms, entities)
-        n = forms.size()
-        per_token: list[list[str]] = [[] for _ in range(n)]
-        ents = _maximal_entities([(e.start, e.length, e.type) for e in entities])
-        ents.sort(key=lambda x: x[0])
-        for start, length, etype in ents:
-            for j in range(start, min(start + length, n)):
-                per_token[j].append(("B-" if j == start else "I-") + etype)
-        for j in range(n):
-            tags = "|".join(per_token[j]) if per_token[j] else "O"
-            lines.append(f"{forms[j]}\t{tags}")
-        lines.append("")  # prázdný řádek = hranice věty
+    # v0.10.5: tokenizér dostává text po kouscích (~2000 znaků na hranici
+    # odstavce/věty). Celý dokument najednou rostl kvadraticky (20 000 × „a."
+    # = 10 s, 40 000 = 32 s). Výstup nese jen tvary + značky, ne pozice,
+    # takže dělení na hranicích vět výsledek nemění.
+    for chunk in _chunks(text):
+        tokenizer.setText(chunk)
+        while tokenizer.nextSentence(forms, tokens):
+            ner.recognize(forms, entities)
+            n = forms.size()
+            per_token: list[list[str]] = [[] for _ in range(n)]
+            ents = _maximal_entities([(e.start, e.length, e.type) for e in entities])
+            ents.sort(key=lambda x: x[0])
+            for start, length, etype in ents:
+                for j in range(start, min(start + length, n)):
+                    per_token[j].append(("B-" if j == start else "I-") + etype)
+            for j in range(n):
+                tags = "|".join(per_token[j]) if per_token[j] else "O"
+                lines.append(f"{forms[j]}\t{tags}")
+            lines.append("")  # prázdný řádek = hranice věty
     return "\n".join(lines)
 
 

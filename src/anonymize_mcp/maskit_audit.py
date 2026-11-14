@@ -130,7 +130,7 @@ _AUDIT_PATTERNS: list[tuple[re.Pattern[str], str, Severity]] = [
     # ===== HIGH — rarely benign in legal/business text =====
     # E-mail
     (
-        re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"),
+        re.compile(r"(?<![\w.+-])[\w.+-]{1,64}@[\w-]+\.[\w.-]+\b"),  # v0.10.5: bez ReDoS
         "e-mail address",
         "high",
     ),
