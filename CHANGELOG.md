@@ -21,6 +21,16 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   - Dělení textu pro lokální NameTag řeže jen na konci věty nebo před slovem
     s malým písmenem — víceslovné jméno („Jan | Novák") se nikdy nerozdělí
     (rozdělené jméno by NER nemusel poznat). Nález automatické bezpečnostní kontroly.
+- **Nálezy CodeQL** (zapnuto 14. 11. 2026): ReDoS v regexech č. j. a sp. zn.
+  (`\S+(?:[\s.][\w./-]+)*?` → délka omezená na 60 znaků), duplicitní rozsahy znaků
+  (`À-ž`, `゠-ヿ`), GitHub Actions připnuté na SHA a `permissions: contents: read`.
+- `.github/dependabot.yml` (pip + actions) a `SECURITY.md` (soukromé hlášení).
+
+### Fixed
+- **Test na reálných soudních dokumentech** (lokálně, zero-egress): data
+  s mezerami za tečkami („14. 10. 2004" — správný zápis podle ČSN 01 6910),
+  exekuční a insolvenční spisové značky („34 E 756/2007 - 213"), slovenská
+  sp. zn. „17Pc/53/2024-328", zkratka „v.s.", evidenční číslo advokáta ČAK.
 - Ověřeno: zero-egress mód (cs/en/de/ru) neodešle jediný síťový požadavek;
   pip-audit bez známých zranitelností; v historii žádné skutečné tajné klíče
   (jen záměrně falešná testovací data).

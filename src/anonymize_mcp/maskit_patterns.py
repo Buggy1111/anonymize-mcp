@@ -103,7 +103,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Číselné datumy DD.MM.YYYY a DD/MM/YYYY — 15.6.2024, 1.9.2025, 01/06/2024
     (
         re.compile(
-            r"\b(?:0?[1-9]|[12]\d|3[01])[.\/](?:0?[1-9]|1[0-2])[.\/](?:19|20)\d{2}\b"
+            # v0.10.5: i s mezerami za tečkou — „14. 10. 2004" je správný zápis podle ČSN 01 6910
+            r"\b(?:0?[1-9]|[12]\d|3[01])(?:\.\s?|/)(?:0?[1-9]|1[0-2])(?:\.\s?|/)(?:19|20)\d{2}\b"
         ),
         "DATUM", "datum (číselný)",
     ),
@@ -149,7 +150,11 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"Ad|Ads|Az|Azs|EU|Ed|Eds|Em|EM|Komp|Konf|Nco|Nco|Nu|Nss|Pc|Plc|"
             r"Pp|R|Ro|Rs|Sm|So|Spr|St|Sto|U|Us|Vp|Vps|Vyk)"
             r"\s+\d+/\d{2,4}\b|"
-            r"\b\d{1,3}[A-Z][a-z]?\d+/\d{2,4}\b"  # 5C/2024, 11Pc/99/2030
+            r"\b\d{1,3}[A-Z][a-z]?\d+/\d{2,4}\b|"  # 5C/2024, 11Pc/99/2030
+            # v0.10.5: exekuční/insolvenční senáty a obecně „34 E 756/2007 - 213", „34E 756/2007"
+            r"\b\d{1,3}\s?(?:E|EXE|INS|Nc|P|D|Cdo|Tdo|Odo|[A-Z][a-z]{0,3})\s+\d{1,6}/\d{4}(?:\s?-\s?\d{1,4})?\b|"
+            # slovenská sp. zn. „17Pc/53/2024-328"
+            r"\b\d{1,3}[A-Z][a-z]{0,3}/\d{1,5}/\d{4}(?:\s?-\s?\d{1,4})?\b"
         ),
         "SPZN", "spisová značka",
     ),
@@ -384,7 +389,7 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"((?:姓名|名前|お名前|お客様|客戶|客户|顧客|客人|"
             r"고객|이름|성명|성함)"
             r"\s*[:\.：]?\s*)"
-            r"([一-鿿぀-ヿ゠-ヿ가-힯]{2,8})\b"
+            r"([一-鿿぀-ヿ가-힯]{2,8})\b"
         ),
         "OSOBA", "CJK osoba (context)",
     ),
@@ -396,7 +401,7 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"(?<![A-Za-z])(?:client|customer|patient|user)\s+"
-            r"([一-鿿぀-ヿ゠-ヿ가-힯]{2,8})\b",
+            r"([一-鿿぀-ヿ가-힯]{2,8})\b",
             re.IGNORECASE,
         ),
         "OSOBA", "CJK osoba (EN context)",
@@ -1213,6 +1218,11 @@ _VALIDATED_FORMAT_PATTERNS: list[
 # Context patterns — match prefix+value, nahradit JEN value (group 2).
 # Konzervativní (vyžaduje kontextové slovo) aby nedošlo k false positives.
 _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
+    # v0.10.5: evidenční číslo (advokát u ČAK, osobní/evidenční čísla) — „evidenční číslo ČAK 09908"
+    (
+        re.compile(r"((?:evidenční\s+číslo|ev\.\s*č\.)(?:\s+ČAK)?[:\s]+)([A-Z]{0,3}\d{3,10})\b", re.IGNORECASE),
+        "POJISTKA", "evidenční číslo",
+    ),
     # v0.10.4: ulice za kontextem bydliště/sídla — i „U Lesa 3", „Na Příkopě 12", „náměstí Míru 5"
     (
         re.compile(
@@ -1309,7 +1319,9 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"((?:č\.\s?j\.|čj\.|číslo\s+jednací)[:\s]+)"
-            r"(\S+(?:[\s.][\w./-]+)*?\d+/\d{2,4})\b",
+            # v0.10.5 (CodeQL py/redos): dřív \S+(?:[\s.][\w./-]+)*? — překrývající se
+            # opakování = exponenciální backtracking. Teď délka omezená na 60 znaků.
+            r"(\S[\w./ \-]{0,58}?\d+/\d{2,4})\b",
             re.IGNORECASE,
         ),
         "CJ", "číslo jednací",
@@ -1317,7 +1329,9 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"((?:sp\.\s?zn\.|spisová\s+značka|spisov\w*\s+znač\w*)[:\s]+)"
-            r"(\S+(?:[\s.][\w./-]+)*?\d+/\d{2,4})\b",
+            # v0.10.5 (CodeQL py/redos): dřív \S+(?:[\s.][\w./-]+)*? — překrývající se
+            # opakování = exponenciální backtracking. Teď délka omezená na 60 znaků.
+            r"(\S[\w./ \-]{0,58}?\d+/\d{2,4})\b",
             re.IGNORECASE,
         ),
         "SPZN", "spisová značka",
@@ -1419,7 +1433,7 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # VS / KS / SS: 1-10 ciferné identifikátory platby
     (
         re.compile(
-            r"((?:VS|KS|SS|variabiln[íý]\s+symbol|konstantn[íý]\s+symbol|specifick[ýý]\s+symbol|var\.\s*symbol|konst\.\s*symbol|spec\.\s*symbol)[:\s]+)(\d{1,10})\b",
+            r"((?:VS|KS|SS|(?<![^\W\d_])[VvKkSs]\.\s?[Ss]\.|variabiln[íý]\s+symbol|konstantn[íý]\s+symbol|specifick[ýý]\s+symbol|var\.\s*symbol|konst\.\s*symbol|spec\.\s*symbol)[:\s]+)(\d{1,10})\b",
             re.IGNORECASE,
         ),
         "VS_SYM", "variabilní/konstantní symbol",

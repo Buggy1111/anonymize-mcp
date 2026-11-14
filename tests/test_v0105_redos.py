@@ -65,3 +65,27 @@ def test_find_sequences_linear_and_correct() -> None:
     t = time.perf_counter()
     _find_sequences(text, ["Novák"] * 5)
     assert time.perf_counter() - t < 1.0
+
+
+def test_chunks_all_caps_and_accented_lowercase() -> None:
+    from anonymize_mcp.local_backend import _safe_space
+    # malé písmeno s háčkem je bezpečné místo řezu
+    assert _safe_space("Jan Novák řekl") == 9
+    # VELKÁ PÍSMENA: žádné „bezpečné" místo → poslední mezera, nikdy tvrdý řez uprostřed slova
+    text = " ".join(["JAN NOVÁK"] * 400)
+    for part in _chunks(text):
+        assert not part.endswith(("NOV", "NO", "N", "JA", "J")), part[-12:]
+    # bez mezer → tvrdý řez je jediná možnost
+    assert "".join(_chunks("x" * 5000)) == "x" * 5000
+
+
+@pytest.mark.parametrize("text,secret", [
+    ("narozená 14. 10. 2004 bytem", "14. 10. 2004"),   # ČSN 01 6910: mezery za tečkami
+    ("č. j. 34 E 756/2007 - 213", "756/2007"),
+    ("34E 756/2007", "756/2007"),
+    ("rozsudek č. k. 17Pc/53/2024 - 328", "53/2024"),
+    ("č.ú. 6015-1234567890/0100, v.s. 103607.", "103607"),
+])
+def test_real_court_document_gaps(text: str, secret: str) -> None:
+    out, _, _ = regex_pre_pass(text)
+    assert secret not in out
