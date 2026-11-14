@@ -122,3 +122,14 @@ def test_missing_model_no_download_no_network(monkeypatch: pytest.MonkeyPatch, t
     with pytest.raises(Exception, match="NO_DOWNLOAD|stáhn|model"):
         local_backend._find_model_path()
     assert no_network == []
+
+
+@pytest.mark.parametrize("chunk", ["a . ", "a.b ", "Jméno: ABC ", "x (at) ", "Zaměstnanec: Aa Bb ", "OSOBA1 Nováková "])
+def test_redos_new_patterns(chunk: str) -> None:
+    import time
+
+    from anonymize_mcp.maskit_patterns import regex_pre_pass
+    s = (chunk * (20000 // len(chunk) + 1))[:20000]
+    t = time.perf_counter()
+    regex_pre_pass(s)
+    assert time.perf_counter() - t < 2.0

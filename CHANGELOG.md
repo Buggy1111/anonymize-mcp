@@ -9,6 +9,11 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   PŮVODNÍ text beze změny jako „anonymized". Teď `ValueError` (lokálně jen `txt`).
 - **Výpadek MasKITu:** u html/conllu chyba místo neanonymizovaného textu; u `txt` se zapne
   placeholder mód s NameTag fallbackem, aby jména nezůstala v textu.
+- **Společný smyšlený korpus** `tests/corpus/corpus.json` (12 dokumentů, 68 údajů; stejný na webu):
+  MCP 8/12 → 12/12. Opraveno: příjmení za osobou, které NER vynechal („OSOBA1 Veselý"),
+  opakované/skloňované příjmení („Šťastná … paní Šťastné"), osoba za popiskem formuláře
+  („JMÉNO: NOVÁK Jan", „Příjmení a jméno: Svobodová Marie"), rozmezerovaný maskovaný e-mail
+  („jan . novak (at) email . cz"); soud bez místa („Krajský soud rozhodl") už není INSTITUCE.
 - `tests/test_v0108_privacy.py`: keep_mapping=False bez originálů v jakémkoli poli,
   zero-egress hlídaný na úrovni `socket.connect` (dřív jen httpx.post), chybějící model
   s `ANONYMIZE_MCP_NO_DOWNLOAD` bez pokusu o síť.

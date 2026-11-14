@@ -618,6 +618,67 @@ def anonymize_surname_before_person(
 
     return pattern.sub(_replace, anonymized), replacements
 
+# v0.10.8: přídavná jména, která jsou běžná česká příjmení (Malý, Nová, Veselý…)
+_SURNAME_ADJ = {
+    "malý", "malá", "nový", "nová", "velký", "velká", "mladý", "mladá", "dlouhý", "dlouhá",
+    "dobrý", "dobrá", "černý", "černá", "bílý", "bílá", "veselý", "veselá", "starý", "stará",
+    "krátký", "krátká", "hrubý", "hrubá", "šťastný", "šťastná", "tichý", "tichá", "rychlý",
+    "rychlá", "zelený", "zelená",
+}
+_SURNAME_SUFFIX = re.compile(r"(?:ov[áéou]|sk[ýáé]|ck[ýáé]|ák|ek|ík|ička|ová)$")
+_CAP_WORD = r"[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+"
+
+
+def anonymize_surname_after_person(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]]:
+    """v0.10.8: příjmení hned ZA osobou, které NER vynechal („OSOBA1 Veselý").
+
+    NameTag občas označí jen křestní jméno, zvlášť když je příjmení zároveň
+    přídavné jméno (Veselý, Malá, Nová). Připojíme ho ke stejné osobě, jen když
+    je to známé příjmení-přídavné jméno nebo má typickou příjmení koncovku.
+    """
+    pattern = re.compile(r"\b(OSOBA\d+)[ \t]+(" + _CAP_WORD + r")(?![\w])")
+    by_plc = {r.get("placeholder"): r for r in replacements}
+
+    def _replace(m: re.Match[str]) -> str:
+        plc, word = m.group(1), m.group(2)
+        w = word.lower()
+        if w in _ROLE_WORDS or not (w in _SURNAME_ADJ or _SURNAME_SUFFIX.search(w)):
+            return m.group(0)
+        rep = by_plc.get(plc)
+        if rep is not None and word not in rep.get("original", ""):
+            rep["original"] = f"{rep['original']} {word}".strip()
+        return plc
+
+    return pattern.sub(_replace, anonymized), replacements
+
+
+def propagate_person_surnames(
+    anonymized: str,
+    replacements: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]]:
+    """v0.10.8: příjmení osoby opakované samostatně a ve skloňování („Petra Šťastná …
+    Šťastná souhlasí … paní Šťastné") dostane stejnou značku jako celá osoba."""
+    for r in replacements:
+        plc = r.get("placeholder", "")
+        if not plc.startswith("OSOBA"):
+            continue
+        parts = r.get("original", "").split()
+        if len(parts) < 2:
+            continue
+        sur = parts[-1]
+        if len(sur) < 5 or not sur[0].isupper():
+            continue
+        stem = sur[:-1] if sur[-1] in "áéýaoyiu" else sur
+        if len(stem) < 4:
+            continue
+        pat = re.compile(r"(?<![\w])" + re.escape(stem) + r"[a-záéěíóúůý]{0,3}(?![\w])")
+        anonymized = pat.sub(plc, anonymized)
+    return anonymized, replacements
+
+
 def anonymize_middle_names(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -927,6 +988,8 @@ def postprocess(
     anonymized = extend_institution_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_middle_names(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_surname_before_person(anonymized, replacements)
+    anonymized, replacements = anonymize_surname_after_person(anonymized, replacements)
+    anonymized, replacements = propagate_person_surnames(anonymized, replacements)
     anonymized, replacements = anonymize_facility_names(anonymized, replacements, original_text)
     anonymized, replacements = capture_company_prefix(anonymized, replacements, original_text)
     anonymized, replacements = anonymize_international_companies(anonymized, replacements, original_text)

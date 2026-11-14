@@ -77,8 +77,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # v0.10.4: e-mail maskovaný proti robotům — „jan.novak(at)seznam.cz", „jan [at] firma.cz", „jan zavináč firma.cz"
     (
         re.compile(
-            r"(?<![\w.+-])[\w.+-]{1,64}\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]+"
-            r"(?:\.|\s?\(dot\)\s?|\s?\[dot\]\s?)[\w.-]{2,}\b",
+            r"(?<![\w.+-])[\w+-]{1,64}(?:\s?\.\s?[\w+-]{1,64}){0,3}\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]{1,63}"
+            r"(?:\s?(?:\.|\(dot\)|\[dot\])\s?[\w-]{2,63}){1,3}\b",
             re.IGNORECASE,
         ),
         "EMAIL", "e-mail",
@@ -1247,6 +1247,21 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "POJISTKA", "evidenční číslo",
     ),
+    # v0.10.8: osoba za popiskem formuláře („JMÉNO: NOVÁK Jan", „Zaměstnanec: Radek Veselý",
+    #          „Příjmení a jméno: Svobodová Marie") — popisek osobu jednoznačně ohlašuje
+    (
+        re.compile(
+            r"((?:[Jj]méno(?:\s+a\s+příjmení)?|JMÉNO(?:\s+A\s+PŘÍJMENÍ)?|[Pp]říjmení\s+a\s+jméno|PŘÍJMENÍ\s+A\s+JMÉNO|"
+            r"[Zz]aměstnan(?:ec|kyně)|[Pp]acient(?:ka)?|[Žž]alobce|[Žž]alobkyně|[Žž]alovan[ýá]|[Kk]upující|"
+            r"[Pp]rodávající|[Dd]lužník|[Dd]lužnice|[Vv]ěřitel(?:ka)?|[Mm]ajitel(?:ka)?|[Oo]právněn[ýá]|[Pp]ovinn[ýá])"
+            r"[ \t]*:[ \t]*)"
+            r"((?:Ing\.|Mgr\.|Bc\.|JUDr\.|MUDr\.|PhDr\.|RNDr\.)?[ \t]?"
+            r"(?:[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+|[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ]{2,})"
+            r"(?:[ \t]+(?:[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ][a-záéěíóúůýžščřňťďj]+|[A-ZÁÉĚÍÓÚŮÝŽŠČŘŇŤĎ]{2,})){1,2})"
+            r"(?![\w.])"
+        ),
+        "OSOBA", "osoba",
+    ),
     # v0.10.7: účet bez kódu banky v kontextu („VÝPLATA NA ÚČET - 1234567890")
     (
         re.compile(r"((?:[Úú]čet|[Úú]čtu|ÚČET|č\.\s*ú\.)[\s:–-]{1,6})(\d{6,10})(?![\d/])"),
@@ -1575,7 +1590,8 @@ _COURT_REGEX = re.compile(
     r"(?:(?:Č|S)eské\s+republiky|(?:Č|S)lovenskej\s+republiky"
     r"|[A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+"
     r"(?:\s+[A-ZÁ-Ž][a-záčďéěíňóřšťúůýž]+)?)"
-    r"(?:\s+(?:II|III|IV|V|VI|VII|VIII|IX|X|XI|XII))?)?"
+    r"(?:\s+(?:II|III|IV|V|VI|VII|VIII|IX|X|XI|XII))?)"
+    # v0.10.8: místo je povinné — samotné „Krajský soud rozhodl" nikoho neidentifikuje
     r"(?:\s+(?:SR|ČR|S\.\s?R\.|Č\.\s?R\.))?",
 )
 
