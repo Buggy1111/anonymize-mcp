@@ -15,13 +15,17 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
     kvadraticky (40 000 znaků = 32 s). Nově po kouscích ~2000 znaků na hranici
     odstavce/věty → 2,8 s, lineárně.
   - `revert_institutional_persons` prohledával pro každou dvojici jmen celý
-    dokument (`.*?` s DOTALL). Nově mezera max. 80 znaků a výsledek pro stejnou
+    dokument regexem s backtrackingem (`.*?` s DOTALL). Nově lineární hledání
+    přes `str.find` (mezera mezi jmény max. 80 znaků) a výsledek pro stejnou
     posloupnost jmen se pamatuje.
+  - Dělení textu pro lokální NameTag řeže jen na konci věty nebo před slovem
+    s malým písmenem — víceslovné jméno („Jan | Novák") se nikdy nerozdělí
+    (rozdělené jméno by NER nemusel poznat). Nález automatické bezpečnostní kontroly.
 - Ověřeno: zero-egress mód (cs/en/de/ru) neodešle jediný síťový požadavek;
   pip-audit bez známých zranitelností; v historii žádné skutečné tajné klíče
   (jen záměrně falešná testovací data).
 
-400/400 testů (nový `tests/test_v0105_redos.py`), ruff i mypy zelené.
+402/402 testů (nový `tests/test_v0105_redos.py`), ruff i mypy zelené.
 
 ## [0.10.4] — 2026-11-14
 

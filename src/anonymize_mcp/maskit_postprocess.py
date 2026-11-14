@@ -250,6 +250,37 @@ def _build_placeholder_map(replacements: list[dict[str, Any]]) -> dict[str, str]
     return mapping
 
 
+_SEQ_GAP = 80
+
+
+def _find_sequences(text: str, parts: list[str]) -> list[int]:
+    """Začátky výskytů `parts` za sebou s mezerou ≤ 80 znaků, v lineárním čase.
+
+    Bere vždy nejbližší další výskyt (bez backtrackingu). Případně přehlédnutá
+    posloupnost znamená jen, že jméno zůstane anonymizované — bezpečný směr.
+    """
+    starts: list[int] = []
+    pos = 0
+    first = parts[0]
+    while True:
+        s0 = text.find(first, pos)
+        if s0 < 0:
+            return starts
+        end = s0 + len(first)
+        ok = True
+        for part in parts[1:]:
+            nxt = text.find(part, end, end + _SEQ_GAP + len(part))
+            if nxt < 0:
+                ok = False
+                break
+            end = nxt + len(part)
+        if ok:
+            starts.append(s0)
+            pos = end
+        else:
+            pos = s0 + 1
+
+
 def revert_institutional_persons(
     anonymized: str,
     replacements: list[dict[str, Any]],
@@ -316,14 +347,12 @@ def revert_institutional_persons(
         if key in seen_seq:
             return _PLACEHOLDER_RE.sub(lambda pm: plc_map.get(pm.group(0), pm.group(0)), seq_text) if seen_seq[key] else seq_text
         # Hledat originály v original_text (může být víc výskytů)
-        # v0.10.5: mezera mezi jmény omezena na 80 znaků — „.*?" s DOTALL přes celý
-        # dokument dělalo kvadratické hledání (stovky jmen × 500 kB vstupu)
-        sequence_str = ".{0,80}?".join(re.escape(o) for o in originals)
-        seq_pattern = re.compile(sequence_str, re.DOTALL)
-        for orig_m in seq_pattern.finditer(original_text):
+        # v0.10.5: lineární hledání posloupnosti jmen (bez regexu s backtrackingem —
+        # „.*?" i „.{0,80}?" mezi několika jmény bylo kvadratické/exponenciální)
+        for seq_start in _find_sequences(original_text, originals):
             # Vezmi 60 chars before
-            start = max(0, orig_m.start() - 60)
-            prev_text = original_text[start:orig_m.start()].lower()
+            start = max(0, seq_start - 60)
+            prev_text = original_text[start:seq_start].lower()
             prev_words = re.findall(r"\b\w+\b", prev_text)[-5:]
             if any(w in _INSTITUTIONAL_CONTEXT_WORDS for w in prev_words):
                 # Revert
