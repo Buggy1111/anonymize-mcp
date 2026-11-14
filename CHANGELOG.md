@@ -2,6 +2,27 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.4] — 2026-11-14
+
+### Fixed
+- **Peněžní částky (`MENA`)** — sonda 20 běžných zápisů jich chytila jen 8.
+  Nově: měna bez ohledu na velikost písmen a háček (`kč`, `KČ`, `kc`), **`CZK`**
+  (chybělo úplně), `€`/`$` za číslem (`\b` za symbolem selhávalo), `80 000,- Kč`,
+  řád (`80 tisíc Kč`, `1,5 mil. Kč`, `2 mld. Kč`), celé „korun českých",
+  **částka slovy** („slovy osmdesát tisíc korun") a **částka bez měny** za slovem,
+  které peníze jednoznačně ohlašuje (ve výši, jistina, dluh, cena, pokuta, nájemné…).
+- **Telefon `00420 603 123 456`** — dřív se rozpadl na `TELEFON1 TELEFON2 456`.
+- **Maskovaný e-mail** `jan.novak(at)seznam.cz`, `[at]`, `zavináč`.
+- **Řidičský průkaz** i bez „č." (`řidičský průkaz EF123456`).
+- **IČP** je osmimístné (dřív jen 5 číslic).
+- **Ulice v kontextu bydliště/sídla** — `U Lesa 3`, `Na Příkopě 12`, celé `náměstí Míru 5`.
+- **Číslo smlouvy/faktury/objednávky** (`smlouva č. 2024/0123`).
+- **Příjmení před křestním jménem** (`Svoboda Petr, nar. 1980`) — nový post-process
+  `anonymize_surname_before_person`; role/oslovení (Žalobce, Pan, Pacientka…) zůstávají.
+
+Lokální zero-egress mód: sonda 50 formátů 8 → 1 únik (zbývá MKN-10, který se
+záměrně zachovává pro výzkum). 388/388 testů (nový `tests/test_v0104_gaps.py`), ruff zelený.
+
 ## [0.10.3] — 2026-08-11
 
 ### Changed

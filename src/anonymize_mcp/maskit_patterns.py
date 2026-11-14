@@ -56,6 +56,23 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"https?://[^\s\"'<>]+"), "URL", "URL/web"),
     # E-mail
     (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"), "EMAIL", "e-mail"),
+    # v0.10.4: náměstí / třída / nábřeží kdekoli v textu („náměstí Míru 5")
+    (
+        re.compile(
+            r"(?:[Nn]ám(?:ěstí|\.)|[Tt]řída|[Tt]ř\.|[Nn]ábřeží)\s+[A-ZÁ-Ž][\w.]*"
+            r"(?:\s+[A-ZÁ-Ž][\w.]*){0,2}\s+\d{1,4}(?:/\d{1,4})?[a-z]?(?!\d)"
+        ),
+        "ULICE", "ulice",
+    ),
+    # v0.10.4: e-mail maskovaný proti robotům — „jan.novak(at)seznam.cz", „jan [at] firma.cz", „jan zavináč firma.cz"
+    (
+        re.compile(
+            r"\b[\w.+-]+\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]+"
+            r"(?:\.|\s?\(dot\)\s?|\s?\[dot\]\s?)[\w.-]{2,}\b",
+            re.IGNORECASE,
+        ),
+        "EMAIL", "e-mail",
+    ),
     # VIN standalone — 17 znaků, bez I/O/Q, uppercase, musí mít písmeno i
     # číslici (struktura VIN). Chytá i bez kontextového slova ("Auto WAUZZ…").
     (re.compile(
@@ -143,15 +160,18 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     (
         re.compile(
             r"\b(?:\d{1,3}(?:[ \u00A0,.]\d{3})+|\d+)"
-            r"(?:[,.]\d{1,3})?"
+            r"(?:[,.]\d{1,3}|[,.]-)?"
+            # v0.10.4: řád („80 tisíc Kč", „1,5 mil. Kč", „2 mld. Kč")
+            r"(?:\s?(?:tis\.|mil\.|mld\.|tisíc\w*|milion\w*|miliard\w*))?"
             r"\s*"
             r"(?:"
-            r"Kč|Kčs|EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|RMB|"
+            # v0.10.4: bez ohledu na velikost písmen a háček (kč, KČ, kc) + CZK
+            r"(?i:kčs|kč|kc|czk)|EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|RMB|"
             r"INR|BRL|MXN|KRW|TRY|UAH|RON|BGN|HRK|DKK|SEK|NOK|ISK|"
             r"AUD|CAD|NZD|SGD|HKD|TWD|THB|IDR|MYR|PHP|VND|"
             r"ZAR|ILS|AED|SAR|EGP|"
             r"€|\$|US\$|C\$|A\$|£|¥|₽|₹|₩|₺|₴|₪|₿|"
-            r"korun(?:y|u|ě|ami|ách|ám|ou)?|haléř(?:e|ů|ům)?|"
+            r"korun(?:y|u|ě|ami|ách|ám|ou)?(?:\s+česk\w+)?|haléř(?:e|ů|ům)?|"
             r"euro?(?:s|y|ům|a|m)?|"
             r"dolar(?:y|u|ů|ům|ech|s)?|dollars?|"
             r"liber(?:y|u|ám|s)?|pound(?:s)?|"
@@ -164,7 +184,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"lir(?:a|y|s)?|shekel(?:s)?|"
             r"Cent(?:s)?|cent[uů]?"
             r")"
-            r"\b"
+            # v0.10.4: (?!\w) místo \b — \b za symbolem (€, $) selhává („80 000 €")
+            r"(?!\w)"
         ),
         "MENA", "měna/částka",
     ),
@@ -176,11 +197,11 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
             r"[€\$£¥₽₹₩₺₴₪]|"
             r"(?:EUR|USD|GBP|CHF|PLN|HUF|RUB|JPY|CNY|INR|BRL|MXN|"
             r"KRW|TRY|UAH|AUD|CAD|NZD|SGD|HKD|ZAR|ILS|AED|"
-            r"Kč|Kčs)\s+"
+            r"CZK|(?i:kčs|kč))\s+"
             r")"
             r"\s?"
-            r"(?:\d{1,3}(?:[ \u00A0,]\d{3})+|\d+)"
-            r"(?:[.,]\d{1,3})?"
+            r"(?:\d{1,3}(?:[ \u00A0,.]\d{3})+|\d+)"
+            r"(?:[.,]\d{1,3}|[,.]-)?"
             r"(?![A-Za-z0-9])"
         ),
         "MENA", "měna/částka (prefix)",
@@ -430,9 +451,10 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Řidičský průkaz CZ — E + letter + 6 digits ("EB123456")
     (
         re.compile(
-            r"((?:č\.\s+ŘP|ŘP\s+č\.?|řidičský\s+průkaz\s+č\.?|"
+            # v0.10.4: „řidičský průkaz EF123456" i bez „č.", mezera uvnitř čísla
+            r"((?:č\.\s+ŘP|ŘP(?:\s+č\.?)?|řidičsk\w*\s+průkaz\w*(?:\s+č\.?)?|řidičák\w*|"
             r"číslo\s+řidičského\s+průkazu)\s*[:\.]?\s+)"
-            r"(E[A-Z]\d{6})\b",
+            r"([A-Z]{2}\s?\d{6})\b",
             re.IGNORECASE,
         ),
         "RP", "řidičský průkaz",
@@ -440,7 +462,8 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # IČP (pracoviště lékaře) — 5 digits with context
     (
         re.compile(
-            r"((?:IČP|číslo\s+pracoviště)\s*[:\.]?\s+)(\d{5})\b",
+            # v0.10.4: IČP je osmimístné (dřív jen 5 číslic → „IČP 12345678" unikalo)
+            r"((?:IČP|číslo\s+pracoviště)\s*[:\.]?\s+)(\d{8}|\d{5})\b",
             re.IGNORECASE,
         ),
         "ICP", "IČP pracoviště",
@@ -1031,6 +1054,11 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
         ),
         "PSC", "PSČ DE",
     ),
+    # v0.10.4: telefon s předvolbou ve tvaru 00420 / 00421 („00420 603 123 456")
+    (
+        re.compile(r"(?<!\d)00\s?42[01][\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}(?!\d)"),
+        "TELEFON", "telefon",
+    ),
     # Telefon DE / mezinárodní — +49 30 12345678, +49-30-12345678, +49 (0)30 1234567
     # Format: + country code (1-3 digits) + area (2-5 digits) + number (4-10 digits)
     # MUST be before generic CZ telefon (which has stricter 3-3-3 format).
@@ -1183,6 +1211,45 @@ _VALIDATED_FORMAT_PATTERNS: list[
 # Context patterns — match prefix+value, nahradit JEN value (group 2).
 # Konzervativní (vyžaduje kontextové slovo) aby nedošlo k false positives.
 _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
+    # v0.10.4: ulice za kontextem bydliště/sídla — i „U Lesa 3", „Na Příkopě 12", „náměstí Míru 5"
+    (
+        re.compile(
+            r"((?:bytem|trvale\s+bytem|se\s+sídlem|sídlem|bydliště|adres\w+|ulice|ul\.)[:\s]+)"
+            r"((?:nám(?:ěstí|\.)\s+|třída\s+|tř\.\s+|nábřeží\s+)?[A-ZÁ-Ž][\w]*"
+            r"(?:\s+(?:nám\.|náměstí|[\w.]+)){0,2}\s+\d{1,4}(?:/\d{1,4})?[a-z]?)(?!\d)"
+        ),
+        "ULICE", "ulice",
+    ),
+    # v0.10.4: číslo smlouvy / faktury / objednávky („smlouva č. 2024/0123")
+    (
+        re.compile(
+            r"((?:smlouv\w*|faktur\w*|objednávk\w*)\s+(?:č\.|čísl\w*)[:\s]+)"
+            r"([A-Z0-9][A-Za-z0-9]*(?:[/.-][A-Za-z0-9]+){0,3})",
+            re.IGNORECASE,
+        ),
+        "POJISTKA", "číslo pojistky / smlouvy",
+    ),
+    # v0.10.4: částka slovy („slovy: osmdesát tisíc korun českých") — běžné ve smlouvách
+    (
+        re.compile(
+            r"(slovy[:\s]+)"
+            r"((?:\w+[\s-]){0,8}?\w*\s?(?:korun\w*|Kč|eur\w*)(?:\s+česk\w+)?)",
+            re.IGNORECASE,
+        ),
+        "MENA", "měna/částka",
+    ),
+    # v0.10.4: částka bez měny za slovem, které peníze jednoznačně ohlašuje
+    # („ve výši 80 000", „jistina 120 000", „dluh 45 500,50")
+    (
+        re.compile(
+            r"((?:ve\s+výši|částk\w*|cen[aěuy]\b|úhrad\w*|dluh\w*|jistin\w*|pokut\w*|odměn\w*|"
+            r"mzd\w*|nájemn\w*|záloh\w*|doplat\w*|odškodn\w*|náhrad\w*\s+škody)"
+            r"(?:\s+(?:činí|celkem|ve\s+výši))?[\s:]{1,3})"
+            r"((?:\d{1,3}(?:[ \u00A0.]\d{3})+|\d{3,})(?:,\d{1,2}|,-)?)(?![\d/.])",
+            re.IGNORECASE,
+        ),
+        "MENA", "měna/částka",
+    ),
     # arXiv ID — preserve "arXiv" label, anonymize jen číslo
     (
         re.compile(r"(\barXiv:?\s*)(\d{4}\.\d{4,5}(?:v\d+)?)\b"),

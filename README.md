@@ -22,7 +22,7 @@ MCP server obalující NLP nástroje [LINDAT](https://lindat.mff.cuni.cz/) / [Ú
 | Tool | Backend | K čemu |
 |------|---------|--------|
 | `extract_entities` | [NameTag 3](https://ufal.mff.cuni.cz/nametag/3) | NER pro **CZ** (bohatý CNEC 2.0 tagset) + **34 dalších jazyků** (UNER PER/ORG/LOC) s auto-detekcí |
-| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) + NameTag | **Production-grade pseudonymizace**: regex pre-pass přes **80+ PII patternů** — CZ + international (IBAN 30+ zemí, EU VAT 28, US SSN/EIN, DE/UK/FR/IT/ES/PL/RU/IN ID, crypto, API tokeny). Opt-in `placeholder_mode` (deterministické OSOBA1/MESTO1). **🔒 Zero-egress lokální mód** (`ANONYMIZE_MCP_LOCAL=1`) — plně offline, [viz níže](#zero-egress--on-prem-mód-). |
+| `anonymize` | [MasKIT](https://ufal.mff.cuni.cz/maskit) + NameTag | **Production-grade pseudonymizace**: regex pre-pass přes **80+ PII patternů** — CZ (vč. peněžních částek v jakémkoli zápisu: `80 000 kč`, `Kč 80 000`, `ve výši 80 000`, částka slovy) + international (IBAN 30+ zemí, EU VAT 28, US SSN/EIN, DE/UK/FR/IT/ES/PL/RU/IN ID, crypto, API tokeny). Opt-in `placeholder_mode` (deterministické OSOBA1/MESTO1). **🔒 Zero-egress lokální mód** (`ANONYMIZE_MCP_LOCAL=1`) — plně offline, [viz níže](#zero-egress--on-prem-mód-). |
 | `analyze_morphology` | [UDPipe](https://ufal.mff.cuni.cz/udpipe) | Tokenizace, lemmatizace, POS tagging, závislostní parse — **auto-detect 35 jazyků** |
 | `check_readability` | [PONK](https://ufal.mff.cuni.cz/ponk) | Čitelnost CZ — 4 feature sety: metrics + rules + lexical surprise + speech acts |
 | `correct_text` | [Korektor](https://ufal.mff.cuni.cz/korektor) | CZ spell checker + auto-doplnění/odstranění diakritiky |
