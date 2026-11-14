@@ -272,6 +272,8 @@ def revert_institutional_persons(
         r"(OSOBA\d+)(?:\s+(?:z\s+)?OSOBA\d+){1,4}"
     )
 
+    seen_seq: dict[tuple[str, ...], bool] = {}
+
     def _maybe_revert(m: re.Match[str]) -> str:
         seq_text = m.group(0)
         # Najdi position v original_text — heuristika: search po contextu kolem
@@ -308,8 +310,15 @@ def revert_institutional_persons(
         originals = [plc_map.get(p, "") for p in plcs]
         if any(not o for o in originals):
             return seq_text
+        # v0.10.5: výsledek pro stejnou posloupnost jmen se nepočítá znovu
+        # (dřív se pro každý výskyt prohledával celý dokument → kvadraticky)
+        key = tuple(originals)
+        if key in seen_seq:
+            return _PLACEHOLDER_RE.sub(lambda pm: plc_map.get(pm.group(0), pm.group(0)), seq_text) if seen_seq[key] else seq_text
         # Hledat originály v original_text (může být víc výskytů)
-        sequence_str = ".*?".join(re.escape(o) for o in originals)
+        # v0.10.5: mezera mezi jmény omezena na 80 znaků — „.*?" s DOTALL přes celý
+        # dokument dělalo kvadratické hledání (stovky jmen × 500 kB vstupu)
+        sequence_str = ".{0,80}?".join(re.escape(o) for o in originals)
         seq_pattern = re.compile(sequence_str, re.DOTALL)
         for orig_m in seq_pattern.finditer(original_text):
             # Vezmi 60 chars before
@@ -318,9 +327,11 @@ def revert_institutional_persons(
             prev_words = re.findall(r"\b\w+\b", prev_text)[-5:]
             if any(w in _INSTITUTIONAL_CONTEXT_WORDS for w in prev_words):
                 # Revert
+                seen_seq[key] = True
                 def _expand(pm: re.Match[str]) -> str:
                     return plc_map.get(pm.group(0), pm.group(0))
                 return _PLACEHOLDER_RE.sub(_expand, seq_text)
+        seen_seq[key] = False
         return seq_text
 
     new_anonymized = seq_re.sub(_maybe_revert, anonymized)

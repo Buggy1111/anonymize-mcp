@@ -55,7 +55,9 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # URL (musí být před e-mailem aby ho neminul)
     (re.compile(r"https?://[^\s\"'<>]+"), "URL", "URL/web"),
     # E-mail
-    (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"), "EMAIL", "e-mail"),
+    # v0.10.5 (ReDoS): e-mail začíná jen na začátku „slova" a local part má max 64 znaků (RFC 5321).
+    # Dřív \b[\w.+-]+ zkoušel každou pozici dlouhého úseku bez @ → 20 000 × „a." = sekundy.
+    (re.compile(r"(?<![\w.+-])[\w.+-]{1,64}@[\w-]+\.[\w.-]+\b"), "EMAIL", "e-mail"),
     # v0.10.4: náměstí / třída / nábřeží kdekoli v textu („náměstí Míru 5")
     (
         re.compile(
@@ -67,7 +69,7 @@ _FORMAT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # v0.10.4: e-mail maskovaný proti robotům — „jan.novak(at)seznam.cz", „jan [at] firma.cz", „jan zavináč firma.cz"
     (
         re.compile(
-            r"\b[\w.+-]+\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]+"
+            r"(?<![\w.+-])[\w.+-]{1,64}\s?(?:\(at\)|\[at\]|\{at\}|\s(?:at|zavináč)\s)\s?[\w-]+"
             r"(?:\.|\s?\(dot\)\s?|\s?\[dot\]\s?)[\w.-]{2,}\b",
             re.IGNORECASE,
         ),
