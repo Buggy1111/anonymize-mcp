@@ -13,6 +13,11 @@ Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](ht
   `ValueError: PII sentinel index out of range` — sentinely rozšířeny na 2 560 (+1 280 firem),
   nad limit srozumitelná chyba „rozděl na menší části". Propagace jedním průchodem
   (1 600 údajů 3,6 s → 0,2 s).
+- **Testy klientů ÚFAL bez sítě** (`tests/test_api_clients_offline.py`): UDPipe, PONK (skutečná
+  odpověď na smyšlený text), Korektor, Charles Translator vč. EN pivotu, HTTP retry (503 → opakuje,
+  404 → hned chyba, výpadek spojení → po 4 pokusech chyba). Pokrytí 65 % → 75 %
+  (udpipe 14→70, ponk 20→72, translator 21→84, korektor 40→93, http 39→92, validation 26→100).
+- Rozpoznání slovenštiny počítá i čistě slovenská písmena (ľ ĺ ŕ ô).
 - **Monitoring API ÚFAL** (`.github/workflows/ufal-monitor.yml` + `scripts/check_ufal_apis.py`):
   každých 6 h jeden minimální smyšlený požadavek na NameTag, UDPipe, MasKIT, PONK, Korektor
   a Charles Translator; při chybě 2 opakování po 60 s, pak jedno issue (štítek `ufal-api`),
