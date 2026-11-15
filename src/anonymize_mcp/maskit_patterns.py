@@ -1581,6 +1581,23 @@ _CONTEXT_PII_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
 # Soudní instituce — explicit regex protože NameTag občas fragmentuje
 # a MasKIT to neumí spojit. Match: {typ soudu} {soud/súd} [v/ve {Místo}]
 # [římská číslice] [stát zkratka].
+_COMPANY_FORMS = (
+    r"(?:spol\.\s?s\s?r\.\s?o\.|s\.\s?r\.\s?o\.|sro|a\.\s?s\.|v\.\s?o\.\s?s\.|k\.\s?s\.|z\.\s?s\.|"
+    r"o\.\s?p\.\s?s\.|z\.\s?ú\.|s\.\s?p\.|družstvo|GmbH|AG|SE|Ltd\.?|LLC|Inc\.?|s\.\s?r\.\s?l\.|Sp\.\s?z\s?o\.\s?o\.)"
+)
+# Délky slov omezené ({0,40}) — ochrana před kvadratickým časem na dlouhých „1-1-1-…".
+_COMPANY_RE = re.compile(
+    r"(?<![^\W_])(?<![.-])((?:[A-ZÁ-Ž\d][\w&'’.-]{0,40})(?:\s+(?:[A-ZÁ-Ž\d][\w&'’.-]{0,40}|[a-zá-ž]{4,40}|&|a|und|and)){0,4}?)"
+    r"(,?\s" + _COMPANY_FORMS + r")(?!\w)"
+)
+_COMPANY_LEAD = {
+    "dodavatel", "odběratel", "zhotovitel", "objednatel", "firma", "společnost", "spol", "kupující", "prodávající",
+    "pronajímatel", "nájemce", "zaměstnavatel", "věřitel", "dlužník", "plátce", "příjemce", "klient", "partner",
+    "pojistitel", "banka", "výrobce", "provozovatel", "správce", "investor", "subdodavatel", "smluvní", "strana",
+    "mezi", "a", "firmou", "společností", "dodavatele", "odběratele", "pro", "od", "u", "v", "ve", "s", "se", "z",
+    "ze", "k", "ke", "na", "do",
+}
+
 _COURT_REGEX = re.compile(
     r"(?:Krajsk|Okresn|Mestsk|Najvyšš|Nejvyšš|Ústavn|Vrchn|Obecn|"
     r"Okrsk|Obvodn|Špecializovan|Specializovan)"
@@ -1716,6 +1733,27 @@ def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]
     text = _COURT_REGEX.sub(
         make_replacer_format("INSTITUCE", "úřad/instituce"), text
     )
+    # 4b) v0.10.9: firma podle právní formy („Baller sro", „Česká spořitelna, a.s.", „Müller GmbH");
+    #     úvodní role („Dodavatel", „Firma") a samotné číslo („článek 5 a.s.") do názvu nepatří.
+    firm_replace = make_replacer_format("FIRMA", "firma/společnost")
+
+    def _firm(m: re.Match[str]) -> str:
+        words = m.group(1).split()
+        lead = []
+        # úvodní role a slova s malým písmenem (rozsah Á-Ž v regexu zahrnuje i malá) do názvu nepatří
+        while words and (words[0].lower().rstrip(":,") in _COMPANY_LEAD
+                         or not (words[0][0].isupper() or words[0][0].isdigit())):
+            lead.append(words.pop(0))
+        if not words:
+            return m.group(0)
+        name = " ".join(words)
+        if not re.search(r"[^\W\d_]{2}", name):
+            return m.group(0)
+        firm = name + m.group(2)
+        inner = re.compile(re.escape(firm))
+        return (" ".join(lead) + " " if lead else "") + inner.sub(firm_replace, firm, count=1)
+
+    text = _COMPANY_RE.sub(_firm, text)
     # 5) v0.10.7: propagace — originál nalezený jednou se skryje i jinde v textu
     #    (výplatnice: „41 712 Kč" u platu a holé „41 712" v součtu)
     # Jeden průchod: kandidát jen pokud jeho nejdelší slovo v textu ještě je (množina slov),

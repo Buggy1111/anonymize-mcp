@@ -2,6 +2,14 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.9] — 2026-11-15
+
+### Added
+- **Firmy podle právní formy** i bez NER: „Baller sro", „Stavby Baller s.r.o.",
+  „Müller GmbH", „s. r. o.", z.s., v.o.s., o.p.s., z.ú., Ltd., LLC… → FIRMA. Úvodní role
+  („Dodavatel", „Firma") a samotné číslo („článek 5 a.s.") do názvu nepatří; lineární čas.
+- `tests/test_v0109_companies.py` (12 testů).
+
 ## [0.10.8] — 2026-11-15
 
 ### Changed (breaking)
