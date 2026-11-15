@@ -27,9 +27,13 @@ _SLOVAK_MARKERS = re.compile(
 )
 
 
+_SLOVAK_LETTERS = re.compile(r"[ľĺŕôĽĹŔÔ]")
+
+
 def looks_slovak(text: str) -> bool:
     """Heuristika: text vypadá slovensky, pokud obsahuje ≥2 jednoznačné SK markery."""
-    return len(_SLOVAK_MARKERS.findall(text)) >= 2
+    # v0.10.8: i čistě slovenská písmena (ľ ĺ ŕ ô — čeština, polština ani němčina je nemají)
+    return len(_SLOVAK_MARKERS.findall(text)) + len(_SLOVAK_LETTERS.findall(text)) >= 2
 
 
 _TOKEN_RANGE_RE = re.compile(r"TokenRange=(\d+):(\d+)")

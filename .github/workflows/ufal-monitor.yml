@@ -1,0 +1,69 @@
+name: ÚFAL API monitor
+
+# Šetrná kontrola 6 služeb ÚFAL (NameTag, UDPipe, MasKIT, PONK, Korektor, Charles Translator):
+# každých 6 h jeden minimální požadavek se smyšleným textem na službu, při chybě max. 2 opakování
+# po 60 s. Při opakované chybě založí/aktualizuje JEDNO issue (štítek ufal-api), po obnovení ho
+# uzavře. Do logu jde jen stav a čas odezvy, nikdy obsah odpovědi.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ufal-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Kontrola služeb
+        id: check
+        run: |
+          set +e
+          python3 -I scripts/check_ufal_apis.py 2 60 > result.json
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          cat result.json
+      - name: Issue při výpadku / uzavření po obnovení
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          FAILED: ${{ steps.check.outputs.exit }}
+        run: |
+          gh label create ufal-api --repo "$REPO" --color d93f0b --description "Výpadek API ÚFAL" --force >/dev/null
+          num=$(gh issue list --repo "$REPO" --label ufal-api --state open --json number -q '.[0].number')
+          python3 - <<'PY'
+          import json
+          d = json.load(open("result.json"))
+          rows = ["| služba | stav | HTTP | ms | pokusy |", "|---|---|---|---|---|"]
+          for n, r in d["results"].items():
+              st = "✅" if r["ok"] else "❌ " + str(r.get("error", "špatná odpověď"))
+              rows.append(f"| {n} | {st} | {r.get('status')} | {r['ms']} | {r['attempts']} |")
+          table = "\n".join(rows) + "\n\nKontrola: " + d["checked_at"]
+          down = ", ".join(d["down"])
+          open("down.txt", "w").write(down)
+          open("new.md", "w").write("Automatická kontrola (opakovaná chyba po 3 pokusech):\n\n" + table +
+              "\n\nJde o výpadek služby ÚFAL, ne chybu v anonymize-mcp. Zero-egress lokální mód (ANONYMIZE_MCP_LOCAL=1) funguje dál.\n")
+          open("still.md", "w").write("Stále nedostupné: " + down + "\n\n" + table + "\n")
+          open("ok.md", "w").write("✅ Všech 6 služeb opět funguje.\n\n" + table + "\n")
+          PY
+          down=$(cat down.txt)
+          if [ "$FAILED" != "0" ]; then
+            if [ -z "$num" ]; then
+              gh issue create --repo "$REPO" --label ufal-api --title "ÚFAL API nedostupné: $down" --body-file new.md
+            else
+              gh issue comment "$num" --repo "$REPO" --body-file still.md
+              gh issue edit "$num" --repo "$REPO" --title "ÚFAL API nedostupné: $down"
+            fi
+          elif [ -n "$num" ]; then
+            gh issue comment "$num" --repo "$REPO" --body-file ok.md
+            gh issue close "$num" --repo "$REPO"
+          fi

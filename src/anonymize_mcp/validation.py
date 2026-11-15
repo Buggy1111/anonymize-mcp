@@ -27,8 +27,8 @@ MAX_INPUT_BYTES = 500_000  # 500 KB safety cap
 SOFT_WARN_BYTES = 100_000  # 100 KB
 
 # PUA range používaná interně pro maskit sentinely (regex + strict + idempotence,
-# U+E100-U+E3FF).
-_PUA_RE = re.compile(r"[-]")
+# U+E100-U+F7FF).
+_PUA_RE = re.compile("[\ue100-\uf7ff]")
 
 # C0 control chars (U+0000-U+001F) mimo \t \n \r + DEL (U+007F). Tyto jsou
 # bezpečnostní hrozby/garbage z OCR/copy-paste a musí být strippnuty. NUL byte
@@ -111,14 +111,14 @@ def validate_input(text: str) -> tuple[str, list[str]]:
             f"ale rozbíjí entity dedup a tokenizaci."
         )
 
-    # PUA collision check — pokud user text obsahuje znaky z U+E100-E3FF,
+    # PUA collision check — pokud user text obsahuje znaky z U+E100-F7FF,
     # naše sentinely v maskit.anonymize_text by se srazily.
     pua_matches = _PUA_RE.findall(text)
     if pua_matches:
         text = _PUA_RE.sub("", text)
         warnings.append(
             f"Vstup obsahoval {len(pua_matches)} znaků z Unicode Private Use Area "
-            f"(U+E100-E3FF), které kolidují s wrapper sentinely. Byly odstraněny. "
+            f"(U+E100-F7FF), které kolidují s wrapper sentinely. Byly odstraněny. "
             f"Pokud potřebuješ tyto znaky zachovat, kontaktuj autora wrapperu."
         )
 

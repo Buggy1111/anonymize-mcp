@@ -1,0 +1,29 @@
+{
+  "_info": "Společný korpus pro web (anonymizace.js.org) i MCP. VŠECHNY údaje jsou smyšlené. secrets = nesmí zůstat ve výstupu.",
+  "docs": [
+    {"id": "pravni-zaloba", "text": "Okresní soud v Kladně\nŽalobce: Ing. Tomáš Procházka, nar. 4. 7. 1975, RČ 750704/1236, bytem Na Výsluní 14, 272 01 Kladno\nŽalovaná: Lenka Horáková, IČO 27082440, se sídlem Dlouhá 8, 110 00 Praha 1\nŽalobce se domáhá zaplacení částky 125 400 Kč s příslušenstvím. Sp. zn. 12 C 345/2026.",
+     "secrets": ["Procházka", "750704/1236", "Na Výsluní 14", "Horáková", "27082440", "Dlouhá 8", "125 400"]},
+    {"id": "faktura", "text": "FAKTURA č. 2026-0451\nDodavatel: Pavel Kučera, IČO 72045210, DIČ CZ7204151234, Husova 233/7, 602 00 Brno\nOdběratel: Alena Marková, Lipová 3, 779 00 Olomouc\nČíslo účtu: 2501234567/2010, VS 20260451\nCelkem k úhradě: 18 150,00 Kč, splatnost 15. 12. 2026\nKontakt: pavel.kucera@seznam.cz, +420 603 112 233",
+     "secrets": ["Kučera", "72045210", "CZ7204151234", "Husova 233/7", "Marková", "Lipová 3", "2501234567", "20260451", "18 150", "pavel.kucera", "603 112 233"]},
+    {"id": "vyplatnice", "text": "Výplatní páska 10/2026\nZaměstnanec: Radek Veselý  Os. číslo: 1188\nHrubá mzda: 38 500\nZáklad zdrav. pojištění 38 500\nZáklad soc. pojištění 38 500\nČistá mzda: 29 873\nVÝPLATA NA ÚČET - 1029384756\nNa účet:\n29 873",
+     "secrets": ["Veselý", "38 500", "29 873", "1029384756"]},
+    {"id": "lekarska-zprava", "text": "Lékařská zpráva\nPacientka: Jana Dvořáková, nar. 12. 2. 1988, RČ 885212/0006, pojišťovna 111\nBydliště: Zahradní 5, 591 01 Žďár nad Sázavou, tel. 732 456 789\nDiagnóza: E11.9 diabetes mellitus 2. typu. Ošetřující lékař MUDr. Karel Šimek.\nKontrola 20. 1. 2027.",
+     "secrets": ["Dvořáková", "885212/0006", "Zahradní 5", "732 456 789", "Šimek", "12. 2. 1988"]},
+    {"id": "bankovni-vypis", "text": "Výpis z účtu 19-2000145399/0800, IBAN CZ65 0800 0000 1920 0014 5399\nMajitel: Michaela Pokorná\n03.11.2026  Příchozí platba od Ondřej Malý  +12 000,00 CZK\n05.11.2026  Platba kartou 4111 1111 1111 1111  -1 250,50 CZK",
+     "secrets": ["2000145399", "CZ65 0800", "Pokorná", "Malý", "12 000", "4111 1111 1111 1111", "1 250,50"]},
+    {"id": "slovensky-dopis", "text": "Mestský súd Bratislava IV\nVec: Výzva\nV právnej veci navrhovateľa Peter Horváth, nar. 3. mája 1979, bytom Javorová 21, 841 04 Bratislava, IČO: 35 763 469,\ntel. 0905 123 456, zastúpený JUDr. Zuzana Kováčová, so sídlom Hviezdoslavovo nám. 5, 811 02 Bratislava, vložka č. 54321/B.",
+     "secrets": ["Horváth", "3. mája 1979", "Javorová 21", "841 04", "35 763 469", "0905 123 456", "Kováčová", "54321"]},
+    {"id": "ocr-chyby", "text": "Zalobce: Josef Novotny , bytem Polni 12 , 37001 Ceske Budejovice\n1ČO: 25596641  tel . 777 888 999\nrodne cislo 790101/0009 , castka 45 000 čk",
+     "secrets": ["Novotny", "Polni 12", "25596641", "777 888 999", "790101/0009", "45 000"]},
+    {"id": "opakovane-udaje", "text": "Kupující Petra Šťastná zaplatí 250 000 Kč. Šťastná souhlasí. Paní Šťastné byla částka 250 000 sdělena. Petra Šťastná podepsala.",
+     "secrets": ["Šťastná", "Šťastné", "250 000"]},
+    {"id": "neobvykle-formatovani", "text": "JMÉNO: NOVÁK Jan\nPŘÍJMENÍ A JMÉNO: Svobodová Marie,\nAdresa:\tKřižíkova\t15,\tPraha\nTel.:777-123-456\nE-mail:  jan . novak (at) email . cz",
+     "secrets": ["NOVÁK", "Svobodová", "Křižíkova", "777-123-456", "jan . novak"]},
+    {"id": "tabulka", "text": "| Jméno | Telefon | Účet |\n| Eva Malá | 602 345 678 | 1234567890/0100 |\n| Igor Beneš | 608 765 432 | 9876543210/0300 |",
+     "secrets": ["Malá", "602 345 678", "1234567890", "Beneš", "608 765 432", "9876543210"]},
+    {"id": "plna-moc", "text": "PLNÁ MOC\nJá, níže podepsaný Martin Krejčí, nar. 30. 9. 1990, číslo OP 123456789, bytem Školní 77, 120 00 Praha 2, zmocňuji paní Kateřinu Benešovou, nar. 1. 1. 1985, k zastupování.",
+     "secrets": ["Krejčí", "123456789", "Školní 77", "Benešovou", "30. 9. 1990"]},
+    {"id": "nesmi-skryt", "text": "Podle zákona č. 89/2012 Sb., občanský zákoník, verze 2.4.1, článek 5. Smlouva o dílo nabývá účinnosti dnem podpisu. Krajský soud rozhodl.",
+     "secrets": [], "must_keep": ["89/2012", "občanský zákoník", "Smlouva o dílo", "Krajský soud", "2.4.1"]}
+  ]
+}

@@ -2,6 +2,43 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.8] — 2026-11-15
+
+### Changed (breaking)
+- **`anonymize` vrací ve výchozím stavu jen anonymizovaný text:** `keep_mapping` má nově
+  default `False`. Dřív se klientovi (tedy i AI, která nástroj volá) vracela tabulka
+  originálů a pole `raw` s původními údaji. Zpětné doplnění: `keep_mapping=True`.
+
+
+### Security
+- **Fail-closed u html/conllu:** v zero-egress lokálním módu vracel `output="html"`/`"conllu"`
+  PŮVODNÍ text beze změny jako „anonymized". Teď `ValueError` (lokálně jen `txt`).
+- **Výpadek MasKITu:** u html/conllu chyba místo neanonymizovaného textu; u `txt` se zapne
+  placeholder mód s NameTag fallbackem, aby jména nezůstala v textu.
+- **Dlouhé dokumenty:** text s víc než 255 různými údaji (bankovní výpis) dřív spadl na
+  `ValueError: PII sentinel index out of range` — sentinely rozšířeny na 2 560 (+1 280 firem),
+  nad limit srozumitelná chyba „rozděl na menší části". Propagace jedním průchodem
+  (1 600 údajů 3,6 s → 0,2 s).
+- **Testy klientů ÚFAL bez sítě** (`tests/test_api_clients_offline.py`): UDPipe, PONK (skutečná
+  odpověď na smyšlený text), Korektor, Charles Translator vč. EN pivotu, HTTP retry (503 → opakuje,
+  404 → hned chyba, výpadek spojení → po 4 pokusech chyba). Pokrytí 65 % → 75 %
+  (udpipe 14→70, ponk 20→72, translator 21→84, korektor 40→93, http 39→92, validation 26→100).
+- Rozpoznání slovenštiny počítá i čistě slovenská písmena (ľ ĺ ŕ ô).
+- **Monitoring API ÚFAL** (`.github/workflows/ufal-monitor.yml` + `scripts/check_ufal_apis.py`):
+  každých 6 h jeden minimální smyšlený požadavek na NameTag, UDPipe, MasKIT, PONK, Korektor
+  a Charles Translator; při chybě 2 opakování po 60 s, pak jedno issue (štítek `ufal-api`),
+  po obnovení komentář a uzavření; do logu jen stav/čas, nikdy obsah. Běží až po sloučení do main.
+- README: upozornění, že cloudový režim posílá text ÚFAL a podle jejich podmínek mohou data
+  použít ke zlepšení služeb.
+- **Společný smyšlený korpus** `tests/corpus/corpus.json` (12 dokumentů, 68 údajů; stejný na webu):
+  MCP 8/12 → 12/12. Opraveno: příjmení za osobou, které NER vynechal („OSOBA1 Veselý"),
+  opakované/skloňované příjmení („Šťastná … paní Šťastné"), osoba za popiskem formuláře
+  („JMÉNO: NOVÁK Jan", „Příjmení a jméno: Svobodová Marie"), rozmezerovaný maskovaný e-mail
+  („jan . novak (at) email . cz"); soud bez místa („Krajský soud rozhodl") už není INSTITUCE.
+- `tests/test_v0108_privacy.py`: keep_mapping=False bez originálů v jakémkoli poli,
+  zero-egress hlídaný na úrovni `socket.connect` (dřív jen httpx.post), chybějící model
+  s `ANONYMIZE_MCP_NO_DOWNLOAD` bez pokusu o síť.
+
 ## [0.10.7] — 2026-11-14
 
 ### Added

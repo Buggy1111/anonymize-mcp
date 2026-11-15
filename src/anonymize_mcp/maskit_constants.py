@@ -1,6 +1,6 @@
 """MasKIT — sdílené konstanty, sentinely, mapování typů na placeholdery.
 
-PUA sentinely: jednoznakové Unicode Private Use Area chars (U+E100-E2FF) které
+PUA sentinely: jednoznakové Unicode Private Use Area chars (U+E100-EFFF, idempotence U+F000-F7FF) které
 MasKIT slovník neobsahuje → procházejí pipelinou bez tokenizace.
 Předchozí pokusy selhaly (__PIIPRE__, §§§, xqxqxq) protože MasKIT je tokenizoval.
 """
@@ -11,27 +11,36 @@ import re
 
 # Single PUA character per sentinel — žádné cifry/text uvnitř které by
 # MasKIT mohl tokenizovat jako číslo nebo entitu.
-_PII_SENT_BASE = 0xE100  # Range U+E100..U+E1FF = 256 sentinely (dostatečné)
-_STR_SENT_BASE = 0xE200  # Range U+E200..U+E2FF = 256 sentinely
+# v0.10.8: rozšířeno z 256 — dlouhý výpis s >255 různými údaji dřív spadl na ValueError.
+_PII_SENT_BASE = 0xE100  # U+E100..U+EAFF = 2560 sentinelů
+_PII_SENT_MAX = 2560
+_STR_SENT_BASE = 0xEB00  # U+EB00..U+EFFF = 1280 sentinelů
+_STR_SENT_MAX = 1280
+IDEMPOTENCE_SENT_BASE = 0xF000  # U+F000..U+F7FF (maskit.py: existující placeholdery + zachované formáty)
+IDEMPOTENCE_SENT_MAX = 2048
 
 
 def make_pii_sentinel(idx: int) -> str:
     """Vrátí jednoznakový PUA sentinel pro PII regex pre-pass."""
-    if idx >= 256:
-        raise ValueError(f"PII sentinel index out of range: {idx} (max 255)")
+    if idx >= _PII_SENT_MAX:
+        raise ValueError(
+            f"Text obsahuje víc než {_PII_SENT_MAX - 1} různých strukturovaných údajů — rozděl ho na menší části."
+        )
     return chr(_PII_SENT_BASE + idx)
 
 
 def make_strict_sentinel(idx: int) -> str:
     """Vrátí jednoznakový PUA sentinel pro strict pre-pass."""
-    if idx >= 256:
-        raise ValueError(f"STRICT sentinel index out of range: {idx} (max 255)")
+    if idx >= _STR_SENT_MAX:
+        raise ValueError(
+            f"Text obsahuje víc než {_STR_SENT_MAX - 1} různých firem/institucí — rozděl ho na menší části."
+        )
     return chr(_STR_SENT_BASE + idx)
 
 
 def is_sentinel_char(ch: str) -> bool:
-    """True pokud je znak PUA sentinel (U+E100..U+E2FF) — PII i strict rozsah."""
-    return _PII_SENT_BASE <= ord(ch) <= _STR_SENT_BASE + 0xFF
+    """True pokud je znak PUA sentinel (U+E100..U+EFFF) — PII i strict rozsah."""
+    return _PII_SENT_BASE <= ord(ch) < _STR_SENT_BASE + _STR_SENT_MAX
 
 
 # Mapování CNEC entity types (a wrapper labels) na placeholder prefixy.

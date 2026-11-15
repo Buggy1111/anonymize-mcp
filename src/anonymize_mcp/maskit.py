@@ -26,6 +26,13 @@ from typing import Any, Literal
 
 from .http import MASKIT_URL, post_form
 from .maskit_audit import ResidualPIILeak, audit_residual_pii, audit_summary
+
+# Idempotence pre-pass: pokud vstup uz obsahuje placeholdery z predchozi anonymizace
+# (OSOBA1, FIRMA2, MESTO1, atd.), je chrame PUA sentinely PRED celou pipeline,
+# aby je MasKIT/NameTag nepreznacily/nekorumpovaly. Resi H1 idempotence bug:
+# anonymize(anonymize(x)) musi == anonymize(x).
+from .maskit_constants import IDEMPOTENCE_SENT_BASE as _IDEMPOTENCE_SENT_BASE
+from .maskit_constants import IDEMPOTENCE_SENT_MAX as _IDEMPOTENCE_SENT_MAX
 from .maskit_constants import build_placeholder_re, is_sentinel_char
 from .maskit_normalize import normalization_summary, normalize_input
 from .maskit_parsing import (
@@ -43,11 +50,7 @@ from .maskit_stoplist import filter_false_positives
 from .maskit_strict import pre_anonymize_orgs, restore_sentinels
 from .nametag import classify_originals
 
-# Idempotence pre-pass: pokud vstup uz obsahuje placeholdery z predchozi anonymizace
-# (OSOBA1, FIRMA2, MESTO1, atd.), je chrame PUA sentinely PRED celou pipeline,
-# aby je MasKIT/NameTag nepreznacily/nekorumpovaly. Resi H1 idempotence bug:
-# anonymize(anonymize(x)) musi == anonymize(x).
-_IDEMPOTENCE_SENT_BASE = 0xE300
+_PRESERVE_OFFSET = 1024  # zachované formáty mají vlastní pásmo nad existujícími placeholdery
 _EXISTING_PLACEHOLDER_RE = build_placeholder_re()
 
 
@@ -61,7 +64,7 @@ def _protect_existing_placeholders(text: str) -> tuple[str, dict[str, str]]:
 
     def _replace(m: re.Match[str]) -> str:
         original = m.group(0)
-        if next_idx[0] >= 256:
+        if next_idx[0] >= _PRESERVE_OFFSET:
             return original  # bezpecnostni cap, nemelo by se stat
         sentinel = chr(_IDEMPOTENCE_SENT_BASE + next_idx[0])
         next_idx[0] += 1
@@ -151,11 +154,11 @@ def _protect_preserve_formats(text: str) -> tuple[str, dict[str, str]]:
     Returns: (text_with_sentinels, map: sentinel -> original_format)
     """
     restore_map: dict[str, str] = {}
-    next_idx = [128]  # start nad existing placeholder range (0-127)
+    next_idx = [_PRESERVE_OFFSET]  # vlastní pásmo nad existujícími placeholdery
 
     def _replace(m: re.Match[str]) -> str:
         original = m.group(0)
-        if next_idx[0] >= 256:
+        if next_idx[0] >= _IDEMPOTENCE_SENT_MAX:
             return original
         sentinel = chr(_IDEMPOTENCE_SENT_BASE + next_idx[0])
         next_idx[0] += 1
@@ -203,6 +206,13 @@ async def anonymize_text(
     local_mode = is_local_mode()
     if local_mode:
         placeholder_mode = True
+        # v0.10.8 (fail-closed): HTML/CoNLL-U výstup umí jen MasKIT (cloud). Dřív lokální mód
+        # u output="html"/"conllu" vrátil PŮVODNÍ text beze změny jako „anonymized".
+        if output != "txt":
+            raise ValueError(
+                f'output="{output}" vyžaduje MasKIT (cloud), v zero-egress lokálním módu '
+                f'je k dispozici jen output="txt".'
+            )
 
     # === STEP -1: Input normalization (adversariální defenses) ===
     # NFC + zero-width strip + bidi override strip + non-Latin digit → ASCII.
@@ -304,6 +314,20 @@ async def anonymize_text(
             else:
                 anonymized, maskit_replacements = raw, []
         except (httpx.TimeoutException, httpx.ConnectError, httpx.RemoteProtocolError) as e:
+            # v0.10.8 (fail-closed): u html/conllu by se vrátil původní text (regex pre-pass
+            # ani placeholder mód pro ně neběží) → raději chyba než únik.
+            if output != "txt":
+                raise RuntimeError(
+                    f"MasKIT API selhalo ({type(e).__name__}) a output=\"{output}\" nemá náhradní "
+                    f"cestu — nic nevracím, aby neodešel neanonymizovaný text. Zkuste output=\"txt\"."
+                ) from e
+            # u txt: jména bez MasKITu chytí jen NameTag fallback v placeholder módu → zapnout
+            if not placeholder_mode:
+                placeholder_mode = True
+                all_warnings.append(
+                    "MasKIT nedostupný → zapnut placeholder mód s NameTag fallbackem, aby jména "
+                    "nezůstala v textu (značky OSOBA1… místo náhradních jmen)."
+                )
             # Soft fallback: emuluj výstup MasKITu sentinely, ostatní pipeline
             # (restore, fallback, placeholder mode) doběhne na regex+strict reps.
             all_warnings.append(

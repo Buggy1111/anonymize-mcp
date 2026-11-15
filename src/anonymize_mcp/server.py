@@ -141,7 +141,7 @@ async def extract_entities(
 async def anonymize(
     text: str,
     output: Literal["txt", "html", "conllu"] = "txt",
-    keep_mapping: bool = True,
+    keep_mapping: bool = False,
     classify_types: bool = True,
     strict: bool = True,
     placeholder_mode: bool = False,
@@ -181,8 +181,10 @@ async def anonymize(
     Args:
         text: Vstupní text (čeština).
         output: Formát výstupu — ``txt`` (default), ``html``, ``conllu``.
-        keep_mapping: Když True, vrátí mapping. **POZOR**: pokud má text
-            dál opustit důvěrné prostředí, mapping vypni!
+        keep_mapping: Default ``False`` (od v0.10.8). ``True`` vrátí i tabulku
+            originálů (``replacements``) a mezivýsledek ``raw`` — **originály tak
+            uvidí i AI, která nástroj volá**. Zapni jen pro zpětné doplnění údajů
+            v důvěrném prostředí.
         classify_types: NameTag dohledá typ entity. Default ``True``.
         strict: Wrapper pre-pass na firmy/úřady. Default ``True``.
         placeholder_mode: ⭐ **NEW v0.6.0** — deterministic placeholdery
