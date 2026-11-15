@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://github.com/Buggy1111/anonymize-mcp",
-  "version": "0.10.7",
+  "version": "0.10.8",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "anonymize-mcp",
-      "version": "0.10.7",
+      "version": "0.10.8",
       "transport": {
         "type": "stdio"
       }

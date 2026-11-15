@@ -2,7 +2,13 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
-## [Unreleased] — větev ada/hardening (čeká na schválení)
+## [0.10.8] — 2026-11-15
+
+### Changed (breaking)
+- **`anonymize` vrací ve výchozím stavu jen anonymizovaný text:** `keep_mapping` má nově
+  default `False`. Dřív se klientovi (tedy i AI, která nástroj volá) vracela tabulka
+  originálů a pole `raw` s původními údaji. Zpětné doplnění: `keep_mapping=True`.
+
 
 ### Security
 - **Fail-closed u html/conllu:** v zero-egress lokálním módu vracel `output="html"`/`"conllu"`
