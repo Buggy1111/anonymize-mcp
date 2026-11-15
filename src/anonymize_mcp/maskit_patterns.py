@@ -1649,13 +1649,16 @@ def _section_pass_datovky(text: str, make_replacer: Callable[[re.Match[str]], st
     return "".join(out_parts)
 
 
-def regex_pre_pass(text: str) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
+def regex_pre_pass(text: str, start_counters: dict[str, int] | None = None,
+                   ) -> tuple[str, list[dict[str, Any]], dict[str, int]]:
     """Najdi strukturované PII regexem a nahraď PUA sentinely.
 
+    `start_counters` = nejvyšší čísla značek, které už v textu jsou (OSOBA3 → {"OSOBA": 3});
+    nové značky pak navazují a nesrazí se s existujícími.
     Vrací: (text_se_sentinely, replacements_list, counters_dict)
     """
     replacements: list[dict[str, Any]] = []
-    counters: dict[str, int] = {}
+    counters: dict[str, int] = dict(start_counters or {})
     sentinel_idx_holder = [0]
     # Dedup: stejný PII (per prefix) → stejný placeholder + reused sentinel.
     # Bez dedup: 3× "800312/1234" → RC1, RC2, RC3 (bug). S dedup: → RC1, RC1, RC1.

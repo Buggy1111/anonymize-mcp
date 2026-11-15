@@ -234,32 +234,19 @@ async def anonymize_text(
     #   - <3 placeholderu => mozna text co se shoduje s nasim formatem nahodou,
     #     necham probehnout pipeline (chraneny PUA sentinely)
     idem_restore_map: dict[str, str] = {}
+    existing_counters: dict[str, int] = {}
     if output == "txt":
         text_protected, idem_restore_map = _protect_existing_placeholders(text)
-        if len(idem_restore_map) >= 3:
-            # Early return — vrat identicky vstup, jen nahlas warningem.
-            return {
-                "anonymized": text,
-                "raw": text,
-                "replacements": [],
-                "warnings": [
-                    f"Vstup obsahuje {len(idem_restore_map)} existujicich placeholderu "
-                    f"(OSOBA*/FIRMA*/MESTO*/...) — detekovano jako jiz anonymizovany text, "
-                    f"pipeline preskocena (idempotence guarantee)."
-                ],
-                "count": 0,
-                "sources": {"maskit": 0, "wrapper-regex": 0, "wrapper-strict": 0,
-                            "wrapper-placeholder": 0, "wrapper-nametag-fallback": 0,
-                            "idempotence-skip": 1},
-            } if keep_mapping else {
-                "anonymized": text,
-                "warnings": [
-                    f"Vstup obsahuje {len(idem_restore_map)} existujicich placeholderu — "
-                    f"detekovano jako jiz anonymizovany text, pipeline preskocena."
-                ],
-            }
-        # <3 placeholderu — chranime co je, pokracujeme pipeline normalne
+        # v0.10.10: dřív se při 3+ značkách celá pipeline PŘESKOČILA → nové osobní údaje
+        # v textu se značkami (souhrn s doplněným jménem/telefonem) prošly beze změny.
+        # Teď se existující značky jen chrání sentinely a pipeline běží vždy;
+        # na už anonymizovaném textu nic dalšího nenajde, takže idempotence zůstává.
+        # chráníme existující značky a pokračujeme pipeline normálně
         text = text_protected
+        for kept in idem_restore_map.values():
+            m = re.match(r"^([A-Z_]+?)(\d+)$", kept)
+            if m:
+                existing_counters[m.group(1)] = max(existing_counters.get(m.group(1), 0), int(m.group(2)))
         if idem_restore_map:
             all_warnings.append(
                 f"Vstup obsahoval {len(idem_restore_map)} existujicich placeholderu — "
@@ -277,14 +264,14 @@ async def anonymize_text(
     regex_reps: list[dict[str, Any]] = []
     text_after_regex = text
     if regex_pre_pass_enabled and output == "txt":
-        text_after_regex, regex_reps, _ = regex_pre_pass(text)
+        text_after_regex, regex_reps, _ = regex_pre_pass(text, start_counters=existing_counters)
 
     # === STEP 2: Strict pre-pass — firmy/úřady/instituce ===
     strict_reps: list[dict[str, Any]] = []
     text_for_maskit = text_after_regex
     if strict and output == "txt":
         text_for_maskit, strict_reps = await pre_anonymize_orgs(
-            text_after_regex, start_counters=None
+            text_after_regex, start_counters=dict(existing_counters) or None
         )
 
     # === STEP 3: MasKIT call (soft-fail při timeoutu) ===
@@ -375,6 +362,8 @@ async def anonymize_text(
     # === STEP 8: Placeholder mode (deterministic + NameTag fallback) ===
     if placeholder_mode and output == "txt":
         registry = PlaceholderRegistry()
+        for prefix, n in existing_counters.items():   # navázat za značky, které už v textu jsou
+            registry._counters[prefix] = max(registry._counters.get(prefix, 0), n)
 
         # Pre-seed registry s wrapper-strict + wrapper-regex placeholdery.
         # Bez toho by MasKIT-zachycený další výskyt stejné entity dostal nový
