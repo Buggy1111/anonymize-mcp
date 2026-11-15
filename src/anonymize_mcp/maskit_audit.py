@@ -51,7 +51,7 @@ _AUDIT_PATTERNS: list[tuple[re.Pattern[str], str, Severity]] = [
     ),
     # Credit card 16-digit (4-4-4-4 spaced or dashed or compact)
     (
-        re.compile(r"\b(?:4|5[1-5]|6[02]|35|3[68])\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        re.compile(r"\b(?:4\d{3}|(?:5[1-5]|6[02]|35|3[68])\d{2})[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
         "16-digit card-like sequence",
         "critical",
     ),
