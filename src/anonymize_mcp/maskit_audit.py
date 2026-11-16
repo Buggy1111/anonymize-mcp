@@ -51,7 +51,7 @@ _AUDIT_PATTERNS: list[tuple[re.Pattern[str], str, Severity]] = [
     ),
     # Credit card 16-digit (4-4-4-4 spaced or dashed or compact)
     (
-        re.compile(r"\b(?:4|5[1-5]|6[02]|35|3[68])\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        re.compile(r"\b(?:4\d{3}|(?:5[1-5]|6[02]|35|3[68])\d{2})[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
         "16-digit card-like sequence",
         "critical",
     ),
@@ -250,8 +250,20 @@ class ResidualPIILeak(Exception):
 
     def __init__(self, leaks: list[dict[str, Any]]) -> None:
         self.leaks = leaks
-        msg = f"Audit detected {len(leaks)} residual PII pattern(s) in anonymized output"
+        kinds = ", ".join(sorted({str(leak["pattern"]) for leak in leaks}))
+        # zpráva jde k AI klientovi → jen druhy nálezů, nikdy nalezené hodnoty
+        msg = (f"Výstup zadržen: kontrola po anonymizaci našla {len(leaks)} nezakrytý údaj(e) ({kinds}). "
+               "Text proto nevracím. Zkontrolujte vstup; vědomě lze vypnout parametrem audit_block='off'.")
         super().__init__(msg)
+
+
+def _valid_rc(text: str) -> bool:
+    """10místné rodné číslo s platným mod-11 (vč. výjimky zbytku 10 → kontrolní 0)."""
+    d = re.sub(r"\D", "", text)
+    if len(d) != 10:
+        return False
+    n = int(d)
+    return n % 11 == 0 or (int(d[:9]) % 11 == 10 and d[9] == "0")
 
 
 def audit_residual_pii(
@@ -305,10 +317,13 @@ def audit_residual_pii(
             # Skip if matched text contains PUA mask char (overlap with placeholder)
             if "" in matched_text:
                 continue
+            sev = severity
+            if label == "CZ rodné číslo" and _valid_rc(matched_text):
+                sev = "critical"   # 10místné RČ s platným kontrolním součtem není náhoda
             leaks.append({
                 "pattern": label,
                 "match": matched_text,
-                "severity": severity,
+                "severity": sev,
                 "position": match.start(),
             })
 

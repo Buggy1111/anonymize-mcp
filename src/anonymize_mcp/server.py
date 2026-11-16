@@ -147,6 +147,7 @@ async def anonymize(
     placeholder_mode: bool = False,
     regex_pre_pass: bool = True,
     stop_list_filter: bool = True,
+    audit_block: Literal["critical", "high", "off"] = "critical",
 ) -> dict[str, Any]:
     """Production-grade pseudonymizace českých právních textů (v0.6.0).
 
@@ -191,6 +192,10 @@ async def anonymize(
             místo MasKIT fake names. Pro reprodukovatelnost a auditovatelnost.
         regex_pre_pass: Default ``True``. Strukturovaná PII regexem PŘED MasKITem.
         stop_list_filter: Default ``True``. Rollback MasKIT false positives.
+        audit_block: Default ``critical`` (od v0.10.10). Když kontrola po anonymizaci
+            najde nezakrytý kritický údaj (IBAN, karta, rodné číslo s platným
+            kontrolním součtem, API klíč), nástroj **vrátí chybu místo textu**.
+            ``high`` zadrží i e-maily a telefony, ``off`` jen varuje.
 
     Returns:
         ``anonymized`` (čistý text), ``warnings``; jen s ``keep_mapping=True``
@@ -209,6 +214,7 @@ async def anonymize(
         placeholder_mode=placeholder_mode,
         regex_pre_pass_enabled=regex_pre_pass,
         stop_list_filter=stop_list_filter,
+        audit_block=audit_block,
     )
     if _warns:
         result.setdefault("warnings", []).extend(_warns)
