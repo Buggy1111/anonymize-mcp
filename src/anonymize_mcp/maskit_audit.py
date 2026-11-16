@@ -250,8 +250,20 @@ class ResidualPIILeak(Exception):
 
     def __init__(self, leaks: list[dict[str, Any]]) -> None:
         self.leaks = leaks
-        msg = f"Audit detected {len(leaks)} residual PII pattern(s) in anonymized output"
+        kinds = ", ".join(sorted({str(leak["pattern"]) for leak in leaks}))
+        # zpráva jde k AI klientovi → jen druhy nálezů, nikdy nalezené hodnoty
+        msg = (f"Výstup zadržen: kontrola po anonymizaci našla {len(leaks)} nezakrytý údaj(e) ({kinds}). "
+               "Text proto nevracím. Zkontrolujte vstup; vědomě lze vypnout parametrem audit_block='off'.")
         super().__init__(msg)
+
+
+def _valid_rc(text: str) -> bool:
+    """10místné rodné číslo s platným mod-11 (vč. výjimky zbytku 10 → kontrolní 0)."""
+    d = re.sub(r"\D", "", text)
+    if len(d) != 10:
+        return False
+    n = int(d)
+    return n % 11 == 0 or (int(d[:9]) % 11 == 10 and d[9] == "0")
 
 
 def audit_residual_pii(
@@ -305,10 +317,13 @@ def audit_residual_pii(
             # Skip if matched text contains PUA mask char (overlap with placeholder)
             if "" in matched_text:
                 continue
+            sev = severity
+            if label == "CZ rodné číslo" and _valid_rc(matched_text):
+                sev = "critical"   # 10místné RČ s platným kontrolním součtem není náhoda
             leaks.append({
                 "pattern": label,
                 "match": matched_text,
-                "severity": severity,
+                "severity": sev,
                 "position": match.start(),
             })
 

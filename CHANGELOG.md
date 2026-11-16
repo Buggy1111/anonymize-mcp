@@ -2,6 +2,25 @@
 
 Všechny významné změny se zaznamenávají sem. Formát [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), verzování [SemVer](https://semver.org/).
 
+## [0.10.10] — 2026-11-16
+
+### Changed (breaking)
+- **Kritický zbytek po anonymizaci zadrží výstup:** když kontrola najde nezakrytý IBAN,
+  kartu, rodné číslo s platným kontrolním součtem nebo API klíč, `anonymize` vrátí chybu
+  místo textu. Chyba uvádí jen druh nálezu, nikdy hodnotu. Nový parametr
+  `audit_block` (`critical` default, `high`, `off`).
+
+### Fixed
+- **Idempotence:** text s ≥3 existujícími značkami se dřív celý přeskočil a nové osobní
+  údaje vedle značek zůstaly čitelné. Teď se značky chrání a číslování navazuje
+  (nový telefon = TELEFON2), `anonymize(anonymize(x)) == anonymize(x)`.
+- Audit: karta Visa (4xxx) se hlásila jako „IN Aadhaar“ místo karty.
+
+### Monitoring
+- `scripts/check_ufal_apis.py`: druh chyby (timeout / http / spojení / struktura),
+  kontrolní spojení mimo ÚFAL — když nefunguje ani to, monitor nic nehlásí. Issue říká
+  „NEOVĚŘENO – EXTERNÍ SLUŽBA“, ne „výpadek ÚFAL“. Testy se simulovanými odpověďmi.
+
 ## [0.10.9] — 2026-11-15
 
 ### Added

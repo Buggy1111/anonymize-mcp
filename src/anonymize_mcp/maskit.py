@@ -191,6 +191,7 @@ async def anonymize_text(
     audit: bool = True,
     strict_audit: bool = False,
     audit_severity: Literal["critical", "high", "medium"] = "high",
+    audit_block: Literal["critical", "high", "off"] = "critical",
     normalize: bool = True,
 ) -> dict[str, Any]:
     """High-level anonymize pipeline (viz module docstring)."""
@@ -456,7 +457,9 @@ async def anonymize_text(
         )
         if audit_leaks:
             all_warnings.append(audit_summary(audit_leaks))
-            if strict_audit:
+            # od v0.10.10: kritický zbytek (IBAN, karta, platné RČ, klíče) výstup zadrží i bez strict_audit
+            block = {"critical": ("critical",), "high": ("critical", "high"), "off": ()}[audit_block]
+            if strict_audit or any(leak["severity"] in block for leak in audit_leaks):
                 raise ResidualPIILeak(audit_leaks)
 
     # === Output ===
