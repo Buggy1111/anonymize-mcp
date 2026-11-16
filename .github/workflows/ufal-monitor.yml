@@ -38,32 +38,37 @@ jobs:
           REPO: ${{ github.repository }}
           FAILED: ${{ steps.check.outputs.exit }}
         run: |
-          gh label create ufal-api --repo "$REPO" --color d93f0b --description "Výpadek API ÚFAL" --force >/dev/null
+          gh label create ufal-api --repo "$REPO" --color d93f0b --description "API ÚFAL neodpovídá (neověřená příčina)" --force >/dev/null
           num=$(gh issue list --repo "$REPO" --label ufal-api --state open --json number -q '.[0].number')
           python3 - <<'PY'
           import json
           d = json.load(open("result.json"))
           rows = ["| služba | stav | HTTP | ms | pokusy |", "|---|---|---|---|---|"]
           for n, r in d["results"].items():
-              st = "✅" if r["ok"] else "❌ " + str(r.get("error", "špatná odpověď"))
+              kinds = {"timeout": "časový limit", "http": "chyba HTTP", "connection": "chyba spojení", "shape": "odpověď nesedí"}
+              st = "✅" if r["ok"] else "❌ " + kinds.get(r.get("kind"), "?") + (f" ({r['error']})" if r.get("error") else "")
               rows.append(f"| {n} | {st} | {r.get('status')} | {r['ms']} | {r['attempts']} |")
           table = "\n".join(rows) + "\n\nKontrola: " + d["checked_at"]
+          if d.get("monitor_offline"):
+              raise SystemExit(0)   # monitor nemá spojení — o ÚFAL nic nevíme, nic nehlásíme
           down = ", ".join(d["down"])
           open("down.txt", "w").write(down)
-          open("new.md", "w").write("Automatická kontrola (opakovaná chyba po 3 pokusech):\n\n" + table +
-              "\n\nJde o výpadek služby ÚFAL, ne chybu v anonymize-mcp. Zero-egress lokální mód (ANONYMIZE_MCP_LOCAL=1) funguje dál.\n")
+          open("new.md", "w").write("Automatická kontrola (opakovaná chyba po 3 pokusech): NEOVĚŘENO – EXTERNÍ SLUŽBA.\n\n" + table +
+              "\n\nKontrolní spojení mimo ÚFAL fungovalo, příčinu na straně služby ale z monitoru nepoznáme "
+              "(výpadek, údržba, změna API, blokace runneru). Zero-egress lokální mód (ANONYMIZE_MCP_LOCAL=1) funguje dál.\n")
           open("still.md", "w").write("Stále nedostupné: " + down + "\n\n" + table + "\n")
           open("ok.md", "w").write("✅ Všech 6 služeb opět funguje.\n\n" + table + "\n")
           PY
+          if [ "$FAILED" = "2" ]; then echo "Monitor bez spojení (kontrolní spojení selhalo) — issue neměním."; exit 0; fi
           down=$(cat down.txt)
-          if [ "$FAILED" != "0" ]; then
+          if [ "$FAILED" = "1" ]; then
             if [ -z "$num" ]; then
-              gh issue create --repo "$REPO" --label ufal-api --title "ÚFAL API nedostupné: $down" --body-file new.md
+              gh issue create --repo "$REPO" --label ufal-api --title "ÚFAL API neodpovídá (neověřeno): $down" --body-file new.md
             else
               gh issue comment "$num" --repo "$REPO" --body-file still.md
-              gh issue edit "$num" --repo "$REPO" --title "ÚFAL API nedostupné: $down"
+              gh issue edit "$num" --repo "$REPO" --title "ÚFAL API neodpovídá (neověřeno): $down"
             fi
-          elif [ -n "$num" ]; then
+          elif [ "$FAILED" = "0" ] && [ -n "$num" ]; then
             gh issue comment "$num" --repo "$REPO" --body-file ok.md
             gh issue close "$num" --repo "$REPO"
           fi
