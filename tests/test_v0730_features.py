@@ -111,8 +111,8 @@ async def test_strict_audit_raises_on_leak() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.network
-async def test_audit_warning_in_normal_mode() -> None:
-    """audit=True (default) emits warning instead of raising."""
+async def test_audit_warning_when_blocking_disabled() -> None:
+    """Explicit audit_block='off' reports residual PII without blocking output."""
     text = "Klient SSN 123-45-6789 jako příklad."
     res = await anonymize_text(
         text,
@@ -120,6 +120,7 @@ async def test_audit_warning_in_normal_mode() -> None:
         regex_pre_pass_enabled=False,
         audit=True,
         strict_audit=False,
+        audit_block="off",
     )
     assert any("residual PII" in w.lower() or "Audit" in w
                for w in res["warnings"])
